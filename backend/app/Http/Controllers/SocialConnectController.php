@@ -1,0 +1,682 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\OAuthAppConfig;
+use App\Models\SocialCredential;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
+use Laravel\Socialite\Two\InvalidStateException;
+
+class SocialConnectController extends Controller
+{
+    private const YOUTUBE_SCOPES = [
+        'https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+    ];
+
+    private const GOOGLE_SCOPES = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+    ];
+
+    /** Scopes for reading managed Pages’ public feed via /me/accounts + /{page-id}/feed. */
+    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_engagement'];
+
+    private const INSTAGRAM_SCOPES = ['public_profile', 'instagram_basic', 'pages_show_list'];
+
+    /** X / Twitter OAuth 2: tweet.read + users.read + offline.access for refresh_token. */
+    private const TWITTER_SCOPES = ['users.read', 'users.email', 'tweet.read', 'offline.access'];
+
+    private const X_OAUTH_AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
+
+    private const X_OAUTH_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
+    private const TIKTOK_OAUTH_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/';
+    private const TIKTOK_OAUTH_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
+    private const TIKTOK_SCOPES = ['user.info.basic', 'video.list'];
+    private function normalizeAbsoluteUrl(string $url): string
+    {
+        $trimmed = trim($url);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (! preg_match('#^https?://#i', $trimmed)) {
+            // Railway/custom env values are sometimes set without scheme.
+            $trimmed = 'https://'.$trimmed;
+        }
+
+        return $trimmed;
+    }
+
+    private function backendUrl(string $path): string
+    {
+        $base = rtrim($this->normalizeAbsoluteUrl((string) config('app.url', '')), '/');
+        $path = '/'.ltrim($path, '/');
+
+        return $base.$path;
+    }
+
+
+    /**
+     * Start OAuth flow. Returns auth_url for redirect.
+     */
+    public function connect(Request $request)
+    {
+        $validated = $request->validate([
+            'provider' => ['required', 'string', 'max:64'],
+        ]);
+
+        $provider = $validated['provider'];
+
+        return match ($provider) {
+            'youtube' => $this->connectYouTube($request),
+            'google' => $this->connectGoogle($request),
+            'facebook' => $this->connectFacebook($request),
+            'instagram' => $this->connectInstagram($request),
+            'twitter' => $this->connectTwitter($request),
+            'tiktok' => $this->connectTikTok($request),
+            default => response()->json([
+                'provider' => $provider,
+                'auth_url' => null,
+                'message' => 'OAuth not implemented for this provider yet.',
+            ], 400),
+        };
+    }
+
+    private function connectYouTube(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
+        if (! $oauth) {
+            return response()->json(['message' => 'YouTube connect is not configured. Add Google OAuth client ID/secret in Credentials.'], 503);
+        }
+
+        $state = $this->encryptState($request->user()->id, 'youtube');
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/youtube')
+        );
+
+        $authUrl = Socialite::buildProvider(GoogleProvider::class, [
+            'client_id' => $oauth->client_id,
+            'client_secret' => $oauth->client_secret,
+            'redirect' => $redirectUrl,
+        ])
+            ->stateless()
+            ->scopes(self::YOUTUBE_SCOPES)
+            ->redirectUrl($redirectUrl)
+            ->with([
+                'state' => $state,
+                // Ensure we get a refresh_token so we can refresh access tokens.
+                'access_type' => 'offline',
+                'prompt' => 'consent',
+                'include_granted_scopes' => 'true',
+            ])
+            ->redirect()
+            ->getTargetUrl();
+
+        return response()->json(['provider' => 'youtube', 'auth_url' => $authUrl]);
+    }
+
+    private function connectGoogle(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
+        if (! $oauth) {
+            return response()->json(['message' => 'Google connect is not configured. Add Google OAuth client ID/secret in Credentials.'], 503);
+        }
+
+        $state = $this->encryptState($request->user()->id, 'google');
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/google')
+        );
+
+        $authUrl = Socialite::buildProvider(GoogleProvider::class, [
+            'client_id' => $oauth->client_id,
+            'client_secret' => $oauth->client_secret,
+            'redirect' => $redirectUrl,
+        ])
+            ->stateless()
+            ->scopes(self::GOOGLE_SCOPES)
+            ->redirectUrl($redirectUrl)
+            ->with([
+                'state' => $state,
+                'access_type' => 'offline',
+                'prompt' => 'consent',
+                'include_granted_scopes' => 'true',
+            ])
+            ->redirect()
+            ->getTargetUrl();
+
+        return response()->json(['provider' => 'google', 'auth_url' => $authUrl]);
+    }
+
+    private function connectFacebook(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
+        if (! $oauth) {
+            return response()->json(['message' => 'Facebook connect is not configured. Add Facebook OAuth client ID/secret in Credentials.'], 503);
+        }
+
+        $state = $this->encryptState($request->user()->id, 'facebook');
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/facebook')
+        );
+        $this->setFacebookConfig($oauth, $redirectUrl);
+
+        $authUrl = Socialite::driver('facebook')
+            ->stateless()
+            // Use explicit scope set to avoid Socialite default `email` scope.
+            ->setScopes(self::FACEBOOK_SCOPES)
+            ->redirectUrl($redirectUrl)
+            ->with(['state' => $state])
+            ->redirect()
+            ->getTargetUrl();
+
+        return response()->json(['provider' => 'facebook', 'auth_url' => $authUrl]);
+    }
+
+    private function connectInstagram(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
+        if (! $oauth) {
+            return response()->json(['message' => 'Instagram connect is not configured. Add Facebook OAuth client ID/secret in Credentials.'], 503);
+        }
+
+        $state = $this->encryptState($request->user()->id, 'instagram');
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/facebook')
+        );
+        $this->setFacebookConfig($oauth, $redirectUrl);
+
+        $authUrl = Socialite::driver('facebook')
+            ->stateless()
+            // Use explicit scope set to avoid Socialite default `email` scope.
+            ->setScopes(self::INSTAGRAM_SCOPES)
+            ->redirectUrl($redirectUrl)
+            ->with(['state' => $state])
+            ->redirect()
+            ->getTargetUrl();
+
+        return response()->json(['provider' => 'instagram', 'auth_url' => $authUrl]);
+    }
+
+    private function connectTwitter(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'twitter');
+        if (! $oauth) {
+            return response()->json(['message' => 'Twitter connect is not configured. Add Twitter OAuth client ID/secret in Credentials.'], 503);
+        }
+
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/twitter')
+        );
+
+        // Socialite's X driver uses PKCE and always stores code_verifier in session inside
+        // redirect(), but /api routes have no session. Embed PKCE verifier in encrypted state instead.
+        $codeVerifier = Str::random(96);
+        $state = Crypt::encryptString(json_encode([
+            'user_id' => $request->user()->id,
+            'provider' => 'twitter',
+            'code_verifier' => $codeVerifier,
+        ]));
+
+        $challenge = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
+
+        $query = http_build_query([
+            'response_type' => 'code',
+            'client_id' => $oauth->client_id,
+            'redirect_uri' => $redirectUrl,
+            'scope' => implode(' ', self::TWITTER_SCOPES),
+            'state' => $state,
+            'code_challenge' => $challenge,
+            'code_challenge_method' => 'S256',
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        $authUrl = self::X_OAUTH_AUTHORIZE_URL.'?'.$query;
+
+        return response()->json(['provider' => 'twitter', 'auth_url' => $authUrl]);
+    }
+
+    private function connectTikTok(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'tiktok');
+        if (! $oauth) {
+            return response()->json(['message' => 'TikTok connect is not configured. Add TikTok OAuth client key/secret in Credentials.'], 503);
+        }
+
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/tiktok')
+        );
+        $state = $this->encryptState($request->user()->id, 'tiktok');
+
+        $query = http_build_query([
+            'client_key' => $oauth->client_id,
+            'redirect_uri' => $redirectUrl,
+            'response_type' => 'code',
+            'scope' => implode(',', self::TIKTOK_SCOPES),
+            'state' => $state,
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        return response()->json([
+            'provider' => 'tiktok',
+            'auth_url' => self::TIKTOK_OAUTH_AUTHORIZE_URL.'?'.$query,
+        ]);
+    }
+
+    private function encryptState(int $userId, string $provider): string
+    {
+        return Crypt::encryptString(json_encode(['user_id' => $userId, 'provider' => $provider]));
+    }
+
+    private function frontendUrl(): string
+    {
+        return rtrim(
+            $this->normalizeAbsoluteUrl((string) config('app.frontend_url', config('app.url'))),
+            '/'
+        );
+    }
+
+    private function redirectSuccess(string $provider): \Illuminate\Http\RedirectResponse
+    {
+        return redirect($this->frontendUrl() . '/credentials?connected=' . $provider);
+    }
+
+    private function redirectError(string $message = 'oauth_failed'): \Illuminate\Http\RedirectResponse
+    {
+        return redirect($this->frontendUrl() . '/credentials?error=oauth_failed&message=' . urlencode($message));
+    }
+
+    private function decodeState(Request $request): ?array
+    {
+        $state = $request->query('state');
+        if (! $state) {
+            return null;
+        }
+        try {
+            $payload = json_decode(Crypt::decryptString($state), true);
+            if (! isset($payload['user_id'], $payload['provider'])) {
+                return null;
+            }
+            return $payload;
+        } catch (\Throwable $e) {
+            Log::warning('OAuth state decrypt failed', ['message' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null): void
+    {
+        $expiresAt = $expiresIn ? now()->addSeconds($expiresIn) : null;
+        $cred = SocialCredential::updateOrCreate(
+            ['user_id' => $userId, 'provider' => $provider],
+            [
+                'access_token' => $token,
+                'expires_at' => $expiresAt,
+            ]
+        );
+
+        // Google may omit refresh_token on subsequent grants; don't overwrite a good one.
+        if ($refreshToken) {
+            $cred->refresh_token = $refreshToken;
+            $cred->save();
+        }
+    }
+
+    public function callbackYouTube(Request $request)
+    {
+        try {
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'youtube') {
+                return $this->redirectError('invalid_state');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'google');
+            if (! $oauth) {
+                return $this->redirectError('missing_google_oauth_config');
+            }
+
+            $googleUser = Socialite::buildProvider(GoogleProvider::class, [
+                'client_id' => $oauth->client_id,
+                'client_secret' => $oauth->client_secret,
+                'redirect' => $this->normalizeAbsoluteUrl(
+                    $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/youtube')
+                ),
+            ])
+                ->stateless()
+                ->redirectUrl(
+                    $this->normalizeAbsoluteUrl(
+                        $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/youtube')
+                    )
+                )
+                ->user();
+
+            $this->saveCredential(
+                (int) $payload['user_id'],
+                'youtube',
+                $googleUser->token,
+                $googleUser->refreshToken ?? null,
+                $googleUser->expiresIn ?? null
+            );
+
+            return $this->redirectSuccess('youtube');
+        } catch (InvalidStateException $e) {
+            Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+            return $this->redirectError('state_mismatch');
+        } catch (\Throwable $e) {
+            Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function callbackGoogle(Request $request)
+    {
+        try {
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'google') {
+                return $this->redirectError('invalid_state');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'google');
+            if (! $oauth) {
+                return $this->redirectError('missing_google_oauth_config');
+            }
+
+            $googleUser = Socialite::buildProvider(GoogleProvider::class, [
+                'client_id' => $oauth->client_id,
+                'client_secret' => $oauth->client_secret,
+                'redirect' => $this->normalizeAbsoluteUrl(
+                    $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/google')
+                ),
+            ])
+                ->stateless()
+                ->redirectUrl(
+                    $this->normalizeAbsoluteUrl(
+                        $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/google')
+                    )
+                )
+                ->user();
+
+            $this->saveCredential(
+                (int) $payload['user_id'],
+                'google',
+                $googleUser->token,
+                $googleUser->refreshToken ?? null,
+                $googleUser->expiresIn ?? null
+            );
+
+            return $this->redirectSuccess('google');
+        } catch (InvalidStateException $e) {
+            Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+            return $this->redirectError('state_mismatch');
+        } catch (\Throwable $e) {
+            Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function callbackFacebook(Request $request)
+    {
+        try {
+            $payload = $this->decodeState($request);
+            if (! $payload || ! in_array($payload['provider'], ['facebook', 'instagram'], true)) {
+                return $this->redirectError('invalid_state');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'facebook');
+            if (! $oauth) {
+                return $this->redirectError('missing_facebook_oauth_config');
+            }
+
+            $provider = $payload['provider'];
+            $redirectUrl = $this->normalizeAbsoluteUrl(
+                $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/facebook')
+            );
+            $this->setFacebookConfig($oauth, $redirectUrl);
+            $fbUser = Socialite::driver('facebook')
+                ->stateless()
+                ->redirectUrl($redirectUrl)
+                ->user();
+
+            $token = $fbUser->token;
+            $expiresIn = $fbUser->expiresIn;
+            $longLived = $this->exchangeFacebookLongLivedToken($oauth, $token);
+            if ($longLived) {
+                $token = $longLived['access_token'];
+                $expiresIn = $longLived['expires_in'];
+            }
+
+            $this->saveCredential(
+                (int) $payload['user_id'],
+                $provider,
+                $token,
+                $fbUser->refreshToken ?? null,
+                $expiresIn
+            );
+
+            return $this->redirectSuccess($provider);
+        } catch (InvalidStateException $e) {
+            Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+            return $this->redirectError('state_mismatch');
+        } catch (\Throwable $e) {
+            Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function callbackTwitter(Request $request)
+    {
+        try {
+            if ($request->query('error')) {
+                return $this->redirectError((string) $request->query('error', 'oauth_denied'));
+            }
+
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'twitter') {
+                return $this->redirectError('invalid_state');
+            }
+            if (empty($payload['code_verifier']) || ! is_string($payload['code_verifier'])) {
+                return $this->redirectError('invalid_state');
+            }
+
+            $code = $request->query('code');
+            if (! $code || ! is_string($code)) {
+                return $this->redirectError('missing_code');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'twitter');
+            if (! $oauth) {
+                return $this->redirectError('missing_twitter_oauth_config');
+            }
+
+            $redirectUrl = $this->normalizeAbsoluteUrl(
+                $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/twitter')
+            );
+
+            $tokenResp = Http::asForm()
+                ->withBasicAuth($oauth->client_id, $oauth->client_secret)
+                ->acceptJson()
+                ->post(self::X_OAUTH_TOKEN_URL, [
+                    'grant_type' => 'authorization_code',
+                    'code' => $code,
+                    'redirect_uri' => $redirectUrl,
+                    'code_verifier' => $payload['code_verifier'],
+                    'client_id' => $oauth->client_id,
+                ]);
+
+            if (! $tokenResp->ok()) {
+                Log::warning('X token exchange failed', [
+                    'status' => $tokenResp->status(),
+                    'body' => $tokenResp->body(),
+                ]);
+
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $accessToken = $tokenResp->json('access_token');
+            if (! $accessToken || ! is_string($accessToken)) {
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $expiresIn = $tokenResp->json('expires_in');
+            $refreshToken = $tokenResp->json('refresh_token');
+
+            $this->saveCredential(
+                (int) $payload['user_id'],
+                'twitter',
+                $accessToken,
+                is_string($refreshToken) ? $refreshToken : null,
+                is_numeric($expiresIn) ? (int) $expiresIn : null
+            );
+
+            return $this->redirectSuccess('twitter');
+        } catch (InvalidStateException $e) {
+            Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+
+            return $this->redirectError('state_mismatch');
+        } catch (\Throwable $e) {
+            Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function callbackTikTok(Request $request)
+    {
+        try {
+            if ($request->query('error')) {
+                return $this->redirectError((string) $request->query('error', 'oauth_denied'));
+            }
+
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'tiktok') {
+                return $this->redirectError('invalid_state');
+            }
+
+            $code = $request->query('code');
+            if (! $code || ! is_string($code)) {
+                return $this->redirectError('missing_code');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'tiktok');
+            if (! $oauth) {
+                return $this->redirectError('missing_tiktok_oauth_config');
+            }
+
+            $redirectUrl = $this->normalizeAbsoluteUrl(
+                $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/tiktok')
+            );
+
+            $tokenResp = Http::asForm()->post(self::TIKTOK_OAUTH_TOKEN_URL, [
+                'client_key' => $oauth->client_id,
+                'client_secret' => $oauth->client_secret,
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $redirectUrl,
+            ]);
+
+            if (! $tokenResp->ok()) {
+                Log::warning('TikTok token exchange failed', [
+                    'status' => $tokenResp->status(),
+                    'body' => $tokenResp->body(),
+                ]);
+
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $accessToken = $tokenResp->json('access_token');
+            if (! $accessToken || ! is_string($accessToken)) {
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $expiresIn = $tokenResp->json('expires_in');
+            $refreshToken = $tokenResp->json('refresh_token');
+
+            $this->saveCredential(
+                (int) $payload['user_id'],
+                'tiktok',
+                $accessToken,
+                is_string($refreshToken) ? $refreshToken : null,
+                is_numeric($expiresIn) ? (int) $expiresIn : null
+            );
+
+            return $this->redirectSuccess('tiktok');
+        } catch (\Throwable $e) {
+            Log::error('TikTok OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function disconnect(Request $request)
+    {
+        $validated = $request->validate([
+            'provider' => ['required', 'string', 'max:64'],
+        ]);
+
+        $deleted = $request->user()
+            ->socialCredentials()
+            ->where('provider', $validated['provider'])
+            ->delete();
+
+        return response()->json([
+            'provider' => $validated['provider'],
+            'deleted' => $deleted,
+            'message' => 'Disconnected',
+        ]);
+    }
+
+    private function oauthConfigForUser(int $userId, string $provider): ?OAuthAppConfig
+    {
+        return OAuthAppConfig::query()
+            ->where('user_id', $userId)
+            ->where('provider', $provider)
+            ->first();
+    }
+
+    private function setFacebookConfig(OAuthAppConfig $oauth, string $redirectUrl): void
+    {
+        Config::set('services.facebook.client_id', $oauth->client_id);
+        Config::set('services.facebook.client_secret', $oauth->client_secret);
+        Config::set('services.facebook.redirect', $redirectUrl);
+    }
+
+    /**
+     * @return array{access_token: string, expires_in: int}|null
+     */
+    private function exchangeFacebookLongLivedToken(OAuthAppConfig $oauth, string $shortLivedToken): ?array
+    {
+        $response = Http::get('https://graph.facebook.com/v23.0/oauth/access_token', [
+            'grant_type' => 'fb_exchange_token',
+            'client_id' => $oauth->client_id,
+            'client_secret' => $oauth->client_secret,
+            'fb_exchange_token' => $shortLivedToken,
+        ]);
+
+        if (! $response->ok()) {
+            Log::warning('Facebook long-lived token exchange failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $accessToken = $response->json('access_token');
+        $expiresIn = $response->json('expires_in');
+        if (! $accessToken || $expiresIn === null) {
+            return null;
+        }
+
+        return [
+            'access_token' => (string) $accessToken,
+            'expires_in' => (int) $expiresIn,
+        ];
+    }
+
+}

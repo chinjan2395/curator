@@ -1,0 +1,71 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\FeedController;
+use App\Http\Controllers\FeedSyncController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\SocialConnectController;
+use App\Http\Controllers\SocialCredentialController;
+use App\Http\Controllers\WorkspaceController;
+use App\Http\Controllers\OAuthAppConfigController;
+use App\Http\Controllers\FeedPublishController;
+use App\Http\Controllers\PublicFeedController;
+use App\Http\Controllers\EmbedController;
+
+// OAuth callbacks (public, no auth)
+Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
+Route::get('social/callback/google', [SocialConnectController::class, 'callbackGoogle']);
+Route::get('social/callback/facebook', [SocialConnectController::class, 'callbackFacebook']);
+Route::get('social/callback/twitter', [SocialConnectController::class, 'callbackTwitter']);
+Route::get('social/callback/tiktok', [SocialConnectController::class, 'callbackTikTok']);
+
+// Public publish endpoints (no auth)
+Route::get('public/feeds/{publicKey}/posts', [PublicFeedController::class, 'posts']);
+Route::get('embed/{publicKey}.js', [EmbedController::class, 'js']);
+Route::get('embed/{publicKey}.css', [EmbedController::class, 'css']);
+
+// Sanctum authentication routes
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+    Route::apiResource('workspaces', WorkspaceController::class);
+    Route::apiResource('workspaces.feeds', FeedController::class);
+    Route::post('workspaces/{workspace}/feeds/{feed}/sync', [FeedSyncController::class, 'sync']);
+    Route::post('workspaces/{workspace}/feeds/test-youtube', [FeedSyncController::class, 'testYouTube']);
+    Route::get('workspaces/{workspace}/feeds/youtube/channels', [FeedSyncController::class, 'youtubeChannels']);
+    Route::get('workspaces/{workspace}/feeds/twitter/account', [FeedSyncController::class, 'twitterAccount']);
+    Route::get('workspaces/{workspace}/feeds/tiktok/account', [FeedSyncController::class, 'tiktokAccount']);
+    Route::get('workspaces/{workspace}/feeds/facebook/pages', [FeedSyncController::class, 'facebookPages']);
+    Route::post('workspaces/{workspace}/feeds/test-facebook', [FeedSyncController::class, 'testFacebook']);
+    Route::post('workspaces/{workspace}/feeds/test-twitter', [FeedSyncController::class, 'testTwitter']);
+    Route::post('workspaces/{workspace}/feeds/test-tiktok', [FeedSyncController::class, 'testTikTok']);
+    Route::post('workspaces/{workspace}/feeds/test-rss', [FeedSyncController::class, 'testRss']);
+    Route::get('workspaces/{workspace}/feeds/{feed}/publish/stats', [FeedPublishController::class, 'stats']);
+    Route::put('workspaces/{workspace}/feeds/{feed}/publish/settings', [FeedPublishController::class, 'updateSettings']);
+    Route::post('workspaces/{workspace}/feeds/{feed}/publish', [FeedPublishController::class, 'publish']);
+    Route::get('workspaces/{workspace}/feeds/{feed}/publish/code', [FeedPublishController::class, 'publishCode']);
+    Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
+
+    Route::apiResource('social-credentials', SocialCredentialController::class);
+    Route::post('social/connect', [SocialConnectController::class, 'connect']);
+    Route::post('social/disconnect', [SocialConnectController::class, 'disconnect']);
+
+    Route::get('oauth-app-configs', [OAuthAppConfigController::class, 'index']);
+    Route::post('oauth-app-configs', [OAuthAppConfigController::class, 'upsert']);
+    Route::delete('oauth-app-configs/{provider}', [OAuthAppConfigController::class, 'destroy']);
+});
+
+// Public routes
+Route::post('/register', [RegisterController::class, 'register']);
+Route::post('/login', [LoginController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [LogoutController::class, 'logout']);
+});
+
+// ...existing code...
