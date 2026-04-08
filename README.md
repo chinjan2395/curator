@@ -96,6 +96,68 @@ Backend callback routes:
 
 Provider app credentials can be managed per user in the frontend Credentials page and stored in backend `oauth_app_configs`.
 
+## Railway Production Setup
+
+Deploy frontend and backend as separate Railway services (plus MySQL).
+
+### Backend service variables
+
+Set in Railway backend service:
+
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_KEY=<generated-app-key>`
+- `APP_URL=https://<backend-domain>`
+- `FRONTEND_URL=https://<frontend-domain>`
+- `DB_CONNECTION=mysql`
+- `DB_HOST=<mysql-host>`
+- `DB_PORT=<mysql-port>`
+- `DB_DATABASE=<mysql-db>`
+- `DB_USERNAME=<mysql-user>`
+- `DB_PASSWORD=<mysql-password>`
+
+### Frontend service variables
+
+Set in Railway frontend service:
+
+- `VITE_API_PROXY_TARGET=https://<backend-domain>` (if using dev-style proxy in runtime container)
+- `VITE_API_BASE_URL=https://<backend-domain>` (for cross-origin embed/API asset resolution)
+
+For static frontend deployments, ensure the built app points API calls to backend origin.
+
+### Provider callback URL configuration
+
+Configure provider apps with backend callback endpoints:
+
+- `https://<backend-domain>/api/social/callback/youtube`
+- `https://<backend-domain>/api/social/callback/google`
+- `https://<backend-domain>/api/social/callback/facebook`
+- `https://<backend-domain>/api/social/callback/twitter`
+- `https://<backend-domain>/api/social/callback/tiktok`
+
+Also ensure OAuth app authorized origins include your frontend domain where required by provider.
+
+### Deploy-time backend commands
+
+After backend deploy, run:
+
+```bash
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan optimize
+```
+
+### Production verification checklist
+
+- Frontend loads and can call `POST /api/login`.
+- Credentials connect flow redirects back to `https://<frontend-domain>/credentials`.
+- Feed publish returns embed code with backend `https://<backend-domain>/api/embed/...` URLs.
+- Public embed endpoints are reachable:
+  - `GET /api/embed/{publicKey}.js`
+  - `GET /api/embed/{publicKey}.css`
+  - `GET /api/public/feeds/{publicKey}/posts`
+
 ## API Surfaces
 
 - Auth + workspace/feed/post APIs (protected with Sanctum bearer tokens)

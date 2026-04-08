@@ -52,6 +52,64 @@ OAuth provider env keys (used as defaults and reference):
 
 The app also supports per-user OAuth app settings stored in `oauth_app_configs` (managed from frontend Credentials screen).
 
+## Railway Deployment
+
+This backend includes `railway.json` configured for Nixpacks.
+
+### Required Railway variables
+
+Set these on the backend Railway service:
+
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_KEY` (generate with `php artisan key:generate --show`)
+- `APP_URL=https://<your-backend-domain>`
+- `FRONTEND_URL=https://<your-frontend-domain>`
+- `DB_CONNECTION=mysql`
+- `DB_HOST=<railway-mysql-host>`
+- `DB_PORT=<railway-mysql-port>`
+- `DB_DATABASE=<railway-mysql-db>`
+- `DB_USERNAME=<railway-mysql-user>`
+- `DB_PASSWORD=<railway-mysql-password>`
+
+Recommended:
+
+- `LOG_CHANNEL=stack`
+- `LOG_LEVEL=info`
+- `SESSION_DRIVER=database`
+- `CACHE_STORE=database`
+- `QUEUE_CONNECTION=database`
+
+### OAuth callback URLs (provider app settings)
+
+Use your backend public domain exactly:
+
+- YouTube: `https://<your-backend-domain>/api/social/callback/youtube`
+- Google: `https://<your-backend-domain>/api/social/callback/google`
+- Facebook + Instagram: `https://<your-backend-domain>/api/social/callback/facebook`
+- X/Twitter: `https://<your-backend-domain>/api/social/callback/twitter`
+- TikTok: `https://<your-backend-domain>/api/social/callback/tiktok`
+
+### Frontend/CORS alignment
+
+- Ensure `FRONTEND_URL` matches your deployed frontend origin.
+- Ensure frontend uses backend API origin (for Vite/proxy or runtime base URL).
+- If OAuth redirects are landing on wrong host, check both `APP_URL` and `FRONTEND_URL`.
+
+### Post-deploy checklist
+
+```bash
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan optimize
+```
+
+Verify:
+- `GET /api/public/feeds/{publicKey}/posts` works from public internet.
+- `GET /api/embed/{publicKey}.js` and `.css` return 200.
+- OAuth callback URLs are reachable over HTTPS.
+
 ## Authentication Model
 
 - `POST /api/register` and `POST /api/login` are public.
