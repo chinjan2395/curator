@@ -1,80 +1,148 @@
-## Curator Backend Notes
+# Curator Backend
 
-### TikTok OAuth setup
+Laravel 12 backend API for the Curator platform.
 
-- Provider key is `tiktok`.
-- Callback route is `/api/social/callback/tiktok`.
-- Configure OAuth app credentials in the Credentials UI (stored in `oauth_app_configs`) or via environment defaults.
-- Required OAuth scopes for current sync flow are `user.info.basic` and `video.list`.
-- Feed sync uses:
-  - `GET /v2/user/info/` to resolve the connected account
-  - `POST /v2/video/list/` to fetch recent videos
+It provides:
+- authentication (register/login/logout + Sanctum token auth)
+- workspace/feed/post management
+- social OAuth connection flows (YouTube/Google, Facebook/Instagram, X/Twitter, TikTok)
+- feed sync from social providers and RSS/Atom
+- curation and publishing workflows
+- public feed + embed JS/CSS endpoints for external websites
 
-### TikTok feed behavior
+## Stack
 
-- Feed type is `tiktok`.
-- Feed must reference a `social_credential_id` whose provider is `tiktok`.
-- Sync imports videos into `posts` using TikTok video ID as `external_id`.
-- Unix `create_time` values are normalized to ISO-8601 before persistence.
+- PHP 8.4
+- Laravel 12
+- Laravel Sanctum
+- Laravel Socialite
+- MySQL
 
----
+## Quick Start
 
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve --host=0.0.0.0 --port=8000
+```
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Optional frontend asset pipeline in backend package:
 
-## About Laravel
+```bash
+npm install
+npm run dev
+```
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Environment
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Important `.env` values:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- `APP_URL` - backend base URL used to generate embed/public URLs
+- `FRONTEND_URL` - frontend URL used for OAuth callback redirects back to UI
+- `DB_*` - database settings
 
-## Learning Laravel
+OAuth provider env keys (used as defaults and reference):
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- Google/YouTube: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
+- Facebook/Instagram: `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`, `FACEBOOK_REDIRECT_URI`
+- X/Twitter: `TWITTER_CLIENT_ID`, `TWITTER_CLIENT_SECRET`, `TWITTER_REDIRECT_URI`
+- TikTok: `TIKTOK_CLIENT_ID`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The app also supports per-user OAuth app settings stored in `oauth_app_configs` (managed from frontend Credentials screen).
 
-## Laravel Sponsors
+## Authentication Model
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- `POST /api/register` and `POST /api/login` are public.
+- Protected routes require `Authorization: Bearer <token>` with Sanctum.
+- `POST /api/logout` invalidates current token.
 
-### Premium Partners
+## API Overview
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Public endpoints
 
-## Contributing
+- `GET /api/social/callback/{provider}` OAuth callbacks for:
+  - `youtube`, `google`, `facebook`, `twitter`, `tiktok`
+- `GET /api/public/feeds/{publicKey}/posts` published feed payload
+- `GET /api/embed/{publicKey}.css` embed stylesheet
+- `GET /api/embed/{publicKey}.js` embed runtime script
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Authenticated endpoints
 
-## Code of Conduct
+- `GET /api/user`
+- Workspaces:
+  - `GET/POST /api/workspaces`
+  - `GET/PUT/DELETE /api/workspaces/{workspace}`
+- Feeds:
+  - `GET/POST /api/workspaces/{workspace}/feeds`
+  - `GET/PUT/DELETE /api/workspaces/{workspace}/feeds/{feed}`
+  - `POST /api/workspaces/{workspace}/feeds/{feed}/sync`
+  - Provider helper endpoints:
+    - `GET /api/workspaces/{workspace}/feeds/youtube/channels`
+    - `GET /api/workspaces/{workspace}/feeds/facebook/pages`
+    - `GET /api/workspaces/{workspace}/feeds/twitter/account`
+    - `GET /api/workspaces/{workspace}/feeds/tiktok/account`
+  - Connection test endpoints:
+    - `POST /api/workspaces/{workspace}/feeds/test-youtube`
+    - `POST /api/workspaces/{workspace}/feeds/test-facebook`
+    - `POST /api/workspaces/{workspace}/feeds/test-twitter`
+    - `POST /api/workspaces/{workspace}/feeds/test-tiktok`
+    - `POST /api/workspaces/{workspace}/feeds/test-rss`
+- Posts:
+  - `GET /api/workspaces/{workspace}/feeds/{feed}/posts`
+  - `PUT /api/workspaces/{workspace}/feeds/{feed}/posts/{post}`
+  - `DELETE /api/workspaces/{workspace}/feeds/{feed}/posts/{post}`
+- Publish:
+  - `GET /api/workspaces/{workspace}/feeds/{feed}/publish/stats`
+  - `PUT /api/workspaces/{workspace}/feeds/{feed}/publish/settings`
+  - `POST /api/workspaces/{workspace}/feeds/{feed}/publish`
+  - `GET /api/workspaces/{workspace}/feeds/{feed}/publish/code`
+- Social credentials:
+  - `GET /api/social-credentials`
+  - `POST /api/social/connect`
+  - `POST /api/social/disconnect`
+- OAuth app configs:
+  - `GET /api/oauth-app-configs`
+  - `POST /api/oauth-app-configs`
+  - `DELETE /api/oauth-app-configs/{provider}`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Feed Sync Behavior
 
-## Security Vulnerabilities
+Implemented feed types:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- `youtube`: uses connected user-owned channel uploads playlist
+- `facebook`: reads managed Page feed via Graph API
+- `twitter`: reads authenticated account posts from X API v2
+- `tiktok`: reads account videos from TikTok API v2
+- `rss`: parses RSS 2.0 and Atom feeds from `source_url`
+- other types currently use stub sample post generation
 
-## License
+Synced posts are upserted by `external_id` and default to `status=pending`.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Curation + Publish Rules
+
+- Curation updates post `status` (`pending`, `approved`, `rejected`) and `pinned`.
+- Publish marks approved + unpublished posts with `published_at`.
+- Public feed endpoint returns only published posts.
+- Feed edit/delete is blocked when feed has approved posts.
+
+## Embed
+
+`GET /api/workspaces/{workspace}/feeds/{feed}/publish/code` returns:
+- public posts URL
+- embed JS URL
+- embed CSS URL
+- `embed_html` snippet for external sites
+
+Embed JS bootstraps from backend runtime (`resources/embed/curator-embed.js`) and applies publish settings.
+
+## Testing
+
+Run test suite:
+
+```bash
+php artisan test
+```
+
+There is a feature test for TikTok integration in `tests/Feature/TikTokIntegrationTest.php`.
