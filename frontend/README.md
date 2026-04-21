@@ -3,6 +3,7 @@
 Vue 3 + Vite + Pinia frontend for the Curator app.
 
 This app lets users:
+
 - register/login
 - create workspaces
 - connect social credentials (YouTube, Google, Facebook, Instagram, X/Twitter, TikTok)
@@ -85,6 +86,7 @@ When running in Docker, set `VITE_API_PROXY_TARGET` so `/api` requests resolve t
 - `/workspaces/:workspaceId/feeds/:feedId/edit`
 
 Supported feed types in UI:
+
 - YouTube
 - Facebook
 - X/Twitter
@@ -137,3 +139,4 @@ For RSS feeds, users can test feed URL and see parsed summary.
 - If login or data calls fail, verify backend is running and `VITE_API_PROXY_TARGET` is correct.
 - If social connect fails, verify OAuth app settings on `/credentials` and backend callback URLs.
 - If embed preview is empty, ensure there are approved posts and click **Publish changes**.
+

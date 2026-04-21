@@ -1,11 +1,53 @@
 <template>
-  <div class="space-y-4 max-w-3xl">
+  <div class="feed-form-shell space-y-4 max-w-4xl">
     <div class="mb-4">
       <router-link :to="`/workspaces/${workspaceId}/feeds`" class="text-sm-pro text-slate-500 hover:text-slate-700">← Feeds</router-link>
     </div>
-    <div>
-      <h1 class="page-title">{{ isEdit ? 'Edit feed' : 'New feed' }}</h1>
-      <p class="page-kicker">Configure source type, provider connection, and sync defaults.</p>
+    <div class="feed-form-hero surface-card p-5 md:p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h1 class="page-title">{{ isEdit ? 'Edit feed' : 'Create a feed' }}</h1>
+          <p class="page-kicker mt-1">Configure source type, provider connection, and sync defaults.</p>
+        </div>
+        <div class="hidden sm:flex items-center gap-1.5 rounded-full bg-white/80 border border-white/70 px-2.5 py-1 text-2xs text-slate-600">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Polished mode
+        </div>
+      </div>
+      <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <button
+          v-for="t in socialTypes"
+          :key="t.type"
+          type="button"
+          class="feed-type-card"
+          :class="form.type === t.type ? 'feed-type-card--active' : ''"
+          @click="form.type = t.type"
+        >
+          <div class="feed-type-icon-wrap" :style="{ background: t.softBg, color: t.color }">
+            <SocialIcon :type="t.type" class="w-4 h-4" />
+          </div>
+          <div class="text-left min-w-0">
+            <div class="text-xs-pro font-medium text-slate-700 truncate">{{ t.label }}</div>
+            <div class="text-2xs text-slate-500 truncate">{{ t.tagline }}</div>
+          </div>
+        </button>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-2.5">
+        <div class="setup-step" :class="form.type ? 'setup-step--active' : ''">
+          <span class="setup-step__dot">1</span>
+          Select source
+        </div>
+        <div class="setup-step-divider" />
+        <div class="setup-step" :class="form.social_credential_id ? 'setup-step--active' : ''">
+          <span class="setup-step__dot">2</span>
+          Connect account
+        </div>
+        <div class="setup-step-divider" />
+        <div class="setup-step" :class="connectionStatus.kind === 'ok' ? 'setup-step--active' : ''">
+          <span class="setup-step__dot">3</span>
+          Verify connection
+        </div>
+      </div>
     </div>
     <form @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-3xl">
       <div>
@@ -24,8 +66,10 @@
           <option value="facebook">Facebook</option>
           <option value="other">Other</option>
         </select>
+        <p class="mt-1 text-2xs text-slate-500">{{ selectedTypeMeta.tagline }}</p>
       </div>
-      <div v-if="form.type === 'youtube'">
+      <transition name="fade-slide" mode="out-in">
+      <div v-if="form.type === 'youtube'" key="youtube">
         <label class="label-pro">YouTube credential</label>
         <select
           v-model="form.social_credential_id"
@@ -93,7 +137,7 @@
           </button>
         </div>
       </div>
-      <div v-else-if="form.type === 'facebook'">
+      <div v-else-if="form.type === 'facebook'" key="facebook">
         <label class="label-pro">Facebook credential</label>
         <select
           v-model="form.social_credential_id"
@@ -155,7 +199,85 @@
           </button>
         </div>
       </div>
-      <div v-else-if="form.type === 'twitter'">
+      <div v-else-if="form.type === 'instagram'" key="instagram">
+        <label class="label-pro">Instagram credential</label>
+        <select
+          v-model="form.social_credential_id"
+          class="input-pro"
+          :required="!!instagramCredentials.length"
+        >
+          <option value="">Select credential</option>
+          <option v-for="c in instagramCredentials" :key="c.id" :value="c.id">
+            {{ c.provider }} ({{ c.expires_at ? formatDate(c.expires_at) : 'no expiry' }})
+          </option>
+        </select>
+        <p v-if="!instagramCredentials.length" class="mt-1 text-2xs text-red-600">
+          No Instagram credentials found. Go to Credentials to connect Instagram first.
+        </p>
+
+        <div class="mt-3">
+          <label class="label-pro">Linked Page &amp; Instagram account</label>
+          <div class="flex items-center gap-2">
+            <select
+              v-model="selectedInstagramCombo"
+              class="input-pro"
+              :disabled="loadingInstagramAccounts || !form.social_credential_id"
+              required
+            >
+              <option value="">
+                {{
+                  !form.social_credential_id
+                    ? 'Select credential first'
+                    : loadingInstagramAccounts
+                      ? 'Loading accounts…'
+                      : 'Select account'
+                }}
+              </option>
+              <option v-for="a in instagramAccounts" :key="instagramAccountValue(a)" :value="instagramAccountValue(a)">
+                @{{ a.instagram_username || '…' }} · {{ a.facebook_page_name || 'Page' }} (IG {{ a.instagram_business_account_id }})
+              </option>
+            </select>
+            <button
+              type="button"
+              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+              :disabled="loadingInstagramAccounts || !form.social_credential_id"
+              @click="loadInstagramAccounts"
+            >
+              {{ loadingInstagramAccounts ? 'Loading…' : 'Refresh' }}
+            </button>
+          </div>
+          <p class="mt-1 text-2xs text-slate-500">
+            Only Facebook Pages with a linked Instagram Professional account appear here (<span class="font-medium">/me/accounts</span> + <span class="font-medium">instagram_business_account</span>).
+          </p>
+          <p
+            v-if="form.social_credential_id && !loadingInstagramAccounts && !instagramAccounts.length"
+            class="mt-1 text-2xs text-red-600"
+          >
+            No linked Instagram accounts found. Link IG to a Page in Meta, then disconnect/reconnect Instagram with permissions granted.
+          </p>
+        </div>
+
+        <div class="mt-3" v-if="form.facebook_page_id && form.instagram_business_account_id">
+          <label class="label-pro">Backing Page ID</label>
+          <input v-model="form.facebook_page_id" type="text" class="input-pro mb-2" readonly />
+          <label class="label-pro">Instagram Business account ID</label>
+          <input v-model="form.instagram_business_account_id" type="text" class="input-pro" readonly />
+        </div>
+
+        <div class="mt-3">
+          <button
+            type="button"
+            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+            :disabled="
+              testingInstagram || !form.facebook_page_id || !form.instagram_business_account_id || !form.social_credential_id
+            "
+            @click="testInstagramConnection"
+          >
+            {{ testingInstagram ? 'Testing…' : 'Test connection' }}
+          </button>
+        </div>
+      </div>
+      <div v-else-if="form.type === 'twitter'" key="twitter">
         <label class="label-pro">X / Twitter credential</label>
         <select
           v-model="form.social_credential_id"
@@ -223,7 +345,7 @@
           </button>
         </div>
       </div>
-      <div v-else-if="form.type === 'tiktok'">
+      <div v-else-if="form.type === 'tiktok'" key="tiktok">
         <label class="label-pro">TikTok credential</label>
         <select
           v-model="form.social_credential_id"
@@ -297,7 +419,7 @@
           </button>
         </div>
       </div>
-      <div v-else-if="form.type === 'rss'">
+      <div v-else-if="form.type === 'rss'" key="rss">
         <label class="label-pro">RSS or Atom feed URL</label>
         <input
           v-model="form.source_url"
@@ -337,12 +459,22 @@
           </div>
         </div>
       </div>
-      <div v-else>
+      <div v-else key="other">
         <label class="label-pro">Source URL <span class="text-slate-400 font-normal">(optional)</span></label>
         <input v-model="form.source_url" type="url" class="input-pro" placeholder="https://…" />
         <p class="mt-1 text-2xs text-slate-500">
           Optional reference URL for this feed type.
         </p>
+      </div>
+      </transition>
+      <div
+        v-if="connectionStatus.message"
+        class="rounded-md border px-3 py-2 text-2xs"
+        :class="connectionStatus.kind === 'ok'
+          ? 'border-emerald-200 bg-emerald-50/70 text-emerald-700'
+          : 'border-rose-200 bg-rose-50/70 text-rose-700'"
+      >
+        {{ connectionStatus.message }}
       </div>
       <div v-if="feeds.lastActionError" class="text-2xs text-red-600">
         {{ feeds.lastActionError }}
@@ -355,6 +487,8 @@
             saving ||
             (form.type === 'twitter' && (!form.social_credential_id || !selectedTwitterUserId)) ||
             (form.type === 'tiktok' && (!form.social_credential_id || !selectedTikTokOpenId)) ||
+            (form.type === 'instagram' &&
+              (!form.social_credential_id || !form.facebook_page_id || !form.instagram_business_account_id)) ||
             (form.type === 'rss' && !String(form.source_url || '').trim())
           "
         >
@@ -374,6 +508,7 @@ import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
+import SocialIcon from '../components/SocialIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -392,17 +527,24 @@ const form = reactive({
   source_url: '',
   youtube_channel_id: '',
   facebook_page_id: '',
+  instagram_business_account_id: '',
   social_credential_id: '',
 });
 const saving = ref(false);
 const testingConnection = ref(false);
 const testingFacebook = ref(false);
+const testingInstagram = ref(false);
 const testingTwitter = ref(false);
 const testingTikTok = ref(false);
 const testingRss = ref(false);
 const loadingFacebookPages = ref(false);
 const facebookPages = ref([]);
 const selectedFacebookPageId = ref('');
+const loadingInstagramAccounts = ref(false);
+const instagramAccounts = ref([]);
+const selectedInstagramCombo = ref('');
+/** When true, Instagram credential watch only loads accounts; does not clear selection (edit hydrate). */
+const skipNextInstagramCredReset = ref(false);
 const loadingYoutubeChannels = ref(false);
 const youtubeChannels = ref([]);
 const selectedYoutubeChannelId = ref('');
@@ -420,6 +562,10 @@ const selectedTikTokOpenId = ref('');
 const skipNextTikTokCredReset = ref(false);
 /** Last successful RSS test payload for inline summary. */
 const rssTestSummary = ref(null);
+const connectionStatus = reactive({
+  kind: '',
+  message: '',
+});
 
 const youtubeCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'youtube'),
@@ -429,11 +575,29 @@ const facebookCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'facebook'),
 );
 
+const instagramCredentials = computed(() =>
+  credentials.list.filter((c) => c.provider === 'instagram'),
+);
+
 const twitterCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'twitter'),
 );
 const tiktokCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'tiktok'),
+);
+
+const socialTypes = [
+  { type: 'instagram', label: 'Instagram', tagline: 'Stories, reels, and posts', color: '#e1306c', softBg: 'rgba(225,48,108,0.13)' },
+  { type: 'twitter', label: 'X / Twitter', tagline: 'Real-time conversations', color: '#111827', softBg: 'rgba(15,23,42,0.12)' },
+  { type: 'youtube', label: 'YouTube', tagline: 'Channels and videos', color: '#ff0000', softBg: 'rgba(255,0,0,0.12)' },
+  { type: 'rss', label: 'RSS / Atom', tagline: 'Blogs and publications', color: '#f97316', softBg: 'rgba(249,115,22,0.15)' },
+  { type: 'tiktok', label: 'TikTok', tagline: 'Short-form video stream', color: '#111827', softBg: 'rgba(244,63,94,0.12)' },
+  { type: 'facebook', label: 'Facebook', tagline: 'Pages and updates', color: '#1877f2', softBg: 'rgba(24,119,242,0.12)' },
+  { type: 'other', label: 'Other', tagline: 'Custom source setup', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
+];
+
+const selectedTypeMeta = computed(() =>
+  socialTypes.find((item) => item.type === form.type) || { tagline: 'Choose a source type to configure credentials and sync settings.' },
 );
 
 function youtubeChannelLabel(ch) {
@@ -451,6 +615,40 @@ function tikTokAccountLabel(a) {
   const u = (a.username && String(a.username).trim()) || 'tiktok_user';
   const n = a.display_name && String(a.display_name).trim() ? ` — ${a.display_name}` : '';
   return `@${u}${n} (${a.open_id})`;
+}
+
+function instagramAccountValue(a) {
+  return `${a.facebook_page_id}|${a.instagram_business_account_id}`;
+}
+
+async function loadInstagramAccounts() {
+  if (form.type !== 'instagram' || !form.social_credential_id) return;
+  loadingInstagramAccounts.value = true;
+  try {
+    const { data } = await axios.get(
+      `/api/workspaces/${workspaceId.value}/feeds/instagram/accounts`,
+      { params: { social_credential_id: Number(form.social_credential_id) } },
+    );
+    instagramAccounts.value = data.accounts || [];
+    if (form.facebook_page_id && form.instagram_business_account_id && !selectedInstagramCombo.value) {
+      selectedInstagramCombo.value = instagramAccountValue({
+        facebook_page_id: String(form.facebook_page_id),
+        instagram_business_account_id: String(form.instagram_business_account_id),
+      });
+    }
+    if (
+      !selectedInstagramCombo.value &&
+      instagramAccounts.value.length === 1
+    ) {
+      selectedInstagramCombo.value = instagramAccountValue(instagramAccounts.value[0]);
+    }
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Failed to load Instagram accounts';
+    toast.error(msg);
+    instagramAccounts.value = [];
+  } finally {
+    loadingInstagramAccounts.value = false;
+  }
 }
 
 async function loadTikTokAccount() {
@@ -558,6 +756,22 @@ watch(
 watch(
   () => [form.type, form.social_credential_id],
   async ([type, cred]) => {
+    if (type !== 'instagram') return;
+    if (skipNextInstagramCredReset.value) {
+      if (cred) await loadInstagramAccounts();
+      return;
+    }
+    selectedInstagramCombo.value = '';
+    form.facebook_page_id = '';
+    form.instagram_business_account_id = '';
+    instagramAccounts.value = [];
+    if (cred) await loadInstagramAccounts();
+  },
+);
+
+watch(
+  () => [form.type, form.social_credential_id],
+  async ([type, cred]) => {
     if (type !== 'tiktok') return;
     if (skipNextTikTokCredReset.value) {
       if (cred) await loadTikTokAccount();
@@ -607,6 +821,26 @@ watch(
 );
 
 watch(
+  () => selectedInstagramCombo.value,
+  (v) => {
+    if (form.type !== 'instagram') return;
+    if (!v || typeof v !== 'string') {
+      form.facebook_page_id = '';
+      form.instagram_business_account_id = '';
+      return;
+    }
+    const i = v.indexOf('|');
+    if (i <= 0) {
+      form.facebook_page_id = '';
+      form.instagram_business_account_id = '';
+      return;
+    }
+    form.facebook_page_id = String(v.slice(0, i));
+    form.instagram_business_account_id = String(v.slice(i + 1));
+  },
+);
+
+watch(
   () => selectedYoutubeChannelId.value,
   (v) => {
     if (form.type !== 'youtube') return;
@@ -638,15 +872,30 @@ onMounted(async () => {
       if (f.type === 'tiktok' && f.social_credential_id) {
         skipNextTikTokCredReset.value = true;
       }
+      if (f.type === 'instagram' && f.social_credential_id) {
+        skipNextInstagramCredReset.value = true;
+      }
       form.name = f.name;
       form.type = f.type;
       form.source_url = f.source_url || '';
       form.youtube_channel_id = f.youtube_channel_id || '';
       form.facebook_page_id = f.facebook_page_id || '';
+      form.instagram_business_account_id = f.instagram_business_account_id || '';
       form.social_credential_id = f.social_credential_id || '';
       if (f.type === 'facebook' && f.social_credential_id) {
         selectedFacebookPageId.value = String(f.facebook_page_id || '');
         await loadFacebookPages();
+      }
+      if (f.type === 'instagram' && f.social_credential_id) {
+        await loadInstagramAccounts();
+        if (form.facebook_page_id && form.instagram_business_account_id) {
+          selectedInstagramCombo.value = instagramAccountValue({
+            facebook_page_id: String(form.facebook_page_id),
+            instagram_business_account_id: String(form.instagram_business_account_id),
+          });
+        }
+        await nextTick();
+        skipNextInstagramCredReset.value = false;
       }
       if (f.type === 'youtube' && f.social_credential_id) {
         await nextTick();
@@ -671,13 +920,23 @@ async function submit() {
       name: form.name,
       type: form.type,
       source_url:
-        form.type === 'youtube' || form.type === 'facebook' || form.type === 'twitter' || form.type === 'tiktok'
+        form.type === 'youtube' ||
+        form.type === 'facebook' ||
+        form.type === 'instagram' ||
+        form.type === 'twitter' ||
+        form.type === 'tiktok'
           ? ''
           : (form.source_url || ''),
       youtube_channel_id: form.type === 'youtube' ? form.youtube_channel_id : null,
-      facebook_page_id: form.type === 'facebook' ? form.facebook_page_id : null,
+      facebook_page_id:
+        form.type === 'facebook' || form.type === 'instagram' ? form.facebook_page_id : null,
+      instagram_business_account_id: form.type === 'instagram' ? form.instagram_business_account_id : null,
       social_credential_id:
-        (form.type === 'youtube' || form.type === 'facebook' || form.type === 'twitter' || form.type === 'tiktok') &&
+        (form.type === 'youtube' ||
+          form.type === 'facebook' ||
+          form.type === 'instagram' ||
+          form.type === 'twitter' ||
+          form.type === 'tiktok') &&
         form.social_credential_id
           ? Number(form.social_credential_id)
           : null,
@@ -706,9 +965,13 @@ async function testConnection() {
       youtube_channel_id: form.type === 'youtube' ? form.youtube_channel_id : null,
     });
     toast.success('YouTube connection successful.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'YouTube connection is healthy and ready for sync.';
   } catch (err) {
     const msg = err.response?.data?.message || 'Failed to test YouTube connection';
     toast.error(msg);
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
   } finally {
     testingConnection.value = false;
   }
@@ -725,11 +988,40 @@ async function testFacebookConnection() {
       facebook_page_id: form.type === 'facebook' ? form.facebook_page_id : null,
     });
     toast.success('Facebook connection successful.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'Facebook page connection verified.';
   } catch (err) {
     const msg = err.response?.data?.message || 'Failed to test Facebook connection';
     toast.error(msg);
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
   } finally {
     testingFacebook.value = false;
+  }
+}
+
+async function testInstagramConnection() {
+  testingInstagram.value = true;
+  try {
+    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-instagram`, {
+      social_credential_id:
+        form.type === 'instagram' && form.social_credential_id
+          ? Number(form.social_credential_id)
+          : null,
+      facebook_page_id: form.type === 'instagram' ? form.facebook_page_id : null,
+      instagram_business_account_id:
+        form.type === 'instagram' ? form.instagram_business_account_id : null,
+    });
+    toast.success('Instagram connection successful.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'Instagram media endpoint verified.';
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Failed to test Instagram connection';
+    toast.error(msg);
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
+  } finally {
+    testingInstagram.value = false;
   }
 }
 
@@ -743,9 +1035,13 @@ async function testTwitterConnection() {
           : null,
     });
     toast.success('X connection successful.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'X account connection verified.';
   } catch (err) {
     const msg = err.response?.data?.message || 'Failed to test X connection';
     toast.error(msg);
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
   } finally {
     testingTwitter.value = false;
   }
@@ -761,9 +1057,13 @@ async function testTikTokConnection() {
           : null,
     });
     toast.success('TikTok connection successful.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'TikTok connection verified.';
   } catch (err) {
     const msg = err.response?.data?.message || 'Failed to test TikTok connection';
     toast.error(msg);
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
   } finally {
     testingTikTok.value = false;
   }
@@ -782,10 +1082,14 @@ async function testRss() {
       sample_title: data.sample_title || null,
     };
     toast.success(data.message || 'RSS feed looks good.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'RSS feed URL resolved and parsed successfully.';
   } catch (err) {
     const msg = err.response?.data?.message || 'Failed to test RSS';
     toast.error(msg);
     rssTestSummary.value = null;
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
   } finally {
     testingRss.value = false;
   }
@@ -795,6 +1099,8 @@ watch(
   () => form.type,
   (t) => {
     if (t !== 'rss') rssTestSummary.value = null;
+    connectionStatus.kind = '';
+    connectionStatus.message = '';
   },
 );
 
@@ -802,6 +1108,106 @@ watch(
   () => form.source_url,
   () => {
     if (form.type === 'rss') rssTestSummary.value = null;
+    if (form.type === 'rss') {
+      connectionStatus.kind = '';
+      connectionStatus.message = '';
+    }
   },
 );
 </script>
+
+<style scoped>
+.feed-form-shell {
+  position: relative;
+}
+
+.feed-form-hero {
+  background:
+    radial-gradient(880px 260px at -8% -48%, rgba(56, 189, 248, 0.15), transparent 65%),
+    radial-gradient(760px 240px at 110% -40%, rgba(99, 102, 241, 0.18), transparent 62%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.94));
+}
+
+.feed-type-card {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.55rem 0.65rem;
+  transition: all 0.18s ease;
+}
+
+.feed-type-card:hover {
+  border-color: rgba(165, 180, 252, 0.72);
+  background: rgba(238, 242, 255, 0.6);
+}
+
+.feed-type-card--active {
+  border-color: rgba(99, 102, 241, 0.52);
+  background: rgba(238, 242, 255, 0.88);
+  box-shadow: 0 10px 24px -18px rgba(79, 70, 229, 0.9);
+}
+
+.feed-type-icon-wrap {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.setup-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  padding: 0.28rem 0.62rem;
+  color: rgb(100 116 139);
+  font-size: 0.68rem;
+}
+
+.setup-step__dot {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(226, 232, 240, 0.88);
+  color: rgb(71 85 105);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.setup-step--active {
+  border-color: rgba(129, 140, 248, 0.55);
+  color: rgb(67 56 202);
+  background: rgba(238, 242, 255, 0.84);
+}
+
+.setup-step--active .setup-step__dot {
+  background: rgba(99, 102, 241, 0.95);
+  color: white;
+}
+
+.setup-step-divider {
+  width: 1rem;
+  height: 1px;
+  background: rgba(203, 213, 225, 0.9);
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.18s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+</style>

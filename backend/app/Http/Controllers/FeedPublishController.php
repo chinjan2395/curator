@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Feed;
+use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\PublishSettings;
 use Illuminate\Http\Request;
@@ -17,56 +17,48 @@ class FeedPublishController extends Controller
         }
     }
 
-    private function ensureFeedInWorkspace(Workspace $workspace, Feed $feed): void
-    {
-        if ($feed->workspace_id !== $workspace->id) {
-            abort(404);
-        }
-    }
-
-    public function publish(Request $request, Workspace $workspace, Feed $feed)
+    public function publish(Request $request, Workspace $workspace)
     {
         $this->authorizeWorkspace($request, $workspace);
-        $this->ensureFeedInWorkspace($workspace, $feed);
 
-        if (! $feed->public_key) {
-            $feed->public_key = Str::random(32);
+        if (! $workspace->public_key) {
+            $workspace->public_key = Str::random(32);
         }
 
         $now = now();
 
-        $updated = $feed->posts()
+        $updated = Post::query()
+            ->whereIn('feed_id', $workspace->feeds()->select('id'))
             ->where('status', 'approved')
             ->whereNull('published_at')
             ->update(['published_at' => $now]);
 
-        $feed->last_published_at = $now;
-        $feed->save();
+        $workspace->last_published_at = $now;
+        $workspace->save();
 
         return response()->json([
             'message' => 'Publish complete',
             'published' => $updated,
-            'public_key' => $feed->public_key,
-            'last_published_at' => $feed->last_published_at,
+            'public_key' => $workspace->public_key,
+            'last_published_at' => $workspace->last_published_at,
         ]);
     }
 
-    public function publishCode(Request $request, Workspace $workspace, Feed $feed)
+    public function publishCode(Request $request, Workspace $workspace)
     {
         $this->authorizeWorkspace($request, $workspace);
-        $this->ensureFeedInWorkspace($workspace, $feed);
 
-        if (! $feed->public_key) {
-            $feed->public_key = Str::random(32);
-            $feed->save();
+        if (! $workspace->public_key) {
+            $workspace->public_key = Str::random(32);
+            $workspace->save();
         }
 
-        $feed->refresh();
+        $workspace->refresh();
 
         $base = rtrim((string) config('app.url', ''), '/');
-        $publicKey = $feed->public_key;
+        $publicKey = $workspace->public_key;
         // Bust browser cache when feed row (e.g. appearance settings) changes.
-        $v = (string) ($feed->updated_at?->getTimestamp() ?? time());
+        $v = (string) ($workspace->updated_at?->getTimestamp() ?? time());
         $cssUrl = $base.'/api/embed/'.$publicKey.'.css?v='.$v;
         $jsUrl = $base.'/api/embed/'.$publicKey.'.js?v='.$v;
 
@@ -81,39 +73,39 @@ class FeedPublishController extends Controller
         ]);
     }
 
-    public function stats(Request $request, Workspace $workspace, Feed $feed)
+    public function stats(Request $request, Workspace $workspace)
     {
         $this->authorizeWorkspace($request, $workspace);
-        $this->ensureFeedInWorkspace($workspace, $feed);
 
-        $approved = $feed->posts()->where('status', 'approved')->count();
-        $published = $feed->posts()->whereNotNull('published_at')->count();
-        $pending = $feed->posts()->where('status', 'pending')->count();
+        $workspacePostQuery = Post::query()->whereIn('feed_id', $workspace->feeds()->select('id'));
+
+        $approved = (clone $workspacePostQuery)->where('status', 'approved')->count();
+        $published = (clone $workspacePostQuery)->whereNotNull('published_at')->count();
+        $pending = (clone $workspacePostQuery)->where('status', 'pending')->count();
 
         return response()->json([
             'approved' => $approved,
             'published' => $published,
             'pending' => $pending,
-            'last_published_at' => $feed->last_published_at,
-            'public_key' => $feed->public_key,
-            'publish_settings' => PublishSettings::merge($feed->publish_settings),
+            'last_published_at' => $workspace->last_published_at,
+            'public_key' => $workspace->public_key,
+            'publish_settings' => PublishSettings::merge($workspace->publish_settings),
         ]);
     }
 
-    public function updateSettings(Request $request, Workspace $workspace, Feed $feed)
+    public function updateSettings(Request $request, Workspace $workspace)
     {
         $this->authorizeWorkspace($request, $workspace);
-        $this->ensureFeedInWorkspace($workspace, $feed);
 
         $patch = $request->input('publish_settings');
         if (! is_array($patch)) {
             return response()->json(['message' => 'publish_settings must be an object'], 422);
         }
 
-        $current = PublishSettings::merge($feed->publish_settings);
+        $current = PublishSettings::merge($workspace->publish_settings);
         $normalized = PublishSettings::validateAndNormalize(array_replace_recursive($current, $patch));
-        $feed->publish_settings = $normalized;
-        $feed->save();
+        $workspace->publish_settings = $normalized;
+        $workspace->save();
 
         return response()->json([
             'publish_settings' => $normalized,

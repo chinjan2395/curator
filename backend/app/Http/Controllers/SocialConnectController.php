@@ -27,10 +27,23 @@ class SocialConnectController extends Controller
         'https://www.googleapis.com/auth/userinfo.profile',
     ];
 
-    /** Scopes for reading managed Pages’ public feed via /me/accounts + /{page-id}/feed. */
-    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_engagement'];
+    /**
+     * Scopes for managed Pages: /me/accounts → page access token → /{page-id}/feed.
+     * pages_read_user_content is commonly required alongside pages_read_engagement (Graph dependency / review).
+     */
+    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_user_content', 'pages_read_engagement'];
 
-    private const INSTAGRAM_SCOPES = ['public_profile', 'instagram_basic', 'pages_show_list'];
+    /**
+     * Instagram Graph API (Professional account linked to a Page): list Pages via /me/accounts,
+     * then Page token for /{ig-user-id}/media. Page read scopes align with the Facebook feed flow.
+     */
+    private const INSTAGRAM_SCOPES = [
+        'public_profile',
+        'instagram_basic',
+        'pages_show_list',
+        'pages_read_user_content',
+        'pages_read_engagement',
+    ];
 
     /** X / Twitter OAuth 2: tweet.read + users.read + offline.access for refresh_token. */
     private const TWITTER_SCOPES = ['users.read', 'users.email', 'tweet.read', 'offline.access'];

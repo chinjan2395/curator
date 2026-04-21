@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Feed;
+use App\Models\Workspace;
 use App\Support\PublishSettings;
 use Illuminate\Http\Request;
 
@@ -10,7 +10,7 @@ class EmbedController extends Controller
 {
     public function css(string $publicKey)
     {
-        Feed::query()->where('public_key', $publicKey)->firstOrFail();
+        Workspace::query()->where('public_key', $publicKey)->firstOrFail();
 
         $css = <<<'CSS'
 .crt-wrap{
@@ -185,13 +185,13 @@ CSS;
 
     public function js(Request $request, string $publicKey)
     {
-        $feed = Feed::query()->where('public_key', $publicKey)->firstOrFail();
+        $workspace = Workspace::query()->where('public_key', $publicKey)->firstOrFail();
 
         $base = rtrim((string) config('app.url', ''), '/');
-        $postsUrl = $base.'/api/public/feeds/'.$feed->public_key.'/posts';
+        $postsUrl = $base.'/api/public/feeds/'.$workspace->public_key.'/posts';
 
         $settingsJson = json_encode(
-            PublishSettings::merge($feed->publish_settings),
+            PublishSettings::merge($workspace->publish_settings),
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
 
@@ -203,7 +203,7 @@ CSS;
         }
 
         $bootstrap = 'var CRT_POSTS_URL = '.$this->jsString($postsUrl).";\n"
-            .'var CRT_PUBLIC_KEY = '.$this->jsString($feed->public_key).";\n"
+            .'var CRT_PUBLIC_KEY = '.$this->jsString($workspace->public_key).";\n"
             .'var CRT_SETTINGS = '.$settingsJson.";\n";
 
         return response($bootstrap."\n".$runtime, 200, [

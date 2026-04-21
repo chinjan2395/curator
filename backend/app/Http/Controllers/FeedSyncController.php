@@ -109,6 +109,83 @@ class FeedSyncController extends Controller
         ]);
     }
 
+    /**
+     * Facebook Pages that have a linked Instagram Business/Creator account (Instagram Graph API).
+     */
+    public function instagramAccounts(Request $request, Workspace $workspace)
+    {
+        $this->authorizeWorkspace($request, $workspace);
+
+        $validated = $request->validate([
+            'social_credential_id' => ['required', 'integer', 'exists:social_credentials,id'],
+        ]);
+
+        $credential = SocialCredential::where('id', $validated['social_credential_id'])
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (! $credential || $credential->provider !== 'instagram') {
+            return response()->json([
+                'message' => 'Instagram credential not found for this user.',
+            ], 404);
+        }
+
+        $userToken = $credential->access_token;
+        if (! $userToken) {
+            return response()->json([
+                'message' => 'Instagram credential token missing. Reconnect Instagram.',
+            ], 422);
+        }
+
+        $accountsOut = [];
+        $nextUrl = 'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts';
+        $query = [
+            'fields' => 'id,name,instagram_business_account{id,username}',
+            'limit' => 100,
+            'access_token' => $userToken,
+        ];
+
+        while ($nextUrl !== null) {
+            $resp = $nextUrl === 'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts'
+                ? Http::get($nextUrl, $query)
+                : Http::get($nextUrl);
+
+            if (! $resp->ok()) {
+                $err = $resp->json('error', []);
+                $msg = is_array($err) ? ($err['message'] ?? 'Failed to load Facebook Pages.') : 'Failed to load Facebook Pages.';
+
+                return response()->json([
+                    'message' => $msg,
+                    'error' => $err,
+                ], min(499, max(400, $resp->status())));
+            }
+
+            foreach ($resp->json('data', []) as $row) {
+                $ig = $row['instagram_business_account'] ?? null;
+                if (! is_array($ig)) {
+                    continue;
+                }
+                $igId = (string) ($ig['id'] ?? '');
+                if ($igId === '') {
+                    continue;
+                }
+                $accountsOut[] = [
+                    'facebook_page_id' => (string) ($row['id'] ?? ''),
+                    'facebook_page_name' => (string) ($row['name'] ?? ''),
+                    'instagram_business_account_id' => $igId,
+                    'instagram_username' => (string) ($ig['username'] ?? ''),
+                ];
+            }
+
+            $next = $resp->json('paging.next');
+            $nextUrl = is_string($next) && $next !== '' ? $next : null;
+        }
+
+        return response()->json([
+            'accounts' => $accountsOut,
+        ]);
+    }
+
     public function youtubeChannels(Request $request, Workspace $workspace)
     {
         $this->authorizeWorkspace($request, $workspace);
@@ -247,6 +324,10 @@ class FeedSyncController extends Controller
 
         if ($feed->type === 'facebook') {
             return $this->syncFacebook($feed);
+        }
+
+        if ($feed->type === 'instagram') {
+            return $this->syncInstagram($feed);
         }
 
         if ($feed->type === 'twitter') {
@@ -483,6 +564,98 @@ class FeedSyncController extends Controller
 
         return response()->json([
             'message' => 'Facebook sync complete',
+            'created' => $created,
+            'last_synced_at' => $feed->last_synced_at,
+        ]);
+    }
+
+    private function syncInstagram(Feed $feed)
+    {
+        $credential = $feed->socialCredential;
+
+        if (! $credential || $credential->provider !== 'instagram') {
+            return response()->json([
+                'message' => 'No Instagram credential attached to this feed. Connect Instagram and assign it to the feed.',
+            ], 422);
+        }
+
+        $pageId = $this->normalizeFacebookPageId(trim((string) $feed->facebook_page_id));
+        if ($pageId === '') {
+            return response()->json([
+                'message' => 'facebook_page_id (backing Page) is not set on this feed.',
+            ], 422);
+        }
+
+        $igUserId = trim((string) $feed->instagram_business_account_id);
+        if ($igUserId === '') {
+            return response()->json([
+                'message' => 'instagram_business_account_id is not set on this feed.',
+            ], 422);
+        }
+
+        $pageToken = $this->resolveFacebookPageAccessToken($credential, $pageId);
+        if (! $pageToken) {
+            return response()->json([
+                'message' => 'Could not access this Page. Confirm the Page is linked to the Instagram account, that you manage it, and reconnect Instagram with Page permissions granted.',
+            ], 422);
+        }
+
+        $fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp';
+        $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId.'/media', [
+            'fields' => $fields,
+            'limit' => 25,
+            'access_token' => $pageToken,
+        ]);
+
+        if (! $response->ok()) {
+            $err = $response->json('error', []);
+            $msg = is_array($err) ? ($err['message'] ?? 'Failed to load Instagram media.') : 'Failed to load Instagram media.';
+
+            return response()->json([
+                'message' => $msg,
+                'error' => $err,
+            ], min(499, max(400, $response->status())));
+        }
+
+        $items = $response->json('data', []);
+        $created = 0;
+
+        foreach ($items as $item) {
+            $externalId = $item['id'] ?? null;
+            if (! $externalId) {
+                continue;
+            }
+
+            $caption = trim((string) ($item['caption'] ?? ''));
+            $title = $caption !== '' ? mb_substr($caption, 0, 120) : 'Instagram media';
+            $thumb = $this->instagramMediaThumbnail($item);
+            $permalink = $item['permalink'] ?? null;
+            $mediaUrl = $item['media_url'] ?? null;
+            $link = is_string($permalink) && $permalink !== '' ? $permalink : (is_string($mediaUrl) ? $mediaUrl : null);
+            $postedAt = $item['timestamp'] ?? null;
+
+            Post::updateOrCreate(
+                [
+                    'feed_id' => $feed->id,
+                    'external_id' => (string) $externalId,
+                ],
+                [
+                    'title' => $title,
+                    'content' => $caption,
+                    'thumbnail_url' => $thumb,
+                    'video_url' => $link,
+                    'posted_at' => $postedAt,
+                    'status' => 'pending',
+                    'pinned' => false,
+                ]
+            );
+            $created++;
+        }
+
+        $feed->update(['last_synced_at' => now()]);
+
+        return response()->json([
+            'message' => 'Instagram sync complete',
             'created' => $created,
             'last_synced_at' => $feed->last_synced_at,
         ]);
@@ -983,8 +1156,23 @@ class FeedSyncController extends Controller
             return null;
         }
 
-        // Prefer the direct Page access token resolution endpoint.
-        // This often returns the correct Page token for page-level endpoints.
+        // Prefer /me/accounts (user token → page tokens Meta documents for Page admins).
+        $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [
+            'fields' => 'id,access_token',
+            'access_token' => $userToken,
+        ]);
+
+        if ($response->ok()) {
+            foreach ($response->json('data', []) as $page) {
+                if ((string) ($page['id'] ?? '') === (string) $pageId) {
+                    $tok = $page['access_token'] ?? null;
+                    if (is_string($tok) && $tok !== '') {
+                        return $tok;
+                    }
+                }
+            }
+        }
+
         $direct = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId, [
             'fields' => 'access_token',
             'access_token' => $userToken,
@@ -993,21 +1181,6 @@ class FeedSyncController extends Controller
             $token = $direct->json('access_token');
             if (is_string($token) && $token !== '') {
                 return $token;
-            }
-        }
-
-        $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [
-            'fields' => 'id,access_token',
-            'access_token' => $userToken,
-        ]);
-
-        if (! $response->ok()) {
-            return null;
-        }
-
-        foreach ($response->json('data', []) as $page) {
-            if ((string) ($page['id'] ?? '') === (string) $pageId) {
-                return $page['access_token'] ?? null;
             }
         }
 
@@ -1029,6 +1202,32 @@ class FeedSyncController extends Controller
             return null;
         }
 
+        $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [
+            'fields' => 'id,access_token',
+            'access_token' => $userToken,
+        ]);
+
+        $accountsData = $response->ok() ? $response->json('data', []) : [];
+        $accountsCount = is_array($accountsData) ? count($accountsData) : 0;
+        $accountsError = null;
+        if (! $response->ok()) {
+            $err = $response->json('error', []);
+            $accountsError = is_array($err) ? $err : ['message' => 'Failed to load /me/accounts'];
+        }
+
+        if ($response->ok()) {
+            foreach ($accountsData as $page) {
+                if ((string) ($page['id'] ?? '') !== (string) $pageId) {
+                    continue;
+                }
+
+                return [
+                    'access_token' => $page['access_token'] ?? null,
+                    'accounts_count' => $accountsCount,
+                ];
+            }
+        }
+
         $direct = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId, [
             'fields' => 'access_token',
             'access_token' => $userToken,
@@ -1038,46 +1237,31 @@ class FeedSyncController extends Controller
             if (is_string($token) && $token !== '') {
                 return [
                     'access_token' => $token,
-                    'accounts_count' => null,
+                    'accounts_count' => $accountsCount,
+                    'accounts_error' => $accountsError,
+                    'accounts_status' => $response->status(),
                 ];
             }
-        }
-
-        $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [
-            'fields' => 'id,access_token',
-            'access_token' => $userToken,
-        ]);
-
-        if (! $response->ok()) {
-            $err = $response->json('error', []);
-            return [
-                'access_token' => null,
-                'accounts_count' => 0,
-                'accounts_error' => is_array($err) ? $err : ['message' => 'Failed to load /me/accounts'],
-                'accounts_status' => $response->status(),
-            ];
-        }
-
-        $accountsData = $response->json('data', []);
-        $accountsCount = is_array($accountsData) ? count($accountsData) : 0;
-
-        foreach ($response->json('data', []) as $page) {
-            if ((string) ($page['id'] ?? '') !== (string) $pageId) {
-                continue;
-            }
-
-            return [
-                'access_token' => $page['access_token'] ?? null,
-                'accounts_count' => $accountsCount,
-            ];
         }
 
         return [
             'access_token' => null,
             'accounts_count' => $accountsCount,
-            'accounts_error' => null,
+            'accounts_error' => $accountsError,
             'accounts_status' => $response->status(),
         ];
+    }
+
+    private function instagramMediaThumbnail(array $item): ?string
+    {
+        if (! empty($item['thumbnail_url'])) {
+            return (string) $item['thumbnail_url'];
+        }
+        if (($item['media_type'] ?? '') === 'IMAGE' && ! empty($item['media_url'])) {
+            return (string) $item['media_url'];
+        }
+
+        return null;
     }
 
     private function facebookFeedItemThumbnail(array $post): ?string
@@ -1474,6 +1658,119 @@ class FeedSyncController extends Controller
         return response()->json([
             'message' => 'Facebook connection successful.',
             'page_id' => $pageId,
+        ]);
+    }
+
+    public function testInstagram(Request $request, Workspace $workspace)
+    {
+        $this->authorizeWorkspace($request, $workspace);
+
+        $validated = $request->validate([
+            'social_credential_id' => ['required', 'integer', 'exists:social_credentials,id'],
+            'facebook_page_id' => ['required', 'string', 'max:255'],
+            'instagram_business_account_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $credential = SocialCredential::where('id', $validated['social_credential_id'])
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (! $credential || $credential->provider !== 'instagram') {
+            return response()->json([
+                'message' => 'Instagram credential not found for this user.',
+            ], 404);
+        }
+
+        $pageId = $this->normalizeFacebookPageId(trim($validated['facebook_page_id']));
+        if ($pageId === '') {
+            return response()->json([
+                'message' => 'Enter a valid Facebook Page ID for this Instagram account.',
+            ], 422);
+        }
+
+        $igUserId = trim($validated['instagram_business_account_id']);
+        if ($igUserId === '') {
+            return response()->json([
+                'message' => 'Enter an Instagram Business account ID.',
+            ], 422);
+        }
+
+        $userToken = $credential->access_token;
+        $mePermissions = [];
+        if (! empty($userToken)) {
+            $permResp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/permissions', [
+                'access_token' => $userToken,
+            ]);
+            if ($permResp->ok()) {
+                $mePermissionsRaw = $permResp->json('data', []);
+                if (is_array($mePermissionsRaw)) {
+                    $mePermissions = array_values(array_map(function ($p) {
+                        return [
+                            'permission' => (string) ($p['permission'] ?? ''),
+                            'status' => (string) ($p['status'] ?? ''),
+                        ];
+                    }, $mePermissionsRaw));
+                }
+            }
+        }
+
+        $resolved = $this->resolveFacebookPageAccessTokenWithPerms($credential, $pageId) ?? [];
+        $pageToken = $resolved['access_token'] ?? null;
+        if (! $pageToken) {
+            return response()->json([
+                'message' => 'Could not access this Page. Confirm the Page is linked to the Instagram account, that you manage it, and reconnect Instagram with Page permissions granted.',
+                'debug_page_token_resolution' => [
+                    'page_id_input' => $validated['facebook_page_id'],
+                    'normalized_page_id' => $pageId,
+                    'debug_accounts_status' => $resolved['accounts_status'] ?? null,
+                    'debug_accounts_error' => $resolved['accounts_error'] ?? null,
+                    'debug_accounts_count' => $resolved['accounts_count'] ?? null,
+                    'debug_me_permissions' => $mePermissions,
+                ],
+            ], 422);
+        }
+
+        $oauth = OAuthAppConfig::query()
+            ->where('user_id', $request->user()->id)
+            ->where('provider', 'facebook')
+            ->first();
+        $debugUser = null;
+        $debugPage = null;
+        if ($oauth?->client_id && $oauth?->client_secret) {
+            $appToken = $oauth->client_id.'|'.$oauth->client_secret;
+            $debugUser = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/debug_token', [
+                'input_token' => $userToken,
+                'access_token' => $appToken,
+            ])->json('data');
+            $debugPage = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/debug_token', [
+                'input_token' => $pageToken,
+                'access_token' => $appToken,
+            ])->json('data');
+        }
+
+        $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId.'/media', [
+            'fields' => 'id,caption',
+            'limit' => 1,
+            'access_token' => $pageToken,
+        ]);
+
+        if (! $response->ok()) {
+            $err = $response->json('error', []);
+            $msg = is_array($err) ? ($err['message'] ?? 'Failed to load Instagram media.') : 'Failed to load Instagram media.';
+
+            return response()->json([
+                'message' => $msg,
+                'error' => $err,
+                'debug_me_permissions' => $mePermissions,
+                'debug_token_user' => $debugUser ? ['scopes' => $debugUser['scopes'] ?? null, 'type' => $debugUser['type'] ?? null] : null,
+                'debug_token_page' => $debugPage ? ['scopes' => $debugPage['scopes'] ?? null, 'type' => $debugPage['type'] ?? null] : null,
+            ], min(499, max(400, $response->status())));
+        }
+
+        return response()->json([
+            'message' => 'Instagram connection successful.',
+            'facebook_page_id' => $pageId,
+            'instagram_business_account_id' => $igUserId,
         ]);
     }
 

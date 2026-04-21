@@ -16,6 +16,7 @@ class Feed extends Model
         'youtube_channel_id',
         'youtube_uploads_playlist_id',
         'facebook_page_id',
+        'instagram_business_account_id',
         'twitter_username',
         'last_synced_at',
         'public_key',

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class FeedController extends Controller
 {
-    private const CREDENTIAL_TYPES = ['youtube', 'facebook', 'twitter', 'tiktok'];
+    private const CREDENTIAL_TYPES = ['youtube', 'facebook', 'instagram', 'twitter', 'tiktok'];
 
     private function authorizeWorkspace(Request $request, Workspace $workspace): void
     {
@@ -38,6 +38,7 @@ class FeedController extends Controller
             'social_credential_id' => ['nullable', 'integer', 'exists:social_credentials,id'],
             'youtube_channel_id' => ['nullable', 'string', 'max:255'],
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
+            'instagram_business_account_id' => ['nullable', 'string', 'max:255'],
             'twitter_username' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -73,6 +74,30 @@ class FeedController extends Controller
             if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'facebook')) {
                 return response()->json([
                     'message' => 'Select a valid Facebook credential.',
+                ], 422);
+            }
+        }
+        if ($validated['type'] === 'instagram') {
+            if (empty($validated['social_credential_id'])) {
+                return response()->json([
+                    'message' => 'Select an Instagram credential for this feed.',
+                ], 422);
+            }
+            $pageId = trim((string) ($validated['facebook_page_id'] ?? ''));
+            if ($pageId === '') {
+                return response()->json([
+                    'message' => 'Select the Facebook Page linked to your Instagram account.',
+                ], 422);
+            }
+            $igId = trim((string) ($validated['instagram_business_account_id'] ?? ''));
+            if ($igId === '') {
+                return response()->json([
+                    'message' => 'Select an Instagram Business account.',
+                ], 422);
+            }
+            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'instagram')) {
+                return response()->json([
+                    'message' => 'Select a valid Instagram credential.',
                 ], 422);
             }
         }
@@ -117,7 +142,13 @@ class FeedController extends Controller
                 ? ($validated['social_credential_id'] ?? null)
                 : null,
             'youtube_channel_id' => $validated['type'] === 'youtube' ? ($validated['youtube_channel_id'] ?? null) : null,
-            'facebook_page_id' => $validated['type'] === 'facebook' ? trim((string) ($validated['facebook_page_id'] ?? '')) : null,
+            'facebook_page_id' => match ($validated['type']) {
+                'facebook', 'instagram' => trim((string) ($validated['facebook_page_id'] ?? '')),
+                default => null,
+            },
+            'instagram_business_account_id' => $validated['type'] === 'instagram'
+                ? trim((string) ($validated['instagram_business_account_id'] ?? ''))
+                : null,
             'twitter_username' => null,
         ]);
 
@@ -158,6 +189,7 @@ class FeedController extends Controller
             'social_credential_id' => ['nullable', 'integer', 'exists:social_credentials,id'],
             'youtube_channel_id' => ['nullable', 'string', 'max:255'],
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
+            'instagram_business_account_id' => ['nullable', 'string', 'max:255'],
             'twitter_username' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -193,6 +225,30 @@ class FeedController extends Controller
             if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'facebook')) {
                 return response()->json([
                     'message' => 'Select a valid Facebook credential.',
+                ], 422);
+            }
+        }
+        if ($validated['type'] === 'instagram') {
+            if (empty($validated['social_credential_id'])) {
+                return response()->json([
+                    'message' => 'Select an Instagram credential for this feed.',
+                ], 422);
+            }
+            $pageId = trim((string) ($validated['facebook_page_id'] ?? ''));
+            if ($pageId === '') {
+                return response()->json([
+                    'message' => 'Select the Facebook Page linked to your Instagram account.',
+                ], 422);
+            }
+            $igId = trim((string) ($validated['instagram_business_account_id'] ?? ''));
+            if ($igId === '') {
+                return response()->json([
+                    'message' => 'Select an Instagram Business account.',
+                ], 422);
+            }
+            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'instagram')) {
+                return response()->json([
+                    'message' => 'Select a valid Instagram credential.',
                 ], 422);
             }
         }
@@ -239,7 +295,13 @@ class FeedController extends Controller
                 ? ($validated['social_credential_id'] ?? null)
                 : null,
             'youtube_channel_id' => $validated['type'] === 'youtube' ? ($validated['youtube_channel_id'] ?? null) : null,
-            'facebook_page_id' => $validated['type'] === 'facebook' ? trim((string) ($validated['facebook_page_id'] ?? '')) : null,
+            'facebook_page_id' => match ($validated['type']) {
+                'facebook', 'instagram' => trim((string) ($validated['facebook_page_id'] ?? '')),
+                default => null,
+            },
+            'instagram_business_account_id' => $validated['type'] === 'instagram'
+                ? trim((string) ($validated['instagram_business_account_id'] ?? ''))
+                : null,
             'twitter_username' => null,
         ];
 

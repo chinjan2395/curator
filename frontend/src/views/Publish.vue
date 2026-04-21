@@ -1,43 +1,64 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center justify-between mb-4">
-      <div class="min-w-0">
-        <div class="flex items-center gap-2 flex-wrap">
-          <h1 class="page-title truncate flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V7.75a1.75 1.75 0 0 0-.513-1.237l-3-3A1.75 1.75 0 0 0 12.25 3h-7.5Zm5.22 4.47a.75.75 0 0 0-1.06 1.06l.59.59H7.75a.75.75 0 0 0 0 1.5H9.5l-.59.59a.75.75 0 1 0 1.06 1.06l1.88-1.88a.75.75 0 0 0 0-1.06L9.97 7.47Z" />
-            </svg>
-            Publish
-          </h1>
-          <span
-            v-if="selectedFeedType"
-            class="inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200"
-            :title="`Source: ${feedTypeLabel(selectedFeedType)}`"
-          >
-            {{ feedTypeLabel(selectedFeedType) }}
-          </span>
+    <div class="publish-hero surface-card p-4 md:p-5 mb-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-2xs text-slate-500 uppercase tracking-wider mb-2">Step 3 of 3</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="page-title truncate flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V7.75a1.75 1.75 0 0 0-.513-1.237l-3-3A1.75 1.75 0 0 0 12.25 3h-7.5Zm5.22 4.47a.75.75 0 0 0-1.06 1.06l.59.59H7.75a.75.75 0 0 0 0 1.5H9.5l-.59.59a.75.75 0 1 0 1.06 1.06l1.88-1.88a.75.75 0 0 0 0-1.06L9.97 7.47Z" />
+              </svg>
+              Publish
+            </h1>
+            <span
+              v-if="selectedFeedType"
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200"
+              :title="`Source: ${feedTypeLabel(selectedFeedType)}`"
+            >
+              <span class="type-dot" :class="`type-dot--${String(selectedFeedType || 'other')}`">
+                <SocialIcon :type="selectedFeedType" />
+              </span>
+              {{ feedTypeLabel(selectedFeedType) }}
+            </span>
+          </div>
+          <div class="text-2xs text-slate-500 mt-0.5">
+            Choose a workspace, customize <strong class="font-medium text-slate-600">how the embed looks</strong> on your site,
+            publish approved posts, and copy the embed snippet.
+          </div>
         </div>
-        <div class="text-2xs text-slate-500 mt-0.5">
-          Choose a workspace and feed, customize <strong class="font-medium text-slate-600">how the embed looks</strong> on your site,
-          publish approved posts, and copy the embed snippet.
+        <div class="surface-card-soft flex items-center gap-2 px-2 py-2">
+          <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
+            Back
+          </router-link>
+          <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
+            <option value="">Select workspace</option>
+            <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
+          </select>
         </div>
       </div>
-      <div class="surface-card-soft flex items-center gap-2 px-2 py-2">
-        <router-link
-          v-if="route.name === 'feed-publish' && workspaceId"
-          :to="`/workspaces/${workspaceId}/feeds/${feedId || ''}/curate`"
-          class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro"
-        >
-          ← Curate
-        </router-link>
-        <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
-          <option value="">Select workspace</option>
-          <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
-        </select>
-        <select v-model="feedId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto" :disabled="!workspaceId">
-          <option value="">Select feed</option>
-          <option v-for="f in feedsInWorkspace" :key="f.id" :value="String(f.id)">{{ f.name }}</option>
-        </select>
+      <div class="wizard-stepper mt-4">
+        <div class="wizard-step wizard-step--done">
+          <span class="wizard-step__index">1</span>
+          <div>
+            <div class="wizard-step__label">Organize / Edit</div>
+            <div class="wizard-step__meta">Workspace details</div>
+          </div>
+        </div>
+        <div class="wizard-step wizard-step--done">
+          <span class="wizard-step__index">2</span>
+          <div>
+            <div class="wizard-step__label">Curate</div>
+            <div class="wizard-step__meta">Approve and reject posts</div>
+          </div>
+        </div>
+        <div class="wizard-step wizard-step--active">
+          <span class="wizard-step__index">3</span>
+          <div>
+            <div class="wizard-step__label">Publish</div>
+            <div class="wizard-step__meta">Embed and publish</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -46,11 +67,17 @@
       Loading…
     </div>
 
-    <div v-else-if="!workspaceId || !feedId" class="surface-card p-6 text-sm-pro text-slate-600">
-      Pick a workspace and feed to manage publishing.
+    <div v-else-if="!workspaceId" class="surface-card p-6 text-sm-pro text-slate-600">
+      Pick a workspace to manage publishing.
     </div>
 
     <div v-else class="space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-sm-pro font-medium text-slate-800">Ready to publish the workspace</div>
+        <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
+          Back to Curate
+        </router-link>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="surface-card p-4 publish-widget">
           <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -398,19 +425,17 @@ import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
-import { useFeedsStore } from '../stores/feeds';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
+import SocialIcon from '../components/SocialIcon.vue';
 
 const toast = useToastStore();
 const route = useRoute();
 const router = useRouter();
 const workspaces = useWorkspacesStore();
-const feeds = useFeedsStore();
 const publish = usePublishStore();
 
 const workspaceId = ref('');
-const feedId = ref('');
 
 const showCode = ref(false);
 const copied = ref(false);
@@ -435,14 +460,7 @@ const feedStyleOptions = [
   { value: 'layers', label: 'Layers' },
 ];
 
-const feedsInWorkspace = computed(() =>
-  feeds.list.filter((f) => String(f.workspace_id) === String(workspaceId.value)),
-);
-
-const selectedFeedType = computed(() => {
-  const f = feedsInWorkspace.value.find((x) => String(x.id) === String(feedId.value));
-  return f?.type || '';
-});
+const selectedFeedType = computed(() => '');
 
 function feedTypeLabel(type) {
   if (type === 'rss') return 'RSS / Atom';
@@ -536,72 +554,53 @@ watch(
 
 onMounted(async () => {
   await workspaces.fetchAll();
-  // If routed as /workspaces/:workspaceId/feeds/:feedId/publish, auto-select.
   if (route.params.workspaceId) {
     workspaceId.value = String(route.params.workspaceId);
-    await feeds.fetchAll(workspaceId.value);
   } else if (!workspaceId.value && workspaces.list.length) {
-    // Dashboard-style default: first workspace.
     workspaceId.value = String(workspaces.list[0].id);
-    await feeds.fetchAll(workspaceId.value);
   }
-  if (route.params.feedId) {
-    feedId.value = String(route.params.feedId);
-  } else if (!feedId.value && feeds.list.length) {
-    // Dashboard-style default: first feed in selected workspace.
-    feedId.value = String(feeds.list[0].id);
+  if (workspaceId.value) {
+    await publish.fetchStats(workspaceId.value);
+    await publish.fetchCode(workspaceId.value);
+    await loadPreview();
   }
 });
 
 watch(workspaceId, async (id) => {
-  feedId.value = '';
   publish.clear();
   previewPosts.value = [];
-  if (id) await feeds.fetchAll(id);
-  // Dashboard-style default: first feed for selected workspace.
-  if (id && !feedId.value && feeds.list.length) {
-    feedId.value = String(feeds.list[0].id);
-  }
-  if (route.name === 'feed-publish' && id) {
-    router.replace(`/workspaces/${id}/feeds/${route.params.feedId || ''}/publish`);
-  }
-});
-
-watch(feedId, async (id) => {
-  publish.clear();
-  previewPosts.value = [];
-  if (workspaceId.value && id) {
-    await publish.fetchStats(workspaceId.value, id);
-    await publish.fetchCode(workspaceId.value, id);
+  if (id) {
+    await publish.fetchStats(id);
+    await publish.fetchCode(id);
     await loadPreview();
   }
-  if (route.name === 'feed-publish' && workspaceId.value && id) {
-    router.replace(`/workspaces/${workspaceId.value}/feeds/${id}/publish`);
+  if (route.name === 'workspace-publish' && id) {
+    router.replace(`/workspaces/${id}/publish`);
   }
 });
 
 async function saveAppearance() {
-  if (!workspaceId.value || !feedId.value || !appearance.value) return;
-  await publish.savePublishSettings(workspaceId.value, feedId.value, appearance.value);
-  await publish.fetchCode(workspaceId.value, feedId.value);
+  if (!workspaceId.value || !appearance.value) return;
+  await publish.savePublishSettings(workspaceId.value, appearance.value);
+  await publish.fetchCode(workspaceId.value);
 }
 
 async function refresh() {
-  if (!workspaceId.value || !feedId.value) return;
-  await publish.fetchStats(workspaceId.value, feedId.value);
+  if (!workspaceId.value) return;
+  await publish.fetchStats(workspaceId.value);
   await loadPreview();
 }
 
 async function publishNow() {
-  if (!workspaceId.value || !feedId.value) return;
-  await publish.publish(workspaceId.value, feedId.value);
-  await publish.fetchCode(workspaceId.value, feedId.value);
+  if (!workspaceId.value) return;
+  await publish.publish(workspaceId.value);
+  await publish.fetchCode(workspaceId.value);
   await loadPreview();
 }
 
 async function openCode() {
-  if (!workspaceId.value || !feedId.value) return;
-  await publish.fetchCode(workspaceId.value, feedId.value);
+  if (!workspaceId.value) return;
+  await publish.fetchCode(workspaceId.value);
   showCode.value = true;
 }
 
@@ -648,6 +647,10 @@ function formatDate(v) {
   background: linear-gradient(150deg, #ffffff 0%, #f8fbff 100%);
   border-color: rgba(199, 210, 254, 0.7);
 }
+.publish-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -24px rgba(30, 41, 59, 0.88);
+}
 .publish-widget::before {
   content: '';
   position: absolute;
@@ -683,5 +686,99 @@ function formatDate(v) {
   font-weight: 700;
   letter-spacing: 0.02em;
 }
-</style>
 
+.publish-hero {
+  background:
+    radial-gradient(860px 240px at -8% -45%, rgba(56, 189, 248, 0.12), transparent 65%),
+    radial-gradient(720px 220px at 110% -40%, rgba(99, 102, 241, 0.14), transparent 62%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+}
+
+.type-dot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(226, 232, 240, 0.9);
+  color: rgb(51 65 85);
+}
+
+.type-dot :deep(svg) {
+  width: 0.72rem;
+  height: 0.72rem;
+  display: block;
+}
+
+.type-dot--youtube { background: rgba(254, 226, 226, 0.95); color: rgb(220 38 38); }
+.type-dot--facebook { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
+.type-dot--instagram { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
+.type-dot--tiktok { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-dot--rss { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
+.type-dot--twitter { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+
+@media (prefers-reduced-motion: reduce) {
+  .publish-widget:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+.wizard-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex: 1 1 180px;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.wizard-step--active {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(238, 242, 255, 0.72);
+}
+
+.wizard-step--done,
+.wizard-step--ready {
+  border-color: rgba(191, 219, 254, 0.8);
+}
+
+.wizard-step__index {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgb(51 65 85);
+  background: rgba(226, 232, 240, 0.95);
+  flex: 0 0 auto;
+}
+
+.wizard-step--active .wizard-step__index {
+  color: rgb(67 56 202);
+  background: rgba(199, 210, 254, 0.95);
+}
+
+.wizard-step__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgb(30 41 59);
+}
+
+.wizard-step__meta {
+  font-size: 0.7rem;
+  color: rgb(100 116 139);
+}
+</style>

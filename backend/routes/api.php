@@ -41,14 +41,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('workspaces/{workspace}/feeds/twitter/account', [FeedSyncController::class, 'twitterAccount']);
     Route::get('workspaces/{workspace}/feeds/tiktok/account', [FeedSyncController::class, 'tiktokAccount']);
     Route::get('workspaces/{workspace}/feeds/facebook/pages', [FeedSyncController::class, 'facebookPages']);
+    Route::get('workspaces/{workspace}/feeds/instagram/accounts', [FeedSyncController::class, 'instagramAccounts']);
     Route::post('workspaces/{workspace}/feeds/test-facebook', [FeedSyncController::class, 'testFacebook']);
+    Route::post('workspaces/{workspace}/feeds/test-instagram', [FeedSyncController::class, 'testInstagram']);
     Route::post('workspaces/{workspace}/feeds/test-twitter', [FeedSyncController::class, 'testTwitter']);
     Route::post('workspaces/{workspace}/feeds/test-tiktok', [FeedSyncController::class, 'testTikTok']);
     Route::post('workspaces/{workspace}/feeds/test-rss', [FeedSyncController::class, 'testRss']);
-    Route::get('workspaces/{workspace}/feeds/{feed}/publish/stats', [FeedPublishController::class, 'stats']);
-    Route::put('workspaces/{workspace}/feeds/{feed}/publish/settings', [FeedPublishController::class, 'updateSettings']);
-    Route::post('workspaces/{workspace}/feeds/{feed}/publish', [FeedPublishController::class, 'publish']);
-    Route::get('workspaces/{workspace}/feeds/{feed}/publish/code', [FeedPublishController::class, 'publishCode']);
+    Route::get('workspaces/{workspace}/publish/stats', [FeedPublishController::class, 'stats']);
+    Route::put('workspaces/{workspace}/publish/settings', [FeedPublishController::class, 'updateSettings']);
+    Route::post('workspaces/{workspace}/publish', [FeedPublishController::class, 'publish']);
+    Route::get('workspaces/{workspace}/publish/code', [FeedPublishController::class, 'publishCode']);
     Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
 
     Route::apiResource('social-credentials', SocialCredentialController::class);

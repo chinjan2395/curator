@@ -8,6 +8,7 @@ import WorkspaceForm from '../views/WorkspaceForm.vue';
 import FeedsList from '../views/FeedsList.vue';
 import FeedForm from '../views/FeedForm.vue';
 import Curate from '../views/Curate.vue';
+import WorkspaceCurate from '../views/WorkspaceCurate.vue';
 import Credentials from '../views/Credentials.vue';
 import Publish from '../views/Publish.vue';
 import { useAuthStore } from '../stores/auth';
@@ -22,13 +23,14 @@ const routes = [
     children: [
       { path: '', name: 'dashboard', component: Dashboard },
       { path: 'workspaces/:workspaceId/feeds/:feedId/curate', name: 'curate', component: Curate },
+      { path: 'workspaces/:workspaceId/curate', name: 'workspace-curate', component: WorkspaceCurate },
       { path: 'workspaces', name: 'workspaces', component: WorkspacesList },
       { path: 'workspaces/new', name: 'workspace-new', component: WorkspaceForm },
       { path: 'workspaces/:id/edit', name: 'workspace-edit', component: WorkspaceForm },
       { path: 'workspaces/:workspaceId/feeds', name: 'feeds', component: FeedsList },
       { path: 'workspaces/:workspaceId/feeds/new', name: 'feed-new', component: FeedForm },
       { path: 'workspaces/:workspaceId/feeds/:feedId/edit', name: 'feed-edit', component: FeedForm },
-      { path: 'workspaces/:workspaceId/feeds/:feedId/publish', name: 'feed-publish', component: Publish },
+      { path: 'workspaces/:workspaceId/publish', name: 'workspace-publish', component: Publish },
       { path: 'credentials', name: 'credentials', component: Credentials },
       { path: 'publish', name: 'publish', component: Publish },
     ],

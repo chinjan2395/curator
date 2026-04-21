@@ -13,11 +13,11 @@ export const usePublishStore = defineStore('publish', {
     code: null,
   }),
   actions: {
-    async fetchStats(workspaceId, feedId) {
+    async fetchStats(workspaceId) {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await axios.get(`/api/workspaces/${workspaceId}/feeds/${feedId}/publish/stats`);
+        const { data } = await axios.get(`/api/workspaces/${workspaceId}/publish/stats`);
         this.stats = data;
         this.publishSettings = data.publish_settings ?? null;
         return data;
@@ -30,13 +30,13 @@ export const usePublishStore = defineStore('publish', {
         this.loading = false;
       }
     },
-    async publish(workspaceId, feedId) {
+    async publish(workspaceId) {
       this.publishing = true;
       this.error = null;
       try {
-        const { data } = await axios.post(`/api/workspaces/${workspaceId}/feeds/${feedId}/publish`);
+        const { data } = await axios.post(`/api/workspaces/${workspaceId}/publish`);
         useToastStore().success(`Published ${data.published} posts`);
-        await this.fetchStats(workspaceId, feedId);
+        await this.fetchStats(workspaceId);
         return data;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to publish';
@@ -47,12 +47,12 @@ export const usePublishStore = defineStore('publish', {
         this.publishing = false;
       }
     },
-    async savePublishSettings(workspaceId, feedId, publishSettings) {
+    async savePublishSettings(workspaceId, publishSettings) {
       this.savingSettings = true;
       this.error = null;
       try {
         const { data } = await axios.put(
-          `/api/workspaces/${workspaceId}/feeds/${feedId}/publish/settings`,
+          `/api/workspaces/${workspaceId}/publish/settings`,
           { publish_settings: publishSettings },
         );
         this.publishSettings = data.publish_settings;
@@ -67,11 +67,11 @@ export const usePublishStore = defineStore('publish', {
         this.savingSettings = false;
       }
     },
-    async fetchCode(workspaceId, feedId) {
+    async fetchCode(workspaceId) {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await axios.get(`/api/workspaces/${workspaceId}/feeds/${feedId}/publish/code`);
+        const { data } = await axios.get(`/api/workspaces/${workspaceId}/publish/code`);
         this.code = data;
         return data;
       } catch (err) {
