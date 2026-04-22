@@ -1,66 +1,40 @@
 <template>
   <div class="space-y-4">
-    <div class="publish-hero surface-card p-4 md:p-5 mb-4">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider mb-2">Step 3 of 3</div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="page-title truncate flex items-center gap-2">
-              <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V7.75a1.75 1.75 0 0 0-.513-1.237l-3-3A1.75 1.75 0 0 0 12.25 3h-7.5Zm5.22 4.47a.75.75 0 0 0-1.06 1.06l.59.59H7.75a.75.75 0 0 0 0 1.5H9.5l-.59.59a.75.75 0 1 0 1.06 1.06l1.88-1.88a.75.75 0 0 0 0-1.06L9.97 7.47Z" />
-              </svg>
-              Publish
-            </h1>
-            <span
-              v-if="selectedFeedType"
-              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200"
-              :title="`Source: ${feedTypeLabel(selectedFeedType)}`"
-            >
-              <span class="type-dot" :class="`type-dot--${String(selectedFeedType || 'other')}`">
-                <SocialIcon :type="selectedFeedType" />
-              </span>
-              {{ feedTypeLabel(selectedFeedType) }}
-            </span>
-          </div>
-          <div class="text-2xs text-slate-500 mt-0.5">
-            Choose a workspace, customize <strong class="font-medium text-slate-600">how the embed looks</strong> on your site,
-            publish approved posts, and copy the embed snippet.
-          </div>
-        </div>
-        <div class="surface-card-soft flex items-center gap-2 px-2 py-2">
-          <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
-            Back
-          </router-link>
-          <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
-            <option value="">Select workspace</option>
-            <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
-          </select>
+    <nav class="page-breadcrumb">
+      <router-link to="/workspaces">Workspaces</router-link>
+      <span>/</span>
+      <span>{{ workspaceName }}</span>
+    </nav>
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="page-title truncate flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V7.75a1.75 1.75 0 0 0-.513-1.237l-3-3A1.75 1.75 0 0 0 12.25 3h-7.5Zm5.22 4.47a.75.75 0 0 0-1.06 1.06l.59.59H7.75a.75.75 0 0 0 0 1.5H9.5l-.59.59a.75.75 0 1 0 1.06 1.06l1.88-1.88a.75.75 0 0 0 0-1.06L9.97 7.47Z" />
+          </svg>
+          Publish
+        </h1>
+        <span
+          v-if="selectedFeedType"
+          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200"
+          :title="`Source: ${feedTypeLabel(selectedFeedType)}`"
+        >
+          <span class="type-dot" :class="`type-dot--${String(selectedFeedType || 'other')}`">
+            <SocialIcon :type="selectedFeedType" />
+          </span>
+          {{ feedTypeLabel(selectedFeedType) }}
+        </span>
+        <div class="text-2xs text-slate-500 mt-0.5">
+          Publish approved posts, customize <strong class="font-medium text-slate-600">how the embed looks</strong>, and copy the embed snippet.
         </div>
       </div>
-      <div class="wizard-stepper mt-4">
-        <div class="wizard-step wizard-step--done">
-          <span class="wizard-step__index">1</span>
-          <div>
-            <div class="wizard-step__label">Organize / Edit</div>
-            <div class="wizard-step__meta">Workspace details</div>
-          </div>
-        </div>
-        <div class="wizard-step wizard-step--done">
-          <span class="wizard-step__index">2</span>
-          <div>
-            <div class="wizard-step__label">Curate</div>
-            <div class="wizard-step__meta">Approve and reject posts</div>
-          </div>
-        </div>
-        <div class="wizard-step wizard-step--active">
-          <span class="wizard-step__index">3</span>
-          <div>
-            <div class="wizard-step__label">Publish</div>
-            <div class="wizard-step__meta">Embed and publish</div>
-          </div>
-        </div>
+      <div class="flex items-center gap-2">
+        <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
+          <option value="">Select workspace</option>
+          <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
+        </select>
       </div>
     </div>
+    <WorkspaceWizardStepper current="publish" />
 
     <div v-if="publish.loading && !publish.stats" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
@@ -428,6 +402,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
+import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
 
 const toast = useToastStore();
 const route = useRoute();
@@ -461,6 +436,11 @@ const feedStyleOptions = [
 ];
 
 const selectedFeedType = computed(() => '');
+
+const workspaceName = computed(() => {
+  const w = workspaces.list.find((x) => x.id === Number(workspaceId.value));
+  return w ? w.name : '…';
+});
 
 function feedTypeLabel(type) {
   if (type === 'rss') return 'RSS / Atom';

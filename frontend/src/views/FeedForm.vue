@@ -1,19 +1,18 @@
 <template>
   <div class="feed-form-shell space-y-4 max-w-4xl">
-    <div class="mb-4">
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="text-sm-pro text-slate-500 hover:text-slate-700">← Feeds</router-link>
+    <nav class="page-breadcrumb">
+      <router-link to="/workspaces">Workspaces</router-link>
+      <span>/</span>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`">{{ workspaceName }}</router-link>
+      <span>/</span>
+      <span>Feeds</span>
+    </nav>
+    <div>
+      <h1 class="page-title">{{ isEdit ? 'Edit feed' : 'Create a feed' }}</h1>
+      <p class="page-kicker mt-1">Connect the content source for this workspace.</p>
     </div>
+    <WorkspaceWizardStepper current="feed" />
     <div class="feed-form-hero surface-card p-5 md:p-6">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h1 class="page-title">{{ isEdit ? 'Edit feed' : 'Create a feed' }}</h1>
-          <p class="page-kicker mt-1">Configure source type, provider connection, and sync defaults.</p>
-        </div>
-        <div class="hidden sm:flex items-center gap-1.5 rounded-full bg-white/80 border border-white/70 px-2.5 py-1 text-2xs text-slate-600">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          Polished mode
-        </div>
-      </div>
       <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
         <button
           v-for="t in socialTypes"
@@ -492,7 +491,7 @@
             (form.type === 'rss' && !String(form.source_url || '').trim())
           "
         >
-          {{ saving ? 'Saving…' : (isEdit ? 'Save' : 'Create') }}
+          {{ saving ? 'Saving…' : (isEdit ? 'Save and continue' : 'Create and continue') }}
         </button>
         <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">Cancel</router-link>
       </div>
@@ -509,6 +508,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
+import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -520,6 +520,10 @@ const toast = useToastStore();
 const workspaceId = computed(() => route.params.workspaceId);
 const feedId = computed(() => route.params.feedId);
 const isEdit = computed(() => !!feedId.value);
+const workspaceName = computed(() => {
+  const w = workspaces.list.find((x) => x.id === Number(workspaceId.value));
+  return w ? w.name : '…';
+});
 
 const form = reactive({
   name: '',
@@ -941,12 +945,15 @@ async function submit() {
           ? Number(form.social_credential_id)
           : null,
     };
+    let savedFeedId = feedId.value;
     if (isEdit.value) {
-      await feeds.update(workspaceId.value, Number(feedId.value), payload);
+      const updated = await feeds.update(workspaceId.value, Number(feedId.value), payload);
+      savedFeedId = updated.id;
     } else {
-      await feeds.create(workspaceId.value, payload);
+      const created = await feeds.create(workspaceId.value, payload);
+      savedFeedId = created.id;
     }
-    router.push(`/workspaces/${workspaceId.value}/feeds`);
+    router.push(`/workspaces/${workspaceId.value}/feeds/${savedFeedId}/curate`);
   } catch {
     // error in store
   } finally {

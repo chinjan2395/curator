@@ -1,15 +1,20 @@
 <template>
   <div class="space-y-4">
-    <div class="curate-hero surface-card p-4 md:p-5 mb-4">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider mb-2">Step 2 of 3</div>
-          <h1 class="page-title truncate flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-500 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V4.75A1.75 1.75 0 0 0 15.25 3H4.75Zm2.5 3.75a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5Zm0 3a.75.75 0 0 0 0 1.5h3.25a.75.75 0 0 0 0-1.5H7.25Zm0 3a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5Z" />
-            </svg>
-            Curate · {{ feedName }}
-          </h1>
+    <nav class="page-breadcrumb">
+      <router-link to="/workspaces">Workspaces</router-link>
+      <span>/</span>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`">{{ workspaceName }}</router-link>
+      <span>/</span>
+      <span>Curate</span>
+    </nav>
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="page-title truncate flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-500 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V4.75A1.75 1.75 0 0 0 15.25 3H4.75Zm2.5 3.75a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5Zm0 3a.75.75 0 0 0 0 1.5h3.25a.75.75 0 0 0 0-1.5H7.25Zm0 3a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5Z" />
+          </svg>
+          Curate · {{ feedName }}
+        </h1>
           <span
             v-if="feedType"
             class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200 shrink-0"
@@ -18,61 +23,35 @@
             <span class="type-dot" :class="`type-dot--${String(feedType || 'other')}`">{{ feedPlatformIcon(feedType) }}</span>
             {{ feedTypeLabel(feedType) }}
           </span>
-          <div class="text-2xs text-slate-500 mt-1">Review feed posts before moving to publish.</div>
-        </div>
-        <div class="surface-card-soft flex items-center gap-2 px-2 py-2">
-          <router-link :to="`/workspaces/${workspaceId}`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
-            Back
-          </router-link>
-          <select v-model="filterStatus" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
-            <option value="">All</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <div class="text-2xs text-slate-500 hidden sm:block" v-if="lastSyncedAt">
-            Last sync: <span class="text-slate-600">{{ formatDate(lastSyncedAt) }}</span>
-          </div>
-          <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !py-1.5 !px-3 text-sm-pro">
-            Continue to Publish
-          </router-link>
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-sm-pro"
-            @click="syncNow"
-            :disabled="feeds.syncing"
-          >
-            {{ feeds.syncing ? 'Syncing…' : 'Sync now' }}
-          </button>
-          <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro" @click="refresh" :disabled="posts.loading">
-            {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
-          </button>
-        </div>
+          <div class="text-2xs text-slate-500 mt-1">Review source posts before moving to publish.</div>
       </div>
-      <div class="wizard-stepper mt-4">
-        <div class="wizard-step wizard-step--done">
-          <span class="wizard-step__index">1</span>
-          <div>
-            <div class="wizard-step__label">Organize / Edit</div>
-            <div class="wizard-step__meta">Workspace details</div>
-          </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <select v-model="filterStatus" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
+          <option value="">All</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <div class="text-2xs text-slate-500 hidden sm:block" v-if="lastSyncedAt">
+          Last sync: <span class="text-slate-600">{{ formatDate(lastSyncedAt) }}</span>
         </div>
-        <div class="wizard-step wizard-step--active">
-          <span class="wizard-step__index">2</span>
-          <div>
-            <div class="wizard-step__label">Curate</div>
-            <div class="wizard-step__meta">Approve and reject posts</div>
-          </div>
-        </div>
-        <div class="wizard-step">
-          <span class="wizard-step__index">3</span>
-          <div>
-            <div class="wizard-step__label">Publish</div>
-            <div class="wizard-step__meta">Embed and publish</div>
-          </div>
-        </div>
+        <button
+          type="button"
+          class="btn-secondary !py-1.5 !px-3 text-sm-pro"
+          @click="syncNow"
+          :disabled="feeds.syncing"
+        >
+          {{ feeds.syncing ? 'Syncing…' : 'Sync now' }}
+        </button>
+        <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro" @click="refresh" :disabled="posts.loading">
+          {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
+        <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !py-1.5 !px-3 text-sm-pro">
+          Continue to Publish
+        </router-link>
       </div>
     </div>
+    <WorkspaceWizardStepper current="curate" />
 
     <div v-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
@@ -178,6 +157,7 @@ import { useRoute } from 'vue-router';
 import { usePostsStore } from '../stores/posts';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
+import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
 
 const route = useRoute();
 const posts = usePostsStore();

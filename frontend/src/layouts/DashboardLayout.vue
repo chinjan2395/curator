@@ -53,7 +53,7 @@
                           <path d="M4 5.75A1.75 1.75 0 0 1 5.75 4h8.5A1.75 1.75 0 0 1 16 5.75v8.5A1.75 1.75 0 0 1 14.25 16h-8.5A1.75 1.75 0 0 1 4 14.25v-8.5ZM7 8.75a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5H7Zm0 3a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5H7Z" />
                         </svg>
                         <span class="truncate">{{ w.name }}</span>
-                        <span class="ml-auto text-2xs text-slate-400">Feeds</span>
+                        <span class="ml-auto text-2xs text-slate-400">Setup</span>
                       </router-link>
                     </li>
                     <li v-if="!workspaces.list.length">

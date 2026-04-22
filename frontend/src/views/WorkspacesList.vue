@@ -1,5 +1,8 @@
 <template>
   <div class="space-y-4">
+    <nav class="page-breadcrumb">
+      <span>Workspaces</span>
+    </nav>
     <div class="flex items-center justify-between mb-4">
       <div>
         <h1 class="page-title flex items-center gap-2">
@@ -8,7 +11,7 @@
           </svg>
           Workspaces
         </h1>
-        <p class="page-kicker">Manage team workspace containers.</p>
+        <p class="page-kicker">Manage workspace setup from Feed to Curate to Publish.</p>
       </div>
       <router-link to="/workspaces/new" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro">
         New workspace
@@ -92,7 +95,7 @@
             <td class="table-td font-medium text-slate-800">{{ w.name }}</td>
             <td class="table-td">
               <div class="flex items-center gap-2">
-                <router-link :to="`/workspaces/${w.id}/feeds`" class="action-link">Feeds</router-link>
+                <router-link :to="`/workspaces/${w.id}/feeds`" class="action-link">Setup</router-link>
                 <router-link :to="`/workspaces/${w.id}/curate`" class="action-link">Curate</router-link>
                 <router-link :to="`/workspaces/${w.id}/publish`" class="action-link">Publish</router-link>
                 <router-link :to="`/workspaces/${w.id}/edit`" class="action-link">Edit</router-link>
