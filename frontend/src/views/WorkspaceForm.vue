@@ -1,14 +1,14 @@
 <template>
-  <div class="space-y-4 max-w-3xl">
-    <nav class="page-breadcrumb">
+  <WizardPageLayout
+    current="workspace"
+    :title="isEdit ? 'Edit workspace' : 'New workspace'"
+    description="Name the workspace, then continue through Feed → Curate → Publish."
+  >
+    <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
-    </nav>
-    <div>
-      <h1 class="page-title">{{ isEdit ? 'Edit workspace' : 'New workspace' }}</h1>
-      <p class="page-kicker">Name the workspace, then continue through Feed → Curate → Publish.</p>
-    </div>
-    <WorkspaceWizardStepper current="workspace" />
-    <form @submit.prevent="submit" class="surface-card p-5 space-y-4">
+    </template>
+
+    <form id="workspace-form" @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-2xl">
       <div>
         <label class="label-pro">Name</label>
         <input
@@ -20,21 +20,22 @@
         />
       </div>
       <div v-if="workspaces.error" class="text-2xs text-red-600">{{ workspaces.error }}</div>
-      <div class="flex items-center gap-2">
-        <button type="submit" class="btn-primary !w-auto !px-4" :disabled="saving">
-          {{ saving ? 'Saving…' : (isEdit ? 'Save and go to Feed' : 'Create and add Feed') }}
-        </button>
-        <router-link to="/workspaces" class="btn-secondary !w-auto">Cancel</router-link>
-      </div>
     </form>
-  </div>
+
+    <template #footer>
+      <router-link to="/workspaces" class="btn-secondary !w-auto">Cancel</router-link>
+      <button type="submit" form="workspace-form" class="btn-primary !w-auto !px-4" :disabled="saving">
+        {{ saving ? 'Saving…' : (isEdit ? 'Save and go to Feed' : 'Create and add Feed') }}
+      </button>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
-import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
+import WizardPageLayout from '../components/WizardPageLayout.vue';
 
 const route = useRoute();
 const router = useRouter();

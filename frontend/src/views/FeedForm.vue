@@ -1,19 +1,19 @@
 <template>
-  <div class="feed-form-shell space-y-4 max-w-4xl">
-    <nav class="page-breadcrumb">
+  <WizardPageLayout
+    current="feed"
+    :title="isEdit ? 'Edit feed' : 'Create a feed'"
+    description="Connect the content source for this workspace."
+  >
+    <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
       <span>/</span>
       <router-link :to="`/workspaces/${workspaceId}/feeds`">{{ workspaceName }}</router-link>
       <span>/</span>
       <span>Feeds</span>
-    </nav>
-    <div>
-      <h1 class="page-title">{{ isEdit ? 'Edit feed' : 'Create a feed' }}</h1>
-      <p class="page-kicker mt-1">Connect the content source for this workspace.</p>
-    </div>
-    <WorkspaceWizardStepper current="feed" />
+    </template>
+
     <div class="feed-form-hero surface-card p-5 md:p-6">
-      <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         <button
           v-for="t in socialTypes"
           :key="t.type"
@@ -48,7 +48,7 @@
         </div>
       </div>
     </div>
-    <form @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-3xl">
+    <form id="feed-form" @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-3xl">
       <div>
         <label class="label-pro">Name</label>
         <input v-model="form.name" type="text" class="input-pro" placeholder="Feed name" required />
@@ -478,25 +478,27 @@
       <div v-if="feeds.lastActionError" class="text-2xs text-red-600">
         {{ feeds.lastActionError }}
       </div>
-      <div class="flex items-center gap-2">
-        <button
-          type="submit"
-          class="btn-primary !w-auto !px-4"
-          :disabled="
-            saving ||
-            (form.type === 'twitter' && (!form.social_credential_id || !selectedTwitterUserId)) ||
-            (form.type === 'tiktok' && (!form.social_credential_id || !selectedTikTokOpenId)) ||
-            (form.type === 'instagram' &&
-              (!form.social_credential_id || !form.facebook_page_id || !form.instagram_business_account_id)) ||
-            (form.type === 'rss' && !String(form.source_url || '').trim())
-          "
-        >
-          {{ saving ? 'Saving…' : (isEdit ? 'Save and continue' : 'Create and continue') }}
-        </button>
-        <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">Cancel</router-link>
-      </div>
     </form>
-  </div>
+
+    <template #footer>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">Cancel</router-link>
+      <button
+        type="submit"
+        form="feed-form"
+        class="btn-primary !w-auto !px-4"
+        :disabled="
+          saving ||
+          (form.type === 'twitter' && (!form.social_credential_id || !selectedTwitterUserId)) ||
+          (form.type === 'tiktok' && (!form.social_credential_id || !selectedTikTokOpenId)) ||
+          (form.type === 'instagram' &&
+            (!form.social_credential_id || !form.facebook_page_id || !form.instagram_business_account_id)) ||
+          (form.type === 'rss' && !String(form.source_url || '').trim())
+        "
+      >
+        {{ saving ? 'Saving…' : (isEdit ? 'Save and continue' : 'Create and continue') }} →
+      </button>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
@@ -508,7 +510,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
-import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
+import WizardPageLayout from '../components/WizardPageLayout.vue';
 
 const route = useRoute();
 const router = useRouter();

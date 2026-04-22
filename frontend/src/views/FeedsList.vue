@@ -1,113 +1,14 @@
 <template>
-  <div class="space-y-4">
-    <nav class="page-breadcrumb">
+  <WizardPageLayout
+    current="feed"
+    title="Feeds"
+    description="Source channels configured for this workspace."
+  >
+    <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
       <span>/</span>
       <span>{{ workspaceName }}</span>
-    </nav>
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="page-title flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M3.5 4.75A1.75 1.75 0 0 1 5.25 3h9.5A1.75 1.75 0 0 1 16.5 4.75v10.5A1.75 1.75 0 0 1 14.75 17h-9.5A1.75 1.75 0 0 1 3.5 15.25V4.75Zm2 1a.75.75 0 0 0 0 1.5h4.75a.75.75 0 0 0 0-1.5H5.5Zm0 3.5a.75.75 0 0 0 0 1.5h9a.75.75 0 0 0 0-1.5h-9Zm0 3.5a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5h-6Z" />
-          </svg>
-          Feeds
-        </h1>
-        <p class="page-kicker">Source channels configured for this workspace.</p>
-      </div>
-      <router-link :to="`/workspaces/${workspaceId}/feeds/new`" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro">
-        Add feed
-      </router-link>
-    </div>
-    <div v-if="!feeds.loading" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="surface-card p-4 analytics-card">
-        <div class="text-2xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <span class="metric-chip">FD</span> Total feeds
-        </div>
-        <div class="mt-3 flex items-center gap-3">
-          <div class="donut-ring" :style="feedRingStyle">
-            <div class="donut-inner">{{ totalFeeds }}</div>
-          </div>
-          <div>
-            <div class="text-lg-pro font-semibold text-slate-800">{{ totalFeeds }}</div>
-            <div class="text-2xs text-slate-500">Connected sources</div>
-            <div class="mt-1 text-2xs" :class="trendClass(feedsTrend)">
-              {{ trendLabel(feedsTrend, 'vs last visit') }}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="surface-card p-4 analytics-card">
-        <div class="text-2xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <span class="metric-chip">MX</span> Feed type mix
-        </div>
-        <div class="mt-1 text-2xs" :class="trendClass(typeVarietyTrend)">
-          {{ trendLabel(typeVarietyTrend, 'type variety') }}
-        </div>
-        <div class="mt-3 space-y-2 max-h-[92px] overflow-y-auto pr-1">
-          <div v-for="t in feedTypeDistribution" :key="t.type" class="space-y-1">
-            <div class="flex items-center justify-between text-2xs text-slate-600">
-              <span class="truncate inline-flex items-center gap-1.5">
-                <span class="type-pill__icon">
-                  <SocialIcon :type="t.type" />
-                </span>
-                {{ feedTypeLabel(t.type) }}
-              </span>
-              <span class="font-medium text-slate-700">{{ t.count }}</span>
-            </div>
-            <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-              <div class="h-full rounded-full bg-gradient-to-r from-indigo-300/80 to-violet-300/80" :style="{ width: `${t.width}%` }" />
-            </div>
-          </div>
-          <div v-if="!feedTypeDistribution.length" class="text-2xs text-slate-500">No feed data yet.</div>
-        </div>
-      </div>
-      <div class="surface-card p-4 analytics-card">
-        <div class="text-2xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <span class="metric-chip">SRC</span> Source URL coverage
-        </div>
-        <div class="mt-2 text-lg-pro font-semibold text-slate-800">{{ sourceCoverage }}%</div>
-        <div class="mt-1 text-2xs" :class="trendClass(coverageTrend)">
-          {{ trendLabel(coverageTrend, 'coverage pts') }}
-        </div>
-        <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div class="h-full rounded-full bg-gradient-to-r from-cyan-300/85 to-indigo-400/85" :style="{ width: `${sourceCoverage}%` }" />
-        </div>
-        <div class="mt-2 text-2xs text-slate-500">
-          {{ feedsWithSource }} with URL · {{ feedsWithoutSource }} without URL
-        </div>
-      </div>
-    </div>
-    <WorkspaceWizardStepper current="feed" />
-    <div class="feed-setup-hero surface-card p-4 md:p-5">
-      <div>
-        <h2 class="text-sm-pro font-semibold text-slate-800">Feed setup</h2>
-        <p class="page-kicker mt-0.5">Add one or more source feeds before reviewing posts and publishing the workspace.</p>
-      </div>
-      <div class="wizard-actions mt-4">
-        <div class="text-2xs text-slate-500">
-          {{ feeds.list.length ? 'Feeds are ready. Continue to review posts.' : 'Create at least one feed before continuing.' }}
-        </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <router-link
-            :to="nextCurateUrl"
-            class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro"
-            :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
-            :aria-disabled="!feeds.list.length"
-          >
-            Next: Curate
-          </router-link>
-          <router-link
-            :to="`/workspaces/${workspaceId}/publish`"
-            class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro"
-            :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
-            :aria-disabled="!feeds.list.length"
-          >
-            Skip to Publish
-          </router-link>
-        </div>
-      </div>
-    </div>
+    </template>
     <div v-if="feeds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
       Loading…
@@ -173,7 +74,24 @@
         </tbody>
       </table>
     </div>
-  </div>
+
+    <template #footer>
+      <router-link to="/workspaces" class="btn-secondary !w-auto">← Workspaces</router-link>
+      <div class="flex items-center gap-2">
+        <router-link :to="`/workspaces/${workspaceId}/feeds/new`" class="btn-secondary !w-auto">
+          Add feed
+        </router-link>
+        <router-link
+          :to="nextCurateUrl"
+          class="btn-primary !w-auto"
+          :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
+          :aria-disabled="!feeds.list.length"
+        >
+          Next: Curate →
+        </router-link>
+      </div>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
@@ -183,7 +101,7 @@ import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
-import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
+import WizardPageLayout from '../components/WizardPageLayout.vue';
 
 const route = useRoute();
 const feeds = useFeedsStore();

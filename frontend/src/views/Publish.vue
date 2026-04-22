@@ -1,40 +1,14 @@
 <template>
-  <div class="space-y-4">
-    <nav class="page-breadcrumb">
+  <WizardPageLayout
+    current="publish"
+    title="Publish"
+    description="Publish approved posts, customize how the embed looks, and copy the embed snippet."
+  >
+    <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
       <span>/</span>
       <span>{{ workspaceName }}</span>
-    </nav>
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <h1 class="page-title truncate flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V7.75a1.75 1.75 0 0 0-.513-1.237l-3-3A1.75 1.75 0 0 0 12.25 3h-7.5Zm5.22 4.47a.75.75 0 0 0-1.06 1.06l.59.59H7.75a.75.75 0 0 0 0 1.5H9.5l-.59.59a.75.75 0 1 0 1.06 1.06l1.88-1.88a.75.75 0 0 0 0-1.06L9.97 7.47Z" />
-          </svg>
-          Publish
-        </h1>
-        <span
-          v-if="selectedFeedType"
-          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200"
-          :title="`Source: ${feedTypeLabel(selectedFeedType)}`"
-        >
-          <span class="type-dot" :class="`type-dot--${String(selectedFeedType || 'other')}`">
-            <SocialIcon :type="selectedFeedType" />
-          </span>
-          {{ feedTypeLabel(selectedFeedType) }}
-        </span>
-        <div class="text-2xs text-slate-500 mt-0.5">
-          Publish approved posts, customize <strong class="font-medium text-slate-600">how the embed looks</strong>, and copy the embed snippet.
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
-          <option value="">Select workspace</option>
-          <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
-        </select>
-      </div>
-    </div>
-    <WorkspaceWizardStepper current="publish" />
+    </template>
 
     <div v-if="publish.loading && !publish.stats" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
@@ -42,52 +16,16 @@
     </div>
 
     <div v-else-if="!workspaceId" class="surface-card p-6 text-sm-pro text-slate-600">
+      <div class="flex items-center gap-2 mb-3">
+        <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro flex-1">
+          <option value="">Select workspace</option>
+          <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
+        </select>
+      </div>
       Pick a workspace to manage publishing.
     </div>
 
-    <div v-else class="space-y-4">
-      <div class="flex items-center justify-between gap-3">
-        <div class="text-sm-pro font-medium text-slate-800">Ready to publish the workspace</div>
-        <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
-          Back to Curate
-        </router-link>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="surface-card p-4 publish-widget">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <span class="metric-chip">APR</span> Approved
-          </div>
-          <div class="text-xl-pro font-semibold text-slate-900 mt-1">{{ publish.stats?.approved ?? '—' }}</div>
-          <div class="text-2xs text-slate-500 mt-1">Ready to publish</div>
-          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-emerald-300/85 to-cyan-300/75" :style="{ width: `${Math.min(100, (publish.stats?.approved || 0) * 8)}%` }" />
-          </div>
-        </div>
-        <div class="surface-card p-4 publish-widget">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <span class="metric-chip">PUB</span> Published
-          </div>
-          <div class="text-xl-pro font-semibold text-slate-900 mt-1">{{ publish.stats?.published ?? '—' }}</div>
-          <div class="text-2xs text-slate-500 mt-1">
-            Last: <span class="text-slate-700">{{ publish.stats?.last_published_at ? formatDate(publish.stats.last_published_at) : '—' }}</span>
-          </div>
-          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-indigo-300/85 to-violet-300/75" :style="{ width: `${Math.min(100, (publish.stats?.published || 0) * 8)}%` }" />
-          </div>
-        </div>
-        <div class="surface-card p-4 publish-widget">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <span class="metric-chip">PDG</span> Pending
-          </div>
-          <div class="text-xl-pro font-semibold text-slate-900 mt-1">{{ publish.stats?.pending ?? '—' }}</div>
-          <div class="text-2xs text-slate-500 mt-1">Awaiting review</div>
-          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-amber-300/85 to-orange-300/75" :style="{ width: `${Math.min(100, (publish.stats?.pending || 0) * 8)}%` }" />
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 items-start">
+    <div v-else class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 items-start">
         <div class="space-y-6">
           <div v-if="appearance" class="surface-card p-4 space-y-6">
             <div class="flex items-center justify-between gap-2">
@@ -391,7 +329,19 @@
         </div>
       </div>
     </div>
-  </div>
+
+    <template #footer>
+      <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !w-auto">← Back to Curate</router-link>
+      <button
+        type="button"
+        class="btn-primary !w-auto"
+        :disabled="publish.publishing"
+        @click="publishNow"
+      >
+        {{ publish.publishing ? 'Publishing…' : 'Publish changes' }} →
+      </button>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
@@ -402,7 +352,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
-import WorkspaceWizardStepper from '../components/WorkspaceWizardStepper.vue';
+import WizardPageLayout from '../components/WizardPageLayout.vue';
 
 const toast = useToastStore();
 const route = useRoute();
