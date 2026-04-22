@@ -3,6 +3,7 @@
     current="feed"
     :title="isEdit ? 'Edit feed' : 'Create a feed'"
     description="Connect the content source for this workspace."
+    :workspaceId="route.params.workspaceId"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
@@ -10,6 +11,19 @@
       <router-link :to="`/workspaces/${workspaceId}/feeds`">{{ workspaceName }}</router-link>
       <span>/</span>
       <span>Feeds</span>
+    </template>
+
+    <template #actions>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto" title="Go back">←</router-link>
+      <button
+        type="submit"
+        form="feed-form"
+        class="btn-primary !w-auto !px-3 !py-2"
+        :disabled="saving"
+        title="Save and continue"
+      >
+        {{ saving ? '⏳' : '→' }}
+      </button>
     </template>
 
     <div class="feed-form-hero surface-card p-5 md:p-6">
@@ -77,7 +91,7 @@
         >
           <option value="">Select credential</option>
           <option v-for="c in youtubeCredentials" :key="c.id" :value="c.id">
-            {{ c.provider }} ({{ c.expires_at ? formatDate(c.expires_at) : 'no expiry' }})
+            {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
         </select>
         <p v-if="!youtubeCredentials.length" class="mt-1 text-2xs text-red-600">
@@ -145,7 +159,7 @@
         >
           <option value="">Select credential</option>
           <option v-for="c in facebookCredentials" :key="c.id" :value="c.id">
-            {{ c.provider }} ({{ c.expires_at ? formatDate(c.expires_at) : 'no expiry' }})
+            {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
         </select>
         <p v-if="!facebookCredentials.length" class="mt-1 text-2xs text-red-600">
@@ -207,7 +221,7 @@
         >
           <option value="">Select credential</option>
           <option v-for="c in instagramCredentials" :key="c.id" :value="c.id">
-            {{ c.provider }} ({{ c.expires_at ? formatDate(c.expires_at) : 'no expiry' }})
+            {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
         </select>
         <p v-if="!instagramCredentials.length" class="mt-1 text-2xs text-red-600">
@@ -285,7 +299,7 @@
         >
           <option value="">Select credential</option>
           <option v-for="c in twitterCredentials" :key="c.id" :value="c.id">
-            {{ c.provider }} ({{ c.expires_at ? formatDate(c.expires_at) : 'no expiry' }})
+            {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
         </select>
         <p v-if="!twitterCredentials.length" class="mt-1 text-2xs text-red-600">
@@ -353,7 +367,7 @@
         >
           <option value="">Select credential</option>
           <option v-for="c in tiktokCredentials" :key="c.id" :value="c.id">
-            {{ c.provider }} ({{ c.expires_at ? formatDate(c.expires_at) : 'no expiry' }})
+            {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
         </select>
         <p v-if="!tiktokCredentials.length" class="mt-1 text-2xs text-red-600">
@@ -481,7 +495,7 @@
     </form>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">Cancel</router-link>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">Back</router-link>
       <button
         type="submit"
         form="feed-form"
@@ -495,7 +509,7 @@
           (form.type === 'rss' && !String(form.source_url || '').trim())
         "
       >
-        {{ saving ? 'Saving…' : (isEdit ? 'Save and continue' : 'Create and continue') }} →
+        {{ saving ? 'Saving…' : 'Next' }}
       </button>
     </template>
   </WizardPageLayout>

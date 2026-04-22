@@ -323,14 +323,16 @@ class SocialConnectController extends Controller
         }
     }
 
-    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null): void
+    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null, ?string $accountId = null, ?string $accountLabel = null): void
     {
         $expiresAt = $expiresIn ? now()->addSeconds($expiresIn) : null;
+
         $cred = SocialCredential::updateOrCreate(
-            ['user_id' => $userId, 'provider' => $provider],
+            ['user_id' => $userId, 'provider' => $provider, 'account_id' => $accountId],
             [
                 'access_token' => $token,
                 'expires_at' => $expiresAt,
+                'account_label' => $accountLabel,
             ]
         );
 
@@ -369,12 +371,17 @@ class SocialConnectController extends Controller
                 )
                 ->user();
 
+            $accountId = $googleUser->id;
+            $accountLabel = $googleUser->name ?: $googleUser->email ?: null;
+
             $this->saveCredential(
                 (int) $payload['user_id'],
                 'youtube',
                 $googleUser->token,
                 $googleUser->refreshToken ?? null,
-                $googleUser->expiresIn ?? null
+                $googleUser->expiresIn ?? null,
+                $accountId,
+                $accountLabel
             );
 
             return $this->redirectSuccess('youtube');
@@ -420,7 +427,9 @@ class SocialConnectController extends Controller
                 'google',
                 $googleUser->token,
                 $googleUser->refreshToken ?? null,
-                $googleUser->expiresIn ?? null
+                $googleUser->expiresIn ?? null,
+                $googleUser->id,
+                $googleUser->name ?: $googleUser->email ?: null
             );
 
             return $this->redirectSuccess('google');
@@ -469,7 +478,9 @@ class SocialConnectController extends Controller
                 $provider,
                 $token,
                 $fbUser->refreshToken ?? null,
-                $expiresIn
+                $expiresIn,
+                $fbUser->id,
+                $fbUser->name ?: null
             );
 
             return $this->redirectSuccess($provider);
@@ -539,12 +550,24 @@ class SocialConnectController extends Controller
             $expiresIn = $tokenResp->json('expires_in');
             $refreshToken = $tokenResp->json('refresh_token');
 
+            $twitterAccountId = null;
+            $twitterLabel = null;
+            $meResp = Http::withToken($accessToken)->get('https://api.x.com/2/users/me', ['user.fields' => 'name,username']);
+            if ($meResp->ok()) {
+                $twitterAccountId = $meResp->json('data.id');
+                $handle = $meResp->json('data.username');
+                $name = $meResp->json('data.name');
+                $twitterLabel = $handle ? "@{$handle}" . ($name ? " ({$name})" : '') : null;
+            }
+
             $this->saveCredential(
                 (int) $payload['user_id'],
                 'twitter',
                 $accessToken,
                 is_string($refreshToken) ? $refreshToken : null,
-                is_numeric($expiresIn) ? (int) $expiresIn : null
+                is_numeric($expiresIn) ? (int) $expiresIn : null,
+                $twitterAccountId,
+                $twitterLabel
             );
 
             return $this->redirectSuccess('twitter');
@@ -610,12 +633,26 @@ class SocialConnectController extends Controller
             $expiresIn = $tokenResp->json('expires_in');
             $refreshToken = $tokenResp->json('refresh_token');
 
+            $tiktokAccountId = null;
+            $tiktokLabel = null;
+            $userResp = Http::withToken($accessToken)->get('https://open.tiktokapis.com/v2/user/info/', [
+                'fields' => 'open_id,display_name,username',
+            ]);
+            if ($userResp->ok()) {
+                $tiktokAccountId = $userResp->json('data.user.open_id');
+                $username = $userResp->json('data.user.username');
+                $displayName = $userResp->json('data.user.display_name');
+                $tiktokLabel = $username ? "@{$username}" . ($displayName ? " ({$displayName})" : '') : $displayName;
+            }
+
             $this->saveCredential(
                 (int) $payload['user_id'],
                 'tiktok',
                 $accessToken,
                 is_string($refreshToken) ? $refreshToken : null,
-                is_numeric($expiresIn) ? (int) $expiresIn : null
+                is_numeric($expiresIn) ? (int) $expiresIn : null,
+                $tiktokAccountId,
+                $tiktokLabel
             );
 
             return $this->redirectSuccess('tiktok');
@@ -629,19 +666,15 @@ class SocialConnectController extends Controller
     public function disconnect(Request $request)
     {
         $validated = $request->validate([
-            'provider' => ['required', 'string', 'max:64'],
+            'id' => ['required', 'integer'],
         ]);
 
         $deleted = $request->user()
             ->socialCredentials()
-            ->where('provider', $validated['provider'])
+            ->where('id', $validated['id'])
             ->delete();
 
-        return response()->json([
-            'provider' => $validated['provider'],
-            'deleted' => $deleted,
-            'message' => 'Disconnected',
-        ]);
+        return response()->json(['deleted' => $deleted, 'message' => 'Disconnected']);
     }
 
     private function oauthConfigForUser(int $userId, string $provider): ?OAuthAppConfig

@@ -3,12 +3,35 @@
     current="publish"
     title="Publish"
     description="Publish approved posts, customize how the embed looks, and copy the embed snippet."
+    :workspaceId="workspaceId"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
       <span>/</span>
       <span>{{ workspaceName }}</span>
     </template>
+
+    <template #actions>
+      <button
+        type="button"
+        class="btn-primary !w-auto !px-3 !py-2"
+        :disabled="publish.publishing"
+        @click="publishNow"
+        title="Publish and finish"
+      >
+        {{ publish.publishing ? '⏳' : '✓' }}
+      </button>
+    </template>
+
+    <!-- Publish success banner -->
+    <div v-if="publishedCount !== null" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-300 bg-emerald-50 text-sm-pro text-emerald-800 mb-2">
+      <span>✓ <strong>{{ publishedCount }} post{{ publishedCount !== 1 ? 's' : '' }}</strong> published and live in your embed.</span>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</button>
+        <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</button>
+        <button type="button" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</button>
+      </div>
+    </div>
 
     <div v-if="publish.loading && !publish.stats" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
@@ -193,6 +216,15 @@
                 >
                   Get code
                 </button>
+                <button
+                  type="button"
+                  class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
+                  @click="showEmbedPreview = true"
+                  :disabled="!publish.code?.public_key"
+                  title="Test embed in iframe"
+                >
+                  Test embed
+                </button>
               </div>
             </div>
         <div class="flex items-center justify-between mb-3">
@@ -304,9 +336,8 @@
             </div>
           </a>
         </div>
-          </div>
-        </div>
       </div>
+    </div>
     </div>
 
     <div v-if="showCode" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
@@ -330,15 +361,33 @@
       </div>
     </div>
 
+    <!-- Embed iframe preview modal -->
+    <div v-if="showEmbedPreview" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div class="w-full max-w-3xl surface-card overflow-hidden flex flex-col" style="height: 80vh">
+        <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div class="text-sm-pro font-medium text-slate-800">Live embed preview</div>
+          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="showEmbedPreview = false">Close</button>
+        </div>
+        <iframe
+          v-if="publish.code?.public_key"
+          :srcdoc="embedIframeHtml"
+          class="flex-1 w-full border-0"
+          title="Embed preview"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
+    </div>
+
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !w-auto">← Back to Curate</router-link>
+      <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !w-auto" title="Go back">←</router-link>
       <button
         type="button"
-        class="btn-primary !w-auto"
+        class="btn-primary !w-auto !px-3 !py-2"
         :disabled="publish.publishing"
         @click="publishNow"
+        title="Publish and finish"
       >
-        {{ publish.publishing ? 'Publishing…' : 'Publish changes' }} →
+        {{ publish.publishing ? '⏳' : '✓' }}
       </button>
     </template>
   </WizardPageLayout>
@@ -364,6 +413,8 @@ const workspaceId = ref('');
 
 const showCode = ref(false);
 const copied = ref(false);
+const publishedCount = ref(null);
+const showEmbedPreview = ref(false);
 
 const previewLoading = ref(false);
 const previewPosts = ref([]);
@@ -404,6 +455,15 @@ function feedTypeLabel(type) {
 
 /** Same stylesheet as the public embed (including ?v= cache bust). */
 const embedCssHref = computed(() => publish.code?.embed_css_url || '');
+
+const embedIframeHtml = computed(() => {
+  const code = publish.code;
+  if (!code?.embed_html) return '<p style="font-family:sans-serif;padding:1rem;color:#64748b">No embed code yet — publish first.</p>';
+  const base = window.location.origin;
+  const css = code.embed_css_url ? `<link rel="stylesheet" href="${base}${code.embed_css_url.startsWith('/') ? '' : '/api/'}${code.embed_css_url}">` : '';
+  const js = code.embed_js_url ? `<script src="${base}${code.embed_js_url.startsWith('/') ? '' : '/api/'}${code.embed_js_url}"><\/script>` : '';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body style="margin:0;padding:16px;background:#f8fafc">${code.embed_html}${js}</body></html>`;
+});
 
 const previewLayoutClass = computed(() => {
   const st = String(appearance.value?.feed_style || 'grid').replace(/-/g, '_');
@@ -523,7 +583,8 @@ async function refresh() {
 
 async function publishNow() {
   if (!workspaceId.value) return;
-  await publish.publish(workspaceId.value);
+  const result = await publish.publish(workspaceId.value);
+  publishedCount.value = result?.published ?? 0;
   await publish.fetchCode(workspaceId.value);
   await loadPreview();
 }

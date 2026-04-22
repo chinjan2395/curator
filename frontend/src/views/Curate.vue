@@ -1,15 +1,18 @@
 <template>
   <WizardPageLayout
     current="curate"
-    :title="`Curate · ${feedName}`"
-    description="Review source posts before moving to publish."
+    title="Curate"
+    description="Review and approve posts from all feeds."
+    :workspaceId="workspaceId"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
       <span>/</span>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`">{{ workspaceName }}</router-link>
-      <span>/</span>
-      <span>Curate</span>
+      <span>{{ workspaceName }}</span>
+    </template>
+
+    <template #actions>
+      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2" title="Continue to publish">→</router-link>
     </template>
 
     <div class="flex items-center gap-2 flex-wrap mb-4">
@@ -33,6 +36,13 @@
       <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro" @click="refresh" :disabled="posts.loading">
         {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
       </button>
+      <div class="h-4 w-px bg-slate-200 hidden sm:block" />
+      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50" @click="approveAllPending" title="Approve all pending posts">
+        ✓ All
+      </button>
+      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-rose-700 border-rose-200 hover:bg-rose-50" @click="rejectAllPending" title="Reject all pending posts">
+        ✗ All
+      </button>
     </div>
 
     <div v-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
@@ -41,12 +51,7 @@
     </div>
     <div v-else-if="posts.error" class="text-sm-pro text-red-600">{{ posts.error }}</div>
     <div v-else-if="!posts.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
-      <template v-if="feedType === 'rss'">
-        No posts yet. Click <span class="font-medium text-slate-700">Sync now</span> to pull entries from your RSS or Atom URL.
-      </template>
-      <template v-else>
-        No posts yet. Use “Sync now” or add sources to populate this feed.
-      </template>
+      No posts yet. Click <span class="font-medium text-slate-700">Sync now</span> to pull content from your feeds.
     </div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <article
@@ -73,8 +78,9 @@
             class="text-2xs font-medium px-2 py-1 rounded-md border shrink-0"
             :class="p.pinned ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
             @click="togglePin(p)"
+            :title="p.pinned ? 'Unpin this post' : 'Pin this post'"
           >
-            {{ p.pinned ? 'Unpin' : 'Pin' }}
+            {{ p.pinned ? '📌' : '📍' }}
           </button>
         </div>
 
@@ -93,15 +99,20 @@
                 :alt="p.title || 'Video thumbnail'"
                 class="w-full h-full object-cover group-hover:opacity-95 transition"
               />
-              <div v-else class="text-2xs text-slate-400">{{ feedType === 'rss' ? 'Open article' : 'Open on YouTube' }}</div>
+              <div v-else class="text-2xs text-slate-400">Open post</div>
             </div>
           </a>
         </div>
 
-        <div class="text-sm-pro text-slate-800 whitespace-pre-wrap line-clamp-[10]">
+        <button
+          type="button"
+          class="text-left w-full text-sm-pro text-slate-800 whitespace-pre-wrap line-clamp-[10] hover:text-indigo-700 transition-colors"
+          @click="previewPost = p"
+          title="Click to preview"
+        >
           <strong v-if="p.title" class="block mb-1">{{ p.title }}</strong>
           {{ p.content }}
-        </div>
+        </button>
 
         <div class="flex items-center gap-2 pt-3 mt-auto border-t border-slate-100">
           <button
@@ -109,32 +120,63 @@
             class="curate-btn curate-btn-approve"
             :class="{ 'curate-btn-active': p.status === 'approved' }"
             @click="setStatus(p, 'approved')"
+            title="Approve this post"
           >
-            Approve
+            ✓
           </button>
           <button
             type="button"
             class="curate-btn curate-btn-reject"
             :class="{ 'curate-btn-active': p.status === 'rejected' }"
             @click="setStatus(p, 'rejected')"
+            title="Reject this post"
           >
-            Reject
+            ✗
           </button>
           <button
             type="button"
             class="curate-btn curate-btn-delete ml-auto"
             @click="deletePost(p)"
+            title="Delete this post"
           >
-            Delete
+            🗑
           </button>
         </div>
       </article>
     </div>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">← Back to Feeds</router-link>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto">Continue to Publish →</router-link>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto" title="Go back">←</router-link>
+      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2" title="Continue to publish">→</router-link>
     </template>
+
+    <!-- Post preview modal -->
+    <div v-if="previewPost" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" @click.self="previewPost = null">
+      <div class="w-full max-w-lg surface-card overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <span
+            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
+            :class="statusBadgeClass(previewPost.status)"
+          >{{ previewPost.status }}</span>
+          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="previewPost = null">✕</button>
+        </div>
+        <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+          <div v-if="previewPost.thumbnail_url" class="aspect-video rounded-md overflow-hidden bg-slate-100">
+            <img :src="previewPost.thumbnail_url" :alt="previewPost.title || 'Post'" class="w-full h-full object-cover" />
+          </div>
+          <div v-if="previewPost.title" class="text-sm-pro font-semibold text-slate-800">{{ previewPost.title }}</div>
+          <div class="text-sm-pro text-slate-700 whitespace-pre-wrap">{{ previewPost.content }}</div>
+          <div class="text-2xs text-slate-400">{{ formatDate(previewPost.posted_at) }}</div>
+          <a v-if="previewPost.video_url" :href="previewPost.video_url" target="_blank" rel="noreferrer" class="inline-block text-sm-pro text-indigo-600 hover:underline">
+            Open original ↗
+          </a>
+        </div>
+        <div class="px-4 py-3 border-t border-slate-200 flex items-center gap-2">
+          <button type="button" class="curate-btn curate-btn-approve" :class="{ 'curate-btn-active': previewPost.status === 'approved' }" @click="setStatus(previewPost, 'approved')" title="Approve">✓</button>
+          <button type="button" class="curate-btn curate-btn-reject" :class="{ 'curate-btn-active': previewPost.status === 'rejected' }" @click="setStatus(previewPost, 'rejected')" title="Reject">✗</button>
+        </div>
+      </div>
+    </div>
   </WizardPageLayout>
 </template>
 
@@ -144,7 +186,10 @@ import { useRoute } from 'vue-router';
 import { usePostsStore } from '../stores/posts';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
+import { useToastStore } from '../stores/toast';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
+
+const toast = useToastStore();
 
 const route = useRoute();
 const posts = usePostsStore();
@@ -152,23 +197,14 @@ const feeds = useFeedsStore();
 const workspaces = useWorkspacesStore();
 
 const workspaceId = computed(() => route.params.workspaceId);
-const feedId = computed(() => route.params.feedId);
 
 const filterStatus = ref('');
-
-const feedName = computed(() => {
-  const f = feeds.list.find((x) => x.id === Number(feedId.value));
-  return f ? f.name : '…';
-});
+const previewPost = ref(null);
 
 const lastSyncedAt = computed(() => {
-  const f = feeds.list.find((x) => x.id === Number(feedId.value));
-  return f ? f.last_synced_at : null;
-});
-
-const feedType = computed(() => {
-  const f = feeds.list.find((x) => x.id === Number(feedId.value));
-  return f?.type || '';
+  if (!feeds.list.length) return null;
+  const times = feeds.list.map(f => new Date(f.last_synced_at)).filter(t => !isNaN(t));
+  return times.length ? new Date(Math.max(...times)) : null;
 });
 
 const workspaceName = computed(() => {
@@ -197,11 +233,47 @@ function feedPlatformIcon(type) {
 }
 
 async function refresh() {
-  await posts.fetchAll(workspaceId.value, feedId.value, { status: filterStatus.value || null });
+  posts.clearList();
+  const allPosts = [];
+  for (const feed of feeds.list) {
+    try {
+      const feedPosts = await posts.fetchAll(workspaceId.value, feed.id, { status: filterStatus.value || null });
+      feedPosts.forEach(p => p._feedId = feed.id);
+      allPosts.push(...feedPosts);
+    } catch (err) {
+      // Continue loading from other feeds
+    }
+  }
+  posts.list = allPosts.sort((a, b) => new Date(b.posted_at) - new Date(a.posted_at));
 }
 
 async function syncNow() {
-  await feeds.sync(workspaceId.value, Number(feedId.value));
+  let totalCreated = 0;
+  for (const feed of feeds.list) {
+    try {
+      const result = await feeds.sync(workspaceId.value, Number(feed.id), { silent: true });
+      totalCreated += result?.created || 0;
+    } catch (err) {
+      // Continue syncing other feeds
+    }
+  }
+  toast.success(`Sync complete — ${totalCreated} new post${totalCreated !== 1 ? 's' : ''} found`);
+  await refresh();
+}
+
+async function approveAllPending() {
+  const pending = posts.list.filter((p) => p.status === 'pending');
+  if (!pending.length) { toast.info('No pending posts'); return; }
+  await Promise.all(pending.map((p) => posts.update(workspaceId.value, p._feedId, p.id, { status: 'approved' })));
+  toast.success(`Approved ${pending.length} post${pending.length !== 1 ? 's' : ''}`);
+  await refresh();
+}
+
+async function rejectAllPending() {
+  const pending = posts.list.filter((p) => p.status === 'pending');
+  if (!pending.length) { toast.info('No pending posts'); return; }
+  await Promise.all(pending.map((p) => posts.update(workspaceId.value, p._feedId, p.id, { status: 'rejected' })));
+  toast.success(`Rejected ${pending.length} post${pending.length !== 1 ? 's' : ''}`);
   await refresh();
 }
 
@@ -216,16 +288,16 @@ watch(filterStatus, () => {
 });
 
 async function setStatus(p, status) {
-  await posts.update(workspaceId.value, feedId.value, p.id, { status });
+  await posts.update(workspaceId.value, p._feedId, p.id, { status });
 }
 
 async function togglePin(p) {
-  await posts.update(workspaceId.value, feedId.value, p.id, { pinned: !p.pinned });
+  await posts.update(workspaceId.value, p._feedId, p.id, { pinned: !p.pinned });
 }
 
 async function deletePost(p) {
   if (window.confirm('Delete this post?')) {
-    await posts.remove(workspaceId.value, feedId.value, p.id);
+    await posts.remove(workspaceId.value, p._feedId, p.id);
   }
 }
 

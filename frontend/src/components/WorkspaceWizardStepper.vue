@@ -1,35 +1,48 @@
 <template>
   <div class="wizard-stepper" aria-label="Workspace setup progress">
-    <div
+    <router-link
       v-for="step in steps"
       :key="step.key"
-      class="wizard-step"
-      :class="stepClass(step.key)"
+      :to="getStepPath(step.key)"
+      :class="['wizard-step', stepClass(step.key)]"
     >
       <span class="wizard-step__index">{{ step.index }}</span>
       <div>
         <div class="wizard-step__label">{{ step.label }}</div>
         <div class="wizard-step__meta">{{ step.meta }}</div>
       </div>
-    </div>
+    </router-link>
   </div>
 </template>
 
 <script setup>
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+
 const props = defineProps({
   current: {
     type: String,
     required: true,
-    validator: (value) => ['workspace', 'feed', 'curate', 'publish'].includes(value),
+    validator: (value) => ['feed', 'curate', 'publish'].includes(value),
   },
+  workspaceId: String,
 });
 
 const steps = [
-  { key: 'workspace', index: 1, label: 'Workspace', meta: 'Name and create' },
-  { key: 'feed', index: 2, label: 'Feed', meta: 'Connect source content' },
-  { key: 'curate', index: 3, label: 'Curate', meta: 'Approve and reject posts' },
-  { key: 'publish', index: 4, label: 'Publish', meta: 'Embed and go live' },
+  { key: 'feed', index: 1, label: 'Feed', meta: 'Connect source content' },
+  { key: 'curate', index: 2, label: 'Curate', meta: 'Approve and reject posts' },
+  { key: 'publish', index: 3, label: 'Publish', meta: 'Embed and go live' },
 ];
+
+function getStepPath(key) {
+  const wsId = props.workspaceId || route.params.workspaceId;
+
+  if (key === 'feed') return wsId ? `/workspaces/${wsId}/feeds` : '#';
+  if (key === 'curate') return wsId ? `/workspaces/${wsId}/curate` : '#';
+  if (key === 'publish') return wsId ? `/workspaces/${wsId}/publish` : '#';
+  return '#';
+}
 
 function stepClass(key) {
   const currentIndex = steps.findIndex((step) => step.key === props.current);
@@ -57,6 +70,14 @@ function stepClass(key) {
   border-radius: 0.85rem;
   border: 1px solid rgba(226, 232, 240, 0.95);
   background: rgba(248, 250, 252, 0.82);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.wizard-step:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(248, 250, 252, 0.95);
 }
 
 .wizard-step--active {

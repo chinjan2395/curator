@@ -9,6 +9,16 @@ export const useCredentialsStore = defineStore('credentials', {
     error: null,
     connecting: false,
   }),
+  getters: {
+    byProvider: (state) => {
+      const grouped = {};
+      for (const cred of state.list) {
+        if (!grouped[cred.provider]) grouped[cred.provider] = [];
+        grouped[cred.provider].push(cred);
+      }
+      return grouped;
+    },
+  },
   actions: {
     async fetchAll() {
       this.loading = true;
@@ -42,9 +52,9 @@ export const useCredentialsStore = defineStore('credentials', {
         this.connecting = false;
       }
     },
-    async disconnect(provider) {
+    async disconnect(id) {
       try {
-        const { data } = await axios.post('/api/social/disconnect', { provider });
+        const { data } = await axios.post('/api/social/disconnect', { id });
         useToastStore().success('Disconnected');
         await this.fetchAll();
         return data;
@@ -54,6 +64,18 @@ export const useCredentialsStore = defineStore('credentials', {
         throw err;
       }
     },
+    async renameCredential(id, accountLabel) {
+      try {
+        const { data } = await axios.put(`/api/social-credentials/${id}/label`, { account_label: accountLabel });
+        const idx = this.list.findIndex((c) => c.id === id);
+        if (idx !== -1) this.list[idx] = data;
+        useToastStore().success('Label updated');
+        return data;
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Failed to rename';
+        useToastStore().error(msg);
+        throw err;
+      }
+    },
   },
 });
-

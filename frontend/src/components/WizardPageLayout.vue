@@ -1,5 +1,5 @@
 <template>
-  <div class="wizard-page max-w-5xl">
+  <div class="wizard-page">
     <nav class="page-breadcrumb">
       <slot name="breadcrumb" />
     </nav>
@@ -9,7 +9,10 @@
         <p class="page-kicker">{{ description }}</p>
       </div>
     </div>
-    <WorkspaceWizardStepper :current="current" class="mt-1" />
+    <WorkspaceWizardStepper :current="current" :workspaceId="workspaceId" class="mt-1" />
+    <div class="wizard-page__actions">
+      <slot name="actions" />
+    </div>
     <div class="wizard-page__body">
       <slot />
     </div>
@@ -35,6 +38,7 @@ defineProps({
     type: String,
     required: true,
   },
+  workspaceId: String,
 });
 </script>
 
@@ -52,6 +56,14 @@ defineProps({
   gap: 1rem;
 }
 
+.wizard-page__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .wizard-page__body {
   margin-top: 1rem;
 }
@@ -65,5 +77,9 @@ defineProps({
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.wizard-page__footer > :deep(*) {
+  white-space: nowrap;
 }
 </style>

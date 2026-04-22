@@ -3,9 +3,17 @@
     current="workspace"
     :title="isEdit ? 'Edit workspace' : 'New workspace'"
     description="Name the workspace, then continue through Feed → Curate → Publish."
+    :workspaceId="route.params.id"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
+    </template>
+
+    <template #actions>
+      <router-link to="/workspaces" class="btn-secondary !w-auto" title="Go back">←</router-link>
+      <button type="submit" form="workspace-form" class="btn-primary !w-auto !px-3 !py-2" :disabled="saving" title="Continue to next step">
+        {{ saving ? '⏳' : '→' }}
+      </button>
     </template>
 
     <form id="workspace-form" @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-2xl">
@@ -23,9 +31,9 @@
     </form>
 
     <template #footer>
-      <router-link to="/workspaces" class="btn-secondary !w-auto">Cancel</router-link>
-      <button type="submit" form="workspace-form" class="btn-primary !w-auto !px-4" :disabled="saving">
-        {{ saving ? 'Saving…' : (isEdit ? 'Save and go to Feed' : 'Create and add Feed') }}
+      <router-link to="/workspaces" class="btn-secondary !w-auto">Back</router-link>
+      <button type="submit" form="workspace-form" class="btn-primary !w-auto !px-3 !py-2" :disabled="saving">
+        {{ saving ? 'Saving…' : 'Next' }}
       </button>
     </template>
   </WizardPageLayout>

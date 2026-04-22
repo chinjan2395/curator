@@ -14,6 +14,8 @@ class SocialCredential extends Model
     protected $fillable = [
         'user_id',
         'provider',
+        'account_id',
+        'account_label',
         'access_token',
         'refresh_token',
         'expires_at',

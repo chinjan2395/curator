@@ -144,27 +144,69 @@
     <div v-else-if="!creds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
       No credentials connected yet.
     </div>
-    <div v-else class="table-shell">
-      <table class="w-full text-left">
-        <thead class="table-head">
-          <tr>
-            <th class="table-th">Provider</th>
-            <th class="table-th">Expires</th>
-            <th class="table-th w-32">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="c in creds.list" :key="c.id" class="table-tr">
-            <td class="table-td font-medium text-slate-800">{{ c.provider }}</td>
-            <td class="table-td">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</td>
-            <td class="table-td">
-              <button type="button" class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80" @click="disconnect(c.provider)">
-                Disconnect
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="space-y-3">
+      <div
+        v-for="(providerCreds, prov) in creds.byProvider"
+        :key="prov"
+        class="surface-card overflow-hidden"
+      >
+        <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="type-dot" :class="`type-dot--${prov}`">
+              <SocialIcon :type="prov" />
+            </div>
+            <span class="text-sm-pro font-semibold text-slate-800">{{ providerLabels[prov] || prov }}</span>
+            <span class="text-2xs text-slate-400">({{ providerCreds.length }} account{{ providerCreds.length > 1 ? 's' : '' }})</span>
+          </div>
+          <button
+            type="button"
+            class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro"
+            :disabled="creds.connecting"
+            @click="provider = prov; startConnect()"
+            title="Add another account"
+          >
+            + Add
+          </button>
+        </div>
+        <table class="w-full text-left">
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="c in providerCreds" :key="c.id" class="table-tr">
+              <td class="table-td">
+                <div v-if="renamingId !== c.id" class="flex items-center gap-2">
+                  <span class="font-medium text-slate-800">{{ c.account_label || c.account_id || '—' }}</span>
+                  <button
+                    type="button"
+                    class="text-2xs text-slate-400 hover:text-slate-600 underline"
+                    @click="startRename(c)"
+                  >edit</button>
+                </div>
+                <div v-else class="flex items-center gap-1.5">
+                  <input
+                    v-model="renameValue"
+                    type="text"
+                    class="input-pro !py-1 !text-sm-pro flex-1"
+                    placeholder="Account label"
+                    @keyup.enter="saveRename(c.id)"
+                    @keyup.escape="cancelRename"
+                  />
+                  <button type="button" class="btn-primary !w-auto !py-1 !px-2 text-xs-pro" @click="saveRename(c.id)">Save</button>
+                  <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</button>
+                </div>
+              </td>
+              <td class="table-td text-2xs text-slate-500">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</td>
+              <td class="table-td w-28">
+                <button
+                  type="button"
+                  class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80"
+                  @click="disconnect(c)"
+                >
+                  Disconnect
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -289,9 +331,29 @@ async function removeOauth() {
   }
 }
 
-async function disconnect(p) {
-  if (window.confirm(`Disconnect ${p}?`)) {
-    await creds.disconnect(p);
+const renamingId = ref(null);
+const renameValue = ref('');
+
+function startRename(c) {
+  renamingId.value = c.id;
+  renameValue.value = c.account_label || '';
+}
+
+function cancelRename() {
+  renamingId.value = null;
+  renameValue.value = '';
+}
+
+async function saveRename(id) {
+  if (!renameValue.value.trim()) return;
+  await creds.renameCredential(id, renameValue.value.trim());
+  cancelRename();
+}
+
+async function disconnect(c) {
+  const label = c.account_label || c.account_id || c.provider;
+  if (window.confirm(`Disconnect "${label}"?`)) {
+    await creds.disconnect(c.id);
   }
 }
 

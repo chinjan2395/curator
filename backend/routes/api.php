@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
 
     Route::apiResource('social-credentials', SocialCredentialController::class);
+    Route::put('social-credentials/{socialCredential}/label', [SocialCredentialController::class, 'label']);
     Route::post('social/connect', [SocialConnectController::class, 'connect']);
     Route::post('social/disconnect', [SocialConnectController::class, 'disconnect']);
 

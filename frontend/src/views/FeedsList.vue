@@ -3,12 +3,26 @@
     current="feed"
     title="Feeds"
     description="Source channels configured for this workspace."
+    :workspaceId="route.params.workspaceId"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
       <span>/</span>
       <span>{{ workspaceName }}</span>
     </template>
+
+    <template #actions>
+      <router-link
+        :to="nextCurateUrl"
+        class="btn-primary !w-auto !px-3 !py-2"
+        :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
+        :aria-disabled="!feeds.list.length"
+        title="Continue to curate posts"
+      >
+        →
+      </router-link>
+    </template>
+
     <div v-if="feeds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
       Loading…
@@ -76,20 +90,16 @@
     </div>
 
     <template #footer>
-      <router-link to="/workspaces" class="btn-secondary !w-auto">← Workspaces</router-link>
-      <div class="flex items-center gap-2">
-        <router-link :to="`/workspaces/${workspaceId}/feeds/new`" class="btn-secondary !w-auto">
-          Add feed
-        </router-link>
-        <router-link
-          :to="nextCurateUrl"
-          class="btn-primary !w-auto"
-          :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
-          :aria-disabled="!feeds.list.length"
-        >
-          Next: Curate →
-        </router-link>
-      </div>
+      <router-link to="/workspaces" class="btn-secondary !w-auto" title="Go back">←</router-link>
+      <router-link
+        :to="nextCurateUrl"
+        class="btn-primary !w-auto !px-3 !py-2"
+        :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
+        :aria-disabled="!feeds.list.length"
+        title="Continue to curate posts"
+      >
+        →
+      </router-link>
     </template>
   </WizardPageLayout>
 </template>
@@ -147,10 +157,7 @@ const feedsTrend = ref(0);
 const coverageTrend = ref(0);
 const typeVarietyTrend = ref(0);
 const nextCurateUrl = computed(() => {
-  const selected = feeds.list[0];
-  return selected?.id
-    ? `/workspaces/${workspaceId.value}/feeds/${selected.id}/curate`
-    : `/workspaces/${workspaceId.value}/curate`;
+  return `/workspaces/${workspaceId.value}/curate`;
 });
 
 onMounted(async () => {
