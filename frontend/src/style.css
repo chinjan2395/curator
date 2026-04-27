@@ -27,11 +27,11 @@
 /* Shared design language */
 .input-pro {
   @apply w-full px-3 py-2 text-sm-pro border border-slate-200/90 rounded-md bg-white/90;
-  @apply placeholder:text-slate-400;
+  @apply placeholder:text-slate-500;
   @apply focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition;
 }
 .label-pro {
-  @apply block text-2xs font-medium text-slate-500 uppercase tracking-wider mb-1.5;
+  @apply block text-2xs font-medium text-slate-600 uppercase tracking-wider mb-1.5;
 }
 .btn-primary {
   @apply w-full py-2 text-sm-pro font-medium text-white rounded-md;
@@ -94,7 +94,7 @@
 }
 
 .table-th {
-  @apply px-4 py-2.5 text-2xs font-medium text-slate-500 uppercase tracking-wider;
+  @apply px-4 py-2.5 text-2xs font-semibold text-slate-600 uppercase tracking-wider;
 }
 
 .table-tr {
@@ -110,7 +110,7 @@
 }
 
 .page-kicker {
-  @apply text-2xs text-slate-500;
+  @apply text-2xs text-slate-600;
 }
 
 .page-breadcrumb {
@@ -122,7 +122,7 @@
 }
 
 .page-breadcrumb span {
-  @apply text-slate-300;
+  @apply text-slate-400;
 }
 
 .action-link {

@@ -68,8 +68,8 @@
             <td class="table-td">
               <div class="flex items-center gap-2">
                 <router-link :to="`/workspaces/${w.id}/feeds`" class="action-link" title="Manage feeds">Feeds</router-link>
-                <router-link :to="`/workspaces/${w.id}/curate`" class="action-link" title="Curate posts">Curate</router-link>
-                <router-link :to="`/workspaces/${w.id}/publish`" class="action-link" title="Publish & embed">Publish</router-link>
+                <!-- <router-link :to="`/workspaces/${w.id}/curate`" class="action-link" title="Curate posts">Curate</router-link> -->
+                <!-- <router-link :to="`/workspaces/${w.id}/publish`" class="action-link" title="Publish & embed">Publish</router-link> -->
                 <router-link :to="`/workspaces/${w.id}/edit`" class="action-link">Edit</router-link>
                 <button type="button" class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80" @click="confirmDelete(w)">Delete</button>
               </div>

@@ -7,19 +7,28 @@
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
-      <span>/</span>
+      <span aria-hidden="true">/</span>
       <span>{{ workspaceName }}</span>
     </template>
 
     <template #actions>
       <router-link
+        :to="`/workspaces/${workspaceId}/feeds/new`"
+        class="btn-secondary !w-auto !px-3 !py-2 text-sm-pro inline-flex items-center gap-2"
+        title="Add new feed"
+      >
+        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+        Add Feed
+      </router-link>
+      <router-link
         :to="nextCurateUrl"
-        class="btn-primary !w-auto !px-3 !py-2"
+        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center"
         :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
         :aria-disabled="!feeds.list.length"
         title="Continue to curate posts"
       >
-        →
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Continue to curate posts</span>
       </router-link>
     </template>
 
@@ -60,7 +69,7 @@
                 {{ feedTypeLabel(f.type) }}
               </span>
             </td>
-            <td class="px-4 py-2.5 text-2xs text-slate-500 truncate max-w-[240px]">
+            <td class="px-4 py-2.5 text-2xs text-slate-600 truncate max-w-[240px]">
               <span v-if="f.source_url" class="source-chip">{{ f.source_url }}</span>
               <span v-else>—</span>
             </td>
@@ -72,6 +81,7 @@
                   :class="canEditOrDelete ? '' : 'text-slate-400 cursor-not-allowed'"
                   @click.prevent="handleEditClick(f)"
                 >
+                  <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
                   Edit
                 </router-link>
                 <button
@@ -80,6 +90,7 @@
                   :class="canEditOrDelete ? '!text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80' : 'text-slate-400 cursor-not-allowed'"
                   @click="handleDeleteClick(f)"
                 >
+                  <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
                   Delete
                 </button>
               </div>
@@ -90,15 +101,19 @@
     </div>
 
     <template #footer>
-      <router-link to="/workspaces" class="btn-secondary !w-auto" title="Go back">←</router-link>
+      <router-link to="/workspaces" class="btn-secondary !w-auto inline-flex items-center justify-center" title="Go back">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Go back</span>
+      </router-link>
       <router-link
         :to="nextCurateUrl"
-        class="btn-primary !w-auto !px-3 !py-2"
+        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center"
         :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
         :aria-disabled="!feeds.list.length"
         title="Continue to curate posts"
       >
-        →
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Continue to curate posts</span>
       </router-link>
     </template>
   </WizardPageLayout>
@@ -181,6 +196,7 @@ function feedTypeLabel(type) {
   if (type === 'facebook') return 'Facebook';
   if (type === 'instagram') return 'Instagram';
   if (type === 'tiktok') return 'TikTok';
+  if (type === 'threads') return 'Threads';
   if (type === 'rss') return 'RSS / Atom';
   if (type === 'twitter') return 'X / Twitter';
   return type || '—';
@@ -327,7 +343,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   border: 1px solid rgba(165, 180, 252, 0.7);
   background: rgba(238, 242, 255, 0.9);
   color: rgb(79, 70, 229);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -344,7 +360,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.95);
   color: rgb(51, 65, 85);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
   display: grid;
   place-items: center;
@@ -384,7 +400,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   background: rgba(255, 255, 255, 0.9);
   padding: 0.15rem 0.5rem 0.15rem 0.38rem;
   color: rgb(71 85 105);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 500;
 }
 
@@ -410,6 +426,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
 .type-pill--facebook .type-pill__icon { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
 .type-pill--instagram .type-pill__icon { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
 .type-pill--tiktok .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-pill--threads .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 .type-pill--rss .type-pill__icon { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
 .type-pill--twitter .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 
@@ -426,6 +443,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
 .feed-name-dot--facebook { background: rgb(37 99 235); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14); }
 .feed-name-dot--instagram { background: rgb(190 24 93); box-shadow: 0 0 0 3px rgba(190, 24, 93, 0.14); }
 .feed-name-dot--tiktok { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
+.feed-name-dot--threads { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
 .feed-name-dot--rss { background: rgb(234 88 12); box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14); }
 .feed-name-dot--twitter { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
 

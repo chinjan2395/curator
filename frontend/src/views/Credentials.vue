@@ -111,7 +111,8 @@
           </p>
           <p class="text-2xs text-slate-500">
             Twitter / X: <span class="font-medium">/api/social/callback/twitter</span> ·
-            TikTok: <span class="font-medium">/api/social/callback/tiktok</span>
+            TikTok: <span class="font-medium">/api/social/callback/tiktok</span> ·
+            Threads: <span class="font-medium">/api/social/callback/threads</span>
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -232,6 +233,7 @@ const socialProviders = [
   { type: 'instagram', label: 'Instagram', tagline: 'Meta business', color: '#db2777', softBg: 'rgba(219,39,119,0.14)' },
   { type: 'twitter', label: 'Twitter / X', tagline: 'API tokens', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'tiktok', label: 'TikTok', tagline: 'Creator access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
+  { type: 'threads', label: 'Threads', tagline: 'Meta Threads access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'other', label: 'Other', tagline: 'Custom provider', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
 
@@ -242,9 +244,10 @@ const providerLabels = {
   instagram: 'Instagram',
   twitter: 'Twitter / X',
   tiktok: 'TikTok',
+  threads: 'Threads',
   other: 'Other',
 };
-const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok'];
+const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'];
 const oauthProviderByProvider = {
   youtube: 'google',
   google: 'google',
@@ -252,6 +255,7 @@ const oauthProviderByProvider = {
   instagram: 'facebook',
   twitter: 'twitter',
   tiktok: 'tiktok',
+  threads: 'threads',
 };
 
 const oauthProviderKey = computed(() => oauthProviderByProvider[provider.value] || provider.value);

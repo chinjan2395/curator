@@ -76,6 +76,7 @@
           <option value="youtube">YouTube</option>
           <option value="rss">RSS</option>
           <option value="tiktok">TikTok</option>
+          <option value="threads">Threads</option>
           <option value="facebook">Facebook</option>
           <option value="other">Other</option>
         </select>
@@ -432,6 +433,80 @@
           </button>
         </div>
       </div>
+      <div v-else-if="form.type === 'threads'" key="threads">
+        <label class="label-pro">Threads credential</label>
+        <select
+          v-model="form.social_credential_id"
+          class="input-pro"
+          :required="!!threadsCredentials.length"
+        >
+          <option value="">Select credential</option>
+          <option v-for="c in threadsCredentials" :key="c.id" :value="c.id">
+            {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
+          </option>
+        </select>
+        <p v-if="!threadsCredentials.length" class="mt-1 text-2xs text-red-600">
+          No Threads credentials found. Go to Credentials to connect first.
+        </p>
+
+        <div class="mt-3">
+          <label class="label-pro">Threads account</label>
+          <div class="flex items-center gap-2">
+            <select
+              v-model="selectedThreadsUserId"
+              class="input-pro"
+              :disabled="loadingThreadsAccount || !form.social_credential_id"
+              :required="!!threadsCredentials.length"
+            >
+              <option value="">
+                {{
+                  !form.social_credential_id
+                    ? 'Select credential first'
+                    : loadingThreadsAccount
+                      ? 'Loading account…'
+                      : 'Select account'
+                }}
+              </option>
+              <option v-for="a in threadsAccounts" :key="a.id" :value="a.id">
+                {{ threadsAccountLabel(a) }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+              :disabled="loadingThreadsAccount || !form.social_credential_id"
+              @click="loadThreadsAccount"
+            >
+              {{ loadingThreadsAccount ? 'Loading…' : 'Refresh' }}
+            </button>
+          </div>
+          <p class="mt-1 text-2xs text-slate-500">
+            From Threads <span class="font-medium">/me</span> for this credential—only that account’s posts are synced.
+          </p>
+          <p
+            v-if="form.social_credential_id && !loadingThreadsAccount && !threadsAccounts.length"
+            class="mt-1 text-2xs text-red-600"
+          >
+            Could not load a Threads account for this credential. Reconnect Threads and retry.
+          </p>
+        </div>
+
+        <div class="mt-3" v-if="selectedThreadsUserId">
+          <label class="label-pro">Threads user ID</label>
+          <input v-model="selectedThreadsUserId" type="text" class="input-pro" readonly />
+        </div>
+
+        <div class="mt-3">
+          <button
+            type="button"
+            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+            :disabled="testingThreads || !form.social_credential_id || !selectedThreadsUserId"
+            @click="testThreadsConnection"
+          >
+            {{ testingThreads ? 'Testing…' : 'Test connection' }}
+          </button>
+        </div>
+      </div>
       <div v-else-if="form.type === 'rss'" key="rss">
         <label class="label-pro">RSS or Atom feed URL</label>
         <input
@@ -504,6 +579,7 @@
           saving ||
           (form.type === 'twitter' && (!form.social_credential_id || !selectedTwitterUserId)) ||
           (form.type === 'tiktok' && (!form.social_credential_id || !selectedTikTokOpenId)) ||
+          (form.type === 'threads' && (!form.social_credential_id || !selectedThreadsUserId)) ||
           (form.type === 'instagram' &&
             (!form.social_credential_id || !form.facebook_page_id || !form.instagram_business_account_id)) ||
           (form.type === 'rss' && !String(form.source_url || '').trim())
@@ -556,6 +632,7 @@ const testingFacebook = ref(false);
 const testingInstagram = ref(false);
 const testingTwitter = ref(false);
 const testingTikTok = ref(false);
+const testingThreads = ref(false);
 const testingRss = ref(false);
 const loadingFacebookPages = ref(false);
 const facebookPages = ref([]);
@@ -580,6 +657,11 @@ const tiktokAccounts = ref([]);
 const selectedTikTokOpenId = ref('');
 /** When true, TikTok credential watch only loads account; does not clear selection (edit hydrate). */
 const skipNextTikTokCredReset = ref(false);
+const loadingThreadsAccount = ref(false);
+const threadsAccounts = ref([]);
+const selectedThreadsUserId = ref('');
+/** When true, Threads credential watch only loads account; does not clear selection (edit hydrate). */
+const skipNextThreadsCredReset = ref(false);
 /** Last successful RSS test payload for inline summary. */
 const rssTestSummary = ref(null);
 const connectionStatus = reactive({
@@ -605,6 +687,9 @@ const twitterCredentials = computed(() =>
 const tiktokCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'tiktok'),
 );
+const threadsCredentials = computed(() =>
+  credentials.list.filter((c) => c.provider === 'threads'),
+);
 
 const socialTypes = [
   { type: 'instagram', label: 'Instagram', tagline: 'Stories, reels, and posts', color: '#e1306c', softBg: 'rgba(225,48,108,0.13)' },
@@ -612,6 +697,7 @@ const socialTypes = [
   { type: 'youtube', label: 'YouTube', tagline: 'Channels and videos', color: '#ff0000', softBg: 'rgba(255,0,0,0.12)' },
   { type: 'rss', label: 'RSS / Atom', tagline: 'Blogs and publications', color: '#f97316', softBg: 'rgba(249,115,22,0.15)' },
   { type: 'tiktok', label: 'TikTok', tagline: 'Short-form video stream', color: '#111827', softBg: 'rgba(244,63,94,0.12)' },
+  { type: 'threads', label: 'Threads', tagline: 'Text-first conversations', color: '#111827', softBg: 'rgba(15,23,42,0.12)' },
   { type: 'facebook', label: 'Facebook', tagline: 'Pages and updates', color: '#1877f2', softBg: 'rgba(24,119,242,0.12)' },
   { type: 'other', label: 'Other', tagline: 'Custom source setup', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
@@ -627,6 +713,12 @@ function youtubeChannelLabel(ch) {
 
 function twitterAccountLabel(a) {
   const u = (a.username && String(a.username)) || 'account';
+  const n = a.name && String(a.name).trim() ? ` — ${a.name}` : '';
+  return `@${u}${n} (${a.id})`;
+}
+
+function threadsAccountLabel(a) {
+  const u = (a.username && String(a.username).trim()) || 'threads_user';
   const n = a.name && String(a.name).trim() ? ` — ${a.name}` : '';
   return `@${u}${n} (${a.id})`;
 }
@@ -668,6 +760,27 @@ async function loadInstagramAccounts() {
     instagramAccounts.value = [];
   } finally {
     loadingInstagramAccounts.value = false;
+  }
+}
+
+async function loadThreadsAccount() {
+  if (form.type !== 'threads' || !form.social_credential_id) return;
+  loadingThreadsAccount.value = true;
+  try {
+    const { data } = await axios.get(`/api/workspaces/${workspaceId.value}/feeds/threads/account`, {
+      params: { social_credential_id: Number(form.social_credential_id) },
+    });
+    threadsAccounts.value = data.accounts || [];
+    if (!selectedThreadsUserId.value && threadsAccounts.value.length === 1) {
+      selectedThreadsUserId.value = String(threadsAccounts.value[0].id);
+    }
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Failed to load Threads account';
+    toast.error(msg);
+    threadsAccounts.value = [];
+    selectedThreadsUserId.value = '';
+  } finally {
+    loadingThreadsAccount.value = false;
   }
 }
 
@@ -792,6 +905,20 @@ watch(
 watch(
   () => [form.type, form.social_credential_id],
   async ([type, cred]) => {
+    if (type !== 'threads') return;
+    if (skipNextThreadsCredReset.value) {
+      if (cred) await loadThreadsAccount();
+      return;
+    }
+    selectedThreadsUserId.value = '';
+    threadsAccounts.value = [];
+    if (cred) await loadThreadsAccount();
+  },
+);
+
+watch(
+  () => [form.type, form.social_credential_id],
+  async ([type, cred]) => {
     if (type !== 'tiktok') return;
     if (skipNextTikTokCredReset.value) {
       if (cred) await loadTikTokAccount();
@@ -892,6 +1019,9 @@ onMounted(async () => {
       if (f.type === 'tiktok' && f.social_credential_id) {
         skipNextTikTokCredReset.value = true;
       }
+      if (f.type === 'threads' && f.social_credential_id) {
+        skipNextThreadsCredReset.value = true;
+      }
       if (f.type === 'instagram' && f.social_credential_id) {
         skipNextInstagramCredReset.value = true;
       }
@@ -929,6 +1059,14 @@ onMounted(async () => {
         await nextTick();
         skipNextTikTokCredReset.value = false;
       }
+      if (f.type === 'threads' && f.social_credential_id) {
+        await loadThreadsAccount();
+        if (f.threads_user_id || f.account_id) {
+          selectedThreadsUserId.value = String(f.threads_user_id || f.account_id || '');
+        }
+        await nextTick();
+        skipNextThreadsCredReset.value = false;
+      }
     }
   }
 });
@@ -944,7 +1082,8 @@ async function submit() {
         form.type === 'facebook' ||
         form.type === 'instagram' ||
         form.type === 'twitter' ||
-        form.type === 'tiktok'
+        form.type === 'tiktok' ||
+        form.type === 'threads'
           ? ''
           : (form.source_url || ''),
       youtube_channel_id: form.type === 'youtube' ? form.youtube_channel_id : null,
@@ -956,7 +1095,8 @@ async function submit() {
           form.type === 'facebook' ||
           form.type === 'instagram' ||
           form.type === 'twitter' ||
-          form.type === 'tiktok') &&
+          form.type === 'tiktok' ||
+          form.type === 'threads') &&
         form.social_credential_id
           ? Number(form.social_credential_id)
           : null,
@@ -1067,6 +1207,28 @@ async function testTwitterConnection() {
     connectionStatus.message = msg;
   } finally {
     testingTwitter.value = false;
+  }
+}
+
+async function testThreadsConnection() {
+  testingThreads.value = true;
+  try {
+    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-threads`, {
+      social_credential_id:
+        form.type === 'threads' && form.social_credential_id
+          ? Number(form.social_credential_id)
+          : null,
+    });
+    toast.success('Threads connection successful.');
+    connectionStatus.kind = 'ok';
+    connectionStatus.message = 'Threads connection verified.';
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Failed to test Threads connection';
+    toast.error(msg);
+    connectionStatus.kind = 'error';
+    connectionStatus.message = msg;
+  } finally {
+    testingThreads.value = false;
   }
 }
 

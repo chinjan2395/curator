@@ -23,6 +23,7 @@ const routes = [
     children: [
       { path: '', name: 'dashboard', component: Dashboard },
       { path: 'workspaces/:workspaceId/curate', name: 'curate', component: Curate },
+      { path: 'workspaces/:workspaceId/feeds/:feedId/curate', name: 'feed-curate', component: Curate },
       { path: 'workspaces', name: 'workspaces', component: WorkspacesList },
       { path: 'workspaces/new', name: 'workspace-new', component: WorkspaceForm },
       { path: 'workspaces/:id/edit', name: 'workspace-edit', component: WorkspaceForm },

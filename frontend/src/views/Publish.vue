@@ -447,6 +447,7 @@ function feedTypeLabel(type) {
   if (type === 'rss') return 'RSS / Atom';
   if (type === 'twitter') return 'X / Twitter';
   if (type === 'tiktok') return 'TikTok';
+  if (type === 'threads') return 'Threads';
   if (type === 'youtube') return 'YouTube';
   if (type === 'facebook') return 'Facebook';
   if (type === 'instagram') return 'Instagram';
@@ -707,6 +708,7 @@ function formatDate(v) {
 .type-dot--facebook { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
 .type-dot--instagram { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
 .type-dot--tiktok { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-dot--threads { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 .type-dot--rss { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
 .type-dot--twitter { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 

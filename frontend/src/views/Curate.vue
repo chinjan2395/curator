@@ -7,12 +7,15 @@
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
-      <span>/</span>
+      <span aria-hidden="true">/</span>
       <span>{{ workspaceName }}</span>
     </template>
 
     <template #actions>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2" title="Continue to publish">→</router-link>
+      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center" title="Continue to publish">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Continue to publish</span>
+      </router-link>
     </template>
 
     <div class="flex items-center gap-2 flex-wrap mb-4">
@@ -37,11 +40,13 @@
         {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
       </button>
       <div class="h-4 w-px bg-slate-200 hidden sm:block" />
-      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50" @click="approveAllPending" title="Approve all pending posts">
-        ✓ All
+      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-2" @click="approveAllPending" title="Approve all pending posts">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+        Approve All
       </button>
-      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-rose-700 border-rose-200 hover:bg-rose-50" @click="rejectAllPending" title="Reject all pending posts">
-        ✗ All
+      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-rose-700 border-rose-200 hover:bg-rose-50 inline-flex items-center gap-2" @click="rejectAllPending" title="Reject all pending posts">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+        Reject All
       </button>
     </div>
 
@@ -71,16 +76,17 @@
             <span v-if="p.pinned" class="inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-medium text-amber-800 bg-amber-100 border border-amber-300">
               Pinned
             </span>
-            <span class="text-2xs text-slate-400 mt-0.5 w-full">{{ formatDate(p.posted_at) }}</span>
+            <span class="text-2xs text-slate-600 mt-0.5 w-full">{{ formatDate(p.posted_at) }}</span>
           </div>
           <button
             type="button"
-            class="text-2xs font-medium px-2 py-1 rounded-md border shrink-0"
+            class="text-2xs font-medium px-2 py-1 rounded-md border shrink-0 inline-flex items-center justify-center"
             :class="p.pinned ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
             @click="togglePin(p)"
             :title="p.pinned ? 'Unpin this post' : 'Pin this post'"
           >
-            {{ p.pinned ? '📌' : '📍' }}
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" /></svg>
+            <span class="sr-only">{{ p.pinned ? 'Unpin' : 'Pin' }}</span>
           </button>
         </div>
 
@@ -117,37 +123,46 @@
         <div class="flex items-center gap-2 pt-3 mt-auto border-t border-slate-100">
           <button
             type="button"
-            class="curate-btn curate-btn-approve"
+            class="curate-btn curate-btn-approve inline-flex items-center justify-center"
             :class="{ 'curate-btn-active': p.status === 'approved' }"
             @click="setStatus(p, 'approved')"
             title="Approve this post"
           >
-            ✓
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+            <span class="sr-only">Approve</span>
           </button>
           <button
             type="button"
-            class="curate-btn curate-btn-reject"
+            class="curate-btn curate-btn-reject inline-flex items-center justify-center"
             :class="{ 'curate-btn-active': p.status === 'rejected' }"
             @click="setStatus(p, 'rejected')"
             title="Reject this post"
           >
-            ✗
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+            <span class="sr-only">Reject</span>
           </button>
           <button
             type="button"
-            class="curate-btn curate-btn-delete ml-auto"
+            class="curate-btn curate-btn-delete ml-auto inline-flex items-center justify-center"
             @click="deletePost(p)"
             title="Delete this post"
           >
-            🗑
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
+            <span class="sr-only">Delete post</span>
           </button>
         </div>
       </article>
     </div>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto" title="Go back">←</router-link>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2" title="Continue to publish">→</router-link>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto inline-flex items-center justify-center" title="Go back">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Go back</span>
+      </router-link>
+      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center" title="Continue to publish">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Continue to publish</span>
+      </router-link>
     </template>
 
     <!-- Post preview modal -->
@@ -158,7 +173,9 @@
             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
             :class="statusBadgeClass(previewPost.status)"
           >{{ previewPost.status }}</span>
-          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="previewPost = null">✕</button>
+          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 inline-flex items-center justify-center" @click="previewPost = null" aria-label="Close preview">
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+          </button>
         </div>
         <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
           <div v-if="previewPost.thumbnail_url" class="aspect-video rounded-md overflow-hidden bg-slate-100">
@@ -172,8 +189,14 @@
           </a>
         </div>
         <div class="px-4 py-3 border-t border-slate-200 flex items-center gap-2">
-          <button type="button" class="curate-btn curate-btn-approve" :class="{ 'curate-btn-active': previewPost.status === 'approved' }" @click="setStatus(previewPost, 'approved')" title="Approve">✓</button>
-          <button type="button" class="curate-btn curate-btn-reject" :class="{ 'curate-btn-active': previewPost.status === 'rejected' }" @click="setStatus(previewPost, 'rejected')" title="Reject">✗</button>
+          <button type="button" class="curate-btn curate-btn-approve inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'approved' }" @click="setStatus(previewPost, 'approved')" title="Approve">
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
+            <span class="sr-only">Approve</span>
+          </button>
+          <button type="button" class="curate-btn curate-btn-reject inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'rejected' }" @click="setStatus(previewPost, 'rejected')" title="Reject">
+            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
+            <span class="sr-only">Reject</span>
+          </button>
         </div>
       </div>
     </div>
@@ -197,6 +220,7 @@ const feeds = useFeedsStore();
 const workspaces = useWorkspacesStore();
 
 const workspaceId = computed(() => route.params.workspaceId);
+const feedId = computed(() => route.params.feedId);
 
 const filterStatus = ref('');
 const previewPost = ref(null);
@@ -216,6 +240,7 @@ function feedTypeLabel(type) {
   if (type === 'rss') return 'RSS / Atom';
   if (type === 'twitter') return 'X / Twitter';
   if (type === 'tiktok') return 'TikTok';
+  if (type === 'threads') return 'Threads';
   if (type === 'youtube') return 'YouTube';
   if (type === 'facebook') return 'Facebook';
   if (type === 'instagram') return 'Instagram';
@@ -227,6 +252,7 @@ function feedPlatformIcon(type) {
   if (type === 'facebook') return 'f';
   if (type === 'instagram') return '◎';
   if (type === 'tiktok') return '♪';
+  if (type === 'threads') return '@';
   if (type === 'rss') return '◉';
   if (type === 'twitter') return '𝕏';
   return '•';
@@ -235,7 +261,8 @@ function feedPlatformIcon(type) {
 async function refresh() {
   posts.clearList();
   const allPosts = [];
-  for (const feed of feeds.list) {
+  const feediesToLoad = feedId.value ? feeds.list.filter(f => f.id === Number(feedId.value)) : feeds.list;
+  for (const feed of feediesToLoad) {
     try {
       const feedPosts = await posts.fetchAll(workspaceId.value, feed.id, { status: filterStatus.value || null });
       feedPosts.forEach(p => p._feedId = feed.id);
@@ -249,7 +276,8 @@ async function refresh() {
 
 async function syncNow() {
   let totalCreated = 0;
-  for (const feed of feeds.list) {
+  const feediesToSync = feedId.value ? feeds.list.filter(f => f.id === Number(feedId.value)) : feeds.list;
+  for (const feed of feediesToSync) {
     try {
       const result = await feeds.sync(workspaceId.value, Number(feed.id), { silent: true });
       totalCreated += result?.created || 0;
@@ -387,7 +415,7 @@ function cardBorderClass(status) {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   background: rgba(226, 232, 240, 0.9);
   color: rgb(51 65 85);
@@ -397,6 +425,7 @@ function cardBorderClass(status) {
 .type-dot--facebook { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
 .type-dot--instagram { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
 .type-dot--tiktok { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-dot--threads { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 .type-dot--rss { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
 .type-dot--twitter { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 
@@ -440,7 +469,7 @@ function cardBorderClass(status) {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: rgb(51 65 85);
   background: rgba(226, 232, 240, 0.95);
@@ -459,7 +488,7 @@ function cardBorderClass(status) {
 }
 
 .wizard-step__meta {
-  font-size: 0.7rem;
-  color: rgb(100 116 139);
+  font-size: 0.8rem;
+  color: rgb(71 85 105);
 }
 </style>

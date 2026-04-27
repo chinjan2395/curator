@@ -17,12 +17,12 @@
                 </svg>
                 Dashboard
               </router-link>
-              <router-link to="/publish" class="topnav-item" :class="{ 'topnav-item-active': $route.path.includes('/publish') }">
+              <!-- <router-link to="/publish" class="topnav-item" :class="{ 'topnav-item-active': $route.path.includes('/publish') }">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path d="M3.5 3.5A1.5 1.5 0 0 1 5 2h7a1.5 1.5 0 0 1 1.5 1.5V6h1.75A1.75 1.75 0 0 1 17 7.75v8.5A1.75 1.75 0 0 1 15.25 18h-10.5A1.75 1.75 0 0 1 3 16.25v-8.5A1.75 1.75 0 0 1 4.75 6H6.5V3.5Zm1.5 0V6h7V3.5h-7Zm4.22 6.97a.75.75 0 0 0-1.06 1.06l1.09 1.09H7.75a.75.75 0 0 0 0 1.5h1.5l-1.09 1.09a.75.75 0 1 0 1.06 1.06l2.37-2.37a.75.75 0 0 0 0-1.06l-2.37-2.37Z" />
                 </svg>
                 Publish &amp; embed
-              </router-link>
+              </router-link> -->
               <div class="relative" ref="workspacesDropdownRef">
                 <button
                   type="button"
@@ -95,7 +95,7 @@
                     {{ userInitials }}
                   </div>
                   <span class="text-sm-pro font-medium text-slate-800 max-w-[120px] truncate">{{ auth.user?.name || 'User' }}</span>
-                  <span class="text-slate-400 text-xs">▾</span>
+                  <svg class="w-3.5 h-3.5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" /></svg>
                 </button>
                 <div
                   v-if="showProfileDropdown"
@@ -103,13 +103,14 @@
                 >
                   <div class="px-3 py-2 border-b border-slate-100">
                     <div class="text-sm-pro font-medium text-slate-800 truncate">{{ auth.user?.name || 'User' }}</div>
-                    <div class="text-2xs text-slate-500 truncate">{{ auth.user?.email || 'No email' }}</div>
+                    <div class="text-2xs text-slate-600 truncate">{{ auth.user?.email || 'No email' }}</div>
                   </div>
                   <button
                     type="button"
-                    class="w-full text-left px-3 py-2 text-sm-pro text-rose-700 hover:bg-rose-50/80 transition-colors"
+                    class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm-pro text-rose-700 hover:bg-rose-50/80 transition-colors"
                     @click="logoutFromProfile"
                   >
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 0 1 5.25 2h5.5A2.25 2.25 0 0 1 13 4.25v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 0 0 .75-.75v-2a.75.75 0 0 1 1.5 0v2A2.25 2.25 0 0 1 10.75 18h-5.5A2.25 2.25 0 0 1 3 15.75V4.25Zm9.47 4.97a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 1 1-1.06-1.06l.97-.97H8.75a.75.75 0 0 1 0-1.5h4.69l-.97-.97a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
                     Logout
                   </button>
                 </div>
@@ -173,7 +174,7 @@
                           <path d="M4 5.75A1.75 1.75 0 0 1 5.75 4h8.5A1.75 1.75 0 0 1 16 5.75v8.5A1.75 1.75 0 0 1 14.25 16h-8.5A1.75 1.75 0 0 1 4 14.25v-8.5ZM7 8.75a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5H7Zm0 3a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5H7Z" />
                         </svg>
                         <span class="truncate">{{ w.name }}</span>
-                        <span class="ml-auto text-2xs text-slate-400">Setup</span>
+                        <span class="ml-auto text-2xs text-slate-500">Setup</span>
                       </router-link>
                     </li>
                     <li v-if="!workspaces.list.length">
@@ -215,9 +216,9 @@
                     </div>
                     <div class="min-w-0">
                       <div class="text-sm-pro font-medium text-slate-800 truncate">{{ auth.user?.name || 'User' }}</div>
-                      <div class="text-2xs text-slate-500 truncate">{{ auth.user?.email || 'No email' }}</div>
+                      <div class="text-2xs text-slate-600 truncate">{{ auth.user?.email || 'No email' }}</div>
                     </div>
-                    <span class="ml-auto text-slate-400">▾</span>
+                    <svg class="w-3.5 h-3.5 shrink-0 text-slate-400 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" /></svg>
                   </div>
                 </button>
                 <div
@@ -226,13 +227,14 @@
                 >
                   <div class="px-3 py-2 border-b border-slate-100">
                     <div class="text-sm-pro font-medium text-slate-800 truncate">{{ auth.user?.name || 'User' }}</div>
-                    <div class="text-2xs text-slate-500 truncate">{{ auth.user?.email || 'No email' }}</div>
+                    <div class="text-2xs text-slate-600 truncate">{{ auth.user?.email || 'No email' }}</div>
                   </div>
                   <button
                     type="button"
-                    class="w-full text-left px-3 py-2 text-sm-pro text-rose-700 hover:bg-rose-50/80 transition-colors"
+                    class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm-pro text-rose-700 hover:bg-rose-50/80 transition-colors"
                     @click="logoutFromProfile"
                   >
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 0 1 5.25 2h5.5A2.25 2.25 0 0 1 13 4.25v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 0 0 .75-.75v-2a.75.75 0 0 1 1.5 0v2A2.25 2.25 0 0 1 10.75 18h-5.5A2.25 2.25 0 0 1 3 15.75V4.25Zm9.47 4.97a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06l-2.25 2.25a.75.75 0 1 1-1.06-1.06l.97-.97H8.75a.75.75 0 0 1 0-1.5h4.69l-.97-.97a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
                     Logout
                   </button>
                 </div>
