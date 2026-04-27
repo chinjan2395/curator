@@ -2,7 +2,7 @@ FROM php:8.4-fpm
 
 USER root
 
-# Install system dependencies and PHP extensions needed by Laravel (added libpq-dev for Postgres).
+# Install system dependencies and PHP extensions needed by Laravel.
 RUN apt-get update && \
     apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev zip git unzip ffmpeg iputils-ping ghostscript libmagickwand-dev libpq-dev && \
     docker-php-ext-configure gd --with-freetype --with-jpeg && \
@@ -18,6 +18,11 @@ WORKDIR /var/www/html
 
 # Copy Laravel backend source.
 COPY --chown=33:33 . /var/www/html
+
+# --- NEW: Install Composer Dependencies ---
+# We run this after copying the source code so composer.json and composer.lock are present.
+RUN composer install --no-interaction --optimize-autoloader
+# ------------------------------------------
 
 # Set runtime permissions for Laravel writable directories.
 RUN chmod -R 755 /var/www/html && \
