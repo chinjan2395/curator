@@ -2,11 +2,11 @@ FROM php:8.4-fpm
 
 USER root
 
-# Install system dependencies and PHP extensions needed by Laravel.
+# Install system dependencies and PHP extensions needed by Laravel (added libpq-dev for Postgres).
 RUN apt-get update && \
-    apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev zip git unzip ffmpeg iputils-ping ghostscript libmagickwand-dev && \
+    apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev zip git unzip ffmpeg iputils-ping ghostscript libmagickwand-dev libpq-dev && \
     docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd pdo pdo_mysql bcmath intl exif
+    docker-php-ext-install gd pdo pdo_mysql pdo_pgsql pgsql bcmath intl exif
 
 # Install PHP Imagick extension.
 RUN pecl install imagick && docker-php-ext-enable imagick
@@ -19,16 +19,10 @@ WORKDIR /var/www/html
 # Copy Laravel backend source.
 COPY --chown=33:33 . /var/www/html
 
-# Create required Laravel directories (not present in repo).
-RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-
-# Install PHP dependencies via Composer.
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
 # Set runtime permissions for Laravel writable directories.
 RUN chmod -R 755 /var/www/html && \
-    chmod -R 777 storage && \
-    chmod -R 775 bootstrap/cache && \
+    if [ -d storage ]; then chmod -R 777 storage; fi && \
+    if [ -d bootstrap/cache ]; then chmod -R 775 bootstrap/cache; fi && \
     chown -R www-data:www-data /var/www/html
 
 EXPOSE 8000
