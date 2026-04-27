@@ -19,6 +19,9 @@ WORKDIR /var/www/html
 # Copy Laravel backend source.
 COPY --chown=33:33 . /var/www/html
 
+# Install PHP dependencies via Composer.
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
 # Set runtime permissions for Laravel writable directories.
 RUN chmod -R 755 /var/www/html && \
     if [ -d storage ]; then chmod -R 777 storage; fi && \
