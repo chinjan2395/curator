@@ -7,14 +7,20 @@ export const useWorkspacesStore = defineStore('workspaces', {
     list: [],
     loading: false,
     error: null,
+    _fetched: false,
   }),
+  getters: {
+    find: (state) => (id) => state.list.find((w) => w.id === Number(id)),
+  },
   actions: {
     async fetchAll() {
+      if (this._fetched) return this.list;
       this.loading = true;
       this.error = null;
       try {
         const { data } = await axios.get('/api/workspaces');
         this.list = data;
+        this._fetched = true;
         return data;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load workspaces';

@@ -216,7 +216,9 @@ function goToWorkspaceFeeds(id) {
 }
 
 function goToPublish() {
-  router.push('/publish');
+  const first = workspaces.list[0];
+  if (first) router.push(`/workspaces/${first.id}/publish`);
+  else router.push('/workspaces');
 }
 
 onMounted(async () => {
