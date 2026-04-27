@@ -2,11 +2,11 @@ FROM php:8.4-fpm
 
 USER root
 
-# Install system dependencies and PHP extensions needed by Laravel.
+# Install system dependencies and PHP extensions needed by Laravel (added libpq-dev for Postgres).
 RUN apt-get update && \
-    apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev zip git unzip ffmpeg iputils-ping ghostscript libmagickwand-dev && \
+    apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev zip git unzip ffmpeg iputils-ping ghostscript libmagickwand-dev libpq-dev && \
     docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd pdo pdo_mysql bcmath intl exif
+    docker-php-ext-install gd pdo pdo_mysql pdo_pgsql pgsql bcmath intl exif
 
 # Install PHP Imagick extension.
 RUN pecl install imagick && docker-php-ext-enable imagick
