@@ -19,13 +19,16 @@ WORKDIR /var/www/html
 # Copy Laravel backend source.
 COPY --chown=33:33 . /var/www/html
 
+# Create required Laravel directories (not present in repo).
+RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+
 # Install PHP dependencies via Composer.
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Set runtime permissions for Laravel writable directories.
 RUN chmod -R 755 /var/www/html && \
-    if [ -d storage ]; then chmod -R 777 storage; fi && \
-    if [ -d bootstrap/cache ]; then chmod -R 775 bootstrap/cache; fi && \
+    chmod -R 777 storage && \
+    chmod -R 775 bootstrap/cache && \
     chown -R www-data:www-data /var/www/html
 
 EXPOSE 8000
