@@ -54,6 +54,12 @@ class SocialConnectController extends Controller
     private const TIKTOK_OAUTH_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/';
     private const TIKTOK_OAUTH_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
     private const TIKTOK_SCOPES = ['user.info.basic', 'video.list'];
+
+    private const THREADS_OAUTH_AUTHORIZE_URL = 'https://threads.net/oauth/authorize';
+    private const THREADS_OAUTH_TOKEN_URL = 'https://graph.threads.net/oauth/access_token';
+    private const THREADS_LONG_LIVED_TOKEN_URL = 'https://graph.threads.net/access_token';
+    private const THREADS_API_BASE = 'https://graph.threads.net/v1.0';
+    private const THREADS_SCOPES = ['threads_basic'];
     private function normalizeAbsoluteUrl(string $url): string
     {
         $trimmed = trim($url);
@@ -96,6 +102,7 @@ class SocialConnectController extends Controller
             'instagram' => $this->connectInstagram($request),
             'twitter' => $this->connectTwitter($request),
             'tiktok' => $this->connectTikTok($request),
+            'threads' => $this->connectThreads($request),
             default => response()->json([
                 'provider' => $provider,
                 'auth_url' => null,
@@ -279,6 +286,32 @@ class SocialConnectController extends Controller
         return response()->json([
             'provider' => 'tiktok',
             'auth_url' => self::TIKTOK_OAUTH_AUTHORIZE_URL.'?'.$query,
+        ]);
+    }
+
+    private function connectThreads(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'threads');
+        if (! $oauth) {
+            return response()->json(['message' => 'Threads connect is not configured. Add Threads OAuth client ID/secret in Credentials.'], 503);
+        }
+
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/threads')
+        );
+        $state = $this->encryptState($request->user()->id, 'threads');
+
+        $query = http_build_query([
+            'client_id' => $oauth->client_id,
+            'redirect_uri' => $redirectUrl,
+            'response_type' => 'code',
+            'scope' => implode(',', self::THREADS_SCOPES),
+            'state' => $state,
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        return response()->json([
+            'provider' => 'threads',
+            'auth_url' => self::THREADS_OAUTH_AUTHORIZE_URL.'?'.$query,
         ]);
     }
 
@@ -658,6 +691,106 @@ class SocialConnectController extends Controller
             return $this->redirectSuccess('tiktok');
         } catch (\Throwable $e) {
             Log::error('TikTok OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function callbackThreads(Request $request)
+    {
+        try {
+            if ($request->query('error')) {
+                return $this->redirectError((string) $request->query('error', 'oauth_denied'));
+            }
+
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'threads') {
+                return $this->redirectError('invalid_state');
+            }
+
+            $code = $request->query('code');
+            if (! $code || ! is_string($code)) {
+                return $this->redirectError('missing_code');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'threads');
+            if (! $oauth) {
+                return $this->redirectError('missing_threads_oauth_config');
+            }
+
+            $redirectUrl = $this->normalizeAbsoluteUrl(
+                $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/threads')
+            );
+
+            $tokenResp = Http::asForm()->acceptJson()->post(self::THREADS_OAUTH_TOKEN_URL, [
+                'client_id' => $oauth->client_id,
+                'client_secret' => $oauth->client_secret,
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $redirectUrl,
+            ]);
+
+            if (! $tokenResp->ok()) {
+                Log::warning('Threads token exchange failed', [
+                    'status' => $tokenResp->status(),
+                    'body' => $tokenResp->body(),
+                ]);
+
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $shortLivedToken = $tokenResp->json('access_token');
+            if (! $shortLivedToken || ! is_string($shortLivedToken)) {
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            // Exchange for long-lived (~60 day) token immediately.
+            $accessToken = $shortLivedToken;
+            $expiresIn = null;
+            $longLived = Http::acceptJson()->get(self::THREADS_LONG_LIVED_TOKEN_URL, [
+                'grant_type' => 'th_exchange_token',
+                'client_secret' => $oauth->client_secret,
+                'access_token' => $shortLivedToken,
+            ]);
+            if ($longLived->ok()) {
+                $llToken = $longLived->json('access_token');
+                $llExpires = $longLived->json('expires_in');
+                if (is_string($llToken) && $llToken !== '') {
+                    $accessToken = $llToken;
+                    $expiresIn = is_numeric($llExpires) ? (int) $llExpires : null;
+                }
+            } else {
+                Log::warning('Threads long-lived token exchange failed', [
+                    'status' => $longLived->status(),
+                    'body' => $longLived->body(),
+                ]);
+            }
+
+            $threadsAccountId = null;
+            $threadsLabel = null;
+            $meResp = Http::withToken($accessToken)->get(self::THREADS_API_BASE.'/me', [
+                'fields' => 'id,username,name',
+            ]);
+            if ($meResp->ok()) {
+                $threadsAccountId = $meResp->json('id');
+                $username = $meResp->json('username');
+                $name = $meResp->json('name');
+                $threadsLabel = $username ? "@{$username}" . ($name ? " ({$name})" : '') : ($name ?: null);
+            }
+
+            $this->saveCredential(
+                (int) $payload['user_id'],
+                'threads',
+                $accessToken,
+                null,
+                $expiresIn,
+                $threadsAccountId,
+                $threadsLabel
+            );
+
+            return $this->redirectSuccess('threads');
+        } catch (\Throwable $e) {
+            Log::error('Threads OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             return $this->redirectError($e->getMessage());
         }
