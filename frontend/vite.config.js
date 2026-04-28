@@ -6,7 +6,7 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiProxyTarget =
-    env.VITE_API_PROXY_TARGET || process.env.VITE_API_PROXY_TARGET || 'powerful-rejoicing-copy-production.up.railway.app';
+    env.VITE_API_PROXY_TARGET || process.env.VITE_API_PROXY_TARGET || 'curator-production-865b.up.railway.app'
 
   return {
     plugins: [vue()],

@@ -64,6 +64,21 @@ class SocialCredentialController extends Controller
         return response()->json($socialCredential);
     }
 
+    public function label(Request $request, SocialCredential $socialCredential)
+    {
+        if ($socialCredential->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'account_label' => ['required', 'string', 'max:255'],
+        ]);
+
+        $socialCredential->update(['account_label' => $validated['account_label']]);
+
+        return response()->json($socialCredential);
+    }
+
     public function destroy(Request $request, SocialCredential $socialCredential)
     {
         if ($socialCredential->user_id !== $request->user()->id) {

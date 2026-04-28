@@ -111,7 +111,8 @@
           </p>
           <p class="text-2xs text-slate-500">
             Twitter / X: <span class="font-medium">/api/social/callback/twitter</span> ·
-            TikTok: <span class="font-medium">/api/social/callback/tiktok</span>
+            TikTok: <span class="font-medium">/api/social/callback/tiktok</span> ·
+            Threads: <span class="font-medium">/api/social/callback/threads</span>
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -144,27 +145,76 @@
     <div v-else-if="!creds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
       No credentials connected yet.
     </div>
-    <div v-else class="table-shell">
-      <table class="w-full text-left">
-        <thead class="table-head">
-          <tr>
-            <th class="table-th">Provider</th>
-            <th class="table-th">Expires</th>
-            <th class="table-th w-32">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="c in creds.list" :key="c.id" class="table-tr">
-            <td class="table-td font-medium text-slate-800">{{ c.provider }}</td>
-            <td class="table-td">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</td>
-            <td class="table-td">
-              <button type="button" class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80" @click="disconnect(c.provider)">
-                Disconnect
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="connected-accounts-shell space-y-3 p-3 sm:p-4 rounded-xl">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+        <p class="text-xs-pro font-medium text-slate-700">Current connected accounts</p>
+        <p class="text-2xs text-slate-500">{{ creds.list.length }} total account{{ creds.list.length > 1 ? 's' : '' }}</p>
+      </div>
+      <div
+        v-for="(providerCreds, prov) in creds.byProvider"
+        :key="prov"
+        class="connected-provider-card overflow-hidden"
+      >
+        <div class="px-4 py-3 border-b border-slate-100/95 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="connected-provider-icon" :style="{ background: providerUi[prov]?.softBg || 'rgba(148,163,184,0.14)', color: providerUi[prov]?.color || '#475569' }">
+              <SocialIcon :type="prov" />
+            </div>
+            <div>
+              <p class="text-sm-pro font-semibold text-slate-800">{{ providerLabels[prov] || prov }}</p>
+              <p class="text-2xs text-slate-500">{{ providerUi[prov]?.tagline || 'Connected accounts' }}</p>
+            </div>
+            <span class="connected-provider-count">{{ providerCreds.length }} account{{ providerCreds.length > 1 ? 's' : '' }}</span>
+          </div>
+          <button
+            type="button"
+            class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro"
+            :disabled="creds.connecting"
+            @click="provider = prov; startConnect()"
+            title="Add another account"
+          >
+            + Add
+          </button>
+        </div>
+        <div class="p-2 space-y-2">
+          <div v-for="c in providerCreds" :key="c.id" class="connected-account-row">
+            <div class="min-w-0">
+                <div v-if="renamingId !== c.id" class="flex items-center gap-2">
+                  <span class="font-medium text-slate-800 truncate">{{ c.account_label || c.account_id || '—' }}</span>
+                  <button
+                    type="button"
+                    class="text-2xs text-slate-400 hover:text-slate-600 underline"
+                    @click="startRename(c)"
+                  >edit</button>
+                </div>
+                <div v-else class="flex items-center gap-1.5">
+                  <input
+                    v-model="renameValue"
+                    type="text"
+                    class="input-pro !py-1 !text-sm-pro flex-1"
+                    placeholder="Account label"
+                    @keyup.enter="saveRename(c.id)"
+                    @keyup.escape="cancelRename"
+                  />
+                  <button type="button" class="btn-primary !w-auto !py-1 !px-2 text-xs-pro" @click="saveRename(c.id)">Save</button>
+                  <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</button>
+                </div>
+              <p class="text-2xs text-slate-500 mt-1">
+                Expires: <span class="font-medium text-slate-600">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80"
+                  @click="disconnect(c)"
+                >
+                  Disconnect
+                </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -190,8 +240,10 @@ const socialProviders = [
   { type: 'instagram', label: 'Instagram', tagline: 'Meta business', color: '#db2777', softBg: 'rgba(219,39,119,0.14)' },
   { type: 'twitter', label: 'Twitter / X', tagline: 'API tokens', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'tiktok', label: 'TikTok', tagline: 'Creator access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
+  { type: 'threads', label: 'Threads', tagline: 'Meta Threads access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'other', label: 'Other', tagline: 'Custom provider', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
+const providerUi = Object.fromEntries(socialProviders.map((item) => [item.type, item]));
 
 const providerLabels = {
   youtube: 'YouTube',
@@ -200,9 +252,10 @@ const providerLabels = {
   instagram: 'Instagram',
   twitter: 'Twitter / X',
   tiktok: 'TikTok',
+  threads: 'Threads',
   other: 'Other',
 };
-const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok'];
+const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'];
 const oauthProviderByProvider = {
   youtube: 'google',
   google: 'google',
@@ -210,6 +263,7 @@ const oauthProviderByProvider = {
   instagram: 'facebook',
   twitter: 'twitter',
   tiktok: 'tiktok',
+  threads: 'threads',
 };
 
 const oauthProviderKey = computed(() => oauthProviderByProvider[provider.value] || provider.value);
@@ -289,9 +343,29 @@ async function removeOauth() {
   }
 }
 
-async function disconnect(p) {
-  if (window.confirm(`Disconnect ${p}?`)) {
-    await creds.disconnect(p);
+const renamingId = ref(null);
+const renameValue = ref('');
+
+function startRename(c) {
+  renamingId.value = c.id;
+  renameValue.value = c.account_label || '';
+}
+
+function cancelRename() {
+  renamingId.value = null;
+  renameValue.value = '';
+}
+
+async function saveRename(id) {
+  if (!renameValue.value.trim()) return;
+  await creds.renameCredential(id, renameValue.value.trim());
+  cancelRename();
+}
+
+async function disconnect(c) {
+  const label = c.account_label || c.account_id || c.provider;
+  if (window.confirm(`Disconnect "${label}"?`)) {
+    await creds.disconnect(c.id);
   }
 }
 
@@ -440,6 +514,49 @@ function formatDate(v) {
   padding: 0.65rem 0.75rem;
   display: grid;
   gap: 0.2rem;
+}
+
+.connected-accounts-shell {
+  background:
+    radial-gradient(640px 180px at -6% -50%, rgba(56, 189, 248, 0.08), transparent 62%),
+    radial-gradient(540px 180px at 115% -50%, rgba(99, 102, 241, 0.09), transparent 62%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(248, 250, 252, 0.45));
+}
+
+.connected-provider-card {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px -28px rgba(15, 23, 42, 0.6);
+}
+
+.connected-provider-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.connected-provider-count {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(248, 250, 252, 0.9);
+  color: rgb(100 116 139);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.68rem;
+}
+
+.connected-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 0.7rem;
+  background: rgba(248, 250, 252, 0.68);
+  padding: 0.6rem 0.7rem;
 }
 </style>
 

@@ -1,64 +1,35 @@
 <template>
-  <div class="space-y-4">
-    <div class="publish-hero surface-card p-4 md:p-5 mb-4">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider mb-2">Step 3 of 3</div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="page-title truncate flex items-center gap-2">
-              <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M4.75 3A1.75 1.75 0 0 0 3 4.75v10.5C3 16.216 3.784 17 4.75 17h10.5A1.75 1.75 0 0 0 17 15.25V7.75a1.75 1.75 0 0 0-.513-1.237l-3-3A1.75 1.75 0 0 0 12.25 3h-7.5Zm5.22 4.47a.75.75 0 0 0-1.06 1.06l.59.59H7.75a.75.75 0 0 0 0 1.5H9.5l-.59.59a.75.75 0 1 0 1.06 1.06l1.88-1.88a.75.75 0 0 0 0-1.06L9.97 7.47Z" />
-              </svg>
-              Publish
-            </h1>
-            <span
-              v-if="selectedFeedType"
-              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-2xs font-semibold uppercase tracking-wider border bg-slate-50 text-slate-700 border-slate-200"
-              :title="`Source: ${feedTypeLabel(selectedFeedType)}`"
-            >
-              <span class="type-dot" :class="`type-dot--${String(selectedFeedType || 'other')}`">
-                <SocialIcon :type="selectedFeedType" />
-              </span>
-              {{ feedTypeLabel(selectedFeedType) }}
-            </span>
-          </div>
-          <div class="text-2xs text-slate-500 mt-0.5">
-            Choose a workspace, customize <strong class="font-medium text-slate-600">how the embed looks</strong> on your site,
-            publish approved posts, and copy the embed snippet.
-          </div>
-        </div>
-        <div class="surface-card-soft flex items-center gap-2 px-2 py-2">
-          <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
-            Back
-          </router-link>
-          <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
-            <option value="">Select workspace</option>
-            <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
-          </select>
-        </div>
-      </div>
-      <div class="wizard-stepper mt-4">
-        <div class="wizard-step wizard-step--done">
-          <span class="wizard-step__index">1</span>
-          <div>
-            <div class="wizard-step__label">Organize / Edit</div>
-            <div class="wizard-step__meta">Workspace details</div>
-          </div>
-        </div>
-        <div class="wizard-step wizard-step--done">
-          <span class="wizard-step__index">2</span>
-          <div>
-            <div class="wizard-step__label">Curate</div>
-            <div class="wizard-step__meta">Approve and reject posts</div>
-          </div>
-        </div>
-        <div class="wizard-step wizard-step--active">
-          <span class="wizard-step__index">3</span>
-          <div>
-            <div class="wizard-step__label">Publish</div>
-            <div class="wizard-step__meta">Embed and publish</div>
-          </div>
-        </div>
+  <WizardPageLayout
+    current="publish"
+    title="Publish"
+    description="Publish approved posts, customize how the embed looks, and copy the embed snippet."
+    :workspaceId="workspaceId"
+  >
+    <template #breadcrumb>
+      <router-link to="/workspaces">Workspaces</router-link>
+      <span>/</span>
+      <span>{{ workspaceName }}</span>
+    </template>
+
+    <template #actions>
+      <button
+        type="button"
+        class="btn-primary !w-auto !px-3 !py-2"
+        :disabled="publish.publishing"
+        @click="publishNow"
+        title="Publish and finish"
+      >
+        {{ publish.publishing ? '⏳' : '✓' }}
+      </button>
+    </template>
+
+    <!-- Publish success banner -->
+    <div v-if="publishedCount !== null" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-300 bg-emerald-50 text-sm-pro text-emerald-800 mb-2">
+      <span>✓ <strong>{{ publishedCount }} post{{ publishedCount !== 1 ? 's' : '' }}</strong> published and live in your embed.</span>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</button>
+        <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</button>
+        <button type="button" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</button>
       </div>
     </div>
 
@@ -68,52 +39,16 @@
     </div>
 
     <div v-else-if="!workspaceId" class="surface-card p-6 text-sm-pro text-slate-600">
+      <div class="flex items-center gap-2 mb-3">
+        <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro flex-1">
+          <option value="">Select workspace</option>
+          <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
+        </select>
+      </div>
       Pick a workspace to manage publishing.
     </div>
 
-    <div v-else class="space-y-4">
-      <div class="flex items-center justify-between gap-3">
-        <div class="text-sm-pro font-medium text-slate-800">Ready to publish the workspace</div>
-        <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !py-1.5 !px-3 text-sm-pro">
-          Back to Curate
-        </router-link>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="surface-card p-4 publish-widget">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <span class="metric-chip">APR</span> Approved
-          </div>
-          <div class="text-xl-pro font-semibold text-slate-900 mt-1">{{ publish.stats?.approved ?? '—' }}</div>
-          <div class="text-2xs text-slate-500 mt-1">Ready to publish</div>
-          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-emerald-300/85 to-cyan-300/75" :style="{ width: `${Math.min(100, (publish.stats?.approved || 0) * 8)}%` }" />
-          </div>
-        </div>
-        <div class="surface-card p-4 publish-widget">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <span class="metric-chip">PUB</span> Published
-          </div>
-          <div class="text-xl-pro font-semibold text-slate-900 mt-1">{{ publish.stats?.published ?? '—' }}</div>
-          <div class="text-2xs text-slate-500 mt-1">
-            Last: <span class="text-slate-700">{{ publish.stats?.last_published_at ? formatDate(publish.stats.last_published_at) : '—' }}</span>
-          </div>
-          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-indigo-300/85 to-violet-300/75" :style="{ width: `${Math.min(100, (publish.stats?.published || 0) * 8)}%` }" />
-          </div>
-        </div>
-        <div class="surface-card p-4 publish-widget">
-          <div class="text-2xs text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            <span class="metric-chip">PDG</span> Pending
-          </div>
-          <div class="text-xl-pro font-semibold text-slate-900 mt-1">{{ publish.stats?.pending ?? '—' }}</div>
-          <div class="text-2xs text-slate-500 mt-1">Awaiting review</div>
-          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-amber-300/85 to-orange-300/75" :style="{ width: `${Math.min(100, (publish.stats?.pending || 0) * 8)}%` }" />
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 items-start">
+    <div v-else class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 items-start">
         <div class="space-y-6">
           <div v-if="appearance" class="surface-card p-4 space-y-6">
             <div class="flex items-center justify-between gap-2">
@@ -281,6 +216,15 @@
                 >
                   Get code
                 </button>
+                <button
+                  type="button"
+                  class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
+                  @click="showEmbedPreview = true"
+                  :disabled="!publish.code?.public_key"
+                  title="Test embed in iframe"
+                >
+                  Test embed
+                </button>
               </div>
             </div>
         <div class="flex items-center justify-between mb-3">
@@ -392,9 +336,8 @@
             </div>
           </a>
         </div>
-          </div>
-        </div>
       </div>
+    </div>
     </div>
 
     <div v-if="showCode" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
@@ -417,7 +360,37 @@
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Embed iframe preview modal -->
+    <div v-if="showEmbedPreview" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div class="w-full max-w-3xl surface-card overflow-hidden flex flex-col" style="height: 80vh">
+        <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div class="text-sm-pro font-medium text-slate-800">Live embed preview</div>
+          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="showEmbedPreview = false">Close</button>
+        </div>
+        <iframe
+          v-if="publish.code?.public_key"
+          :srcdoc="embedIframeHtml"
+          class="flex-1 w-full border-0"
+          title="Embed preview"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
+    </div>
+
+    <template #footer>
+      <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !w-auto" title="Go back">←</router-link>
+      <button
+        type="button"
+        class="btn-primary !w-auto !px-3 !py-2"
+        :disabled="publish.publishing"
+        @click="publishNow"
+        title="Publish and finish"
+      >
+        {{ publish.publishing ? '⏳' : '✓' }}
+      </button>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
@@ -428,6 +401,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
+import WizardPageLayout from '../components/WizardPageLayout.vue';
 
 const toast = useToastStore();
 const route = useRoute();
@@ -439,6 +413,8 @@ const workspaceId = ref('');
 
 const showCode = ref(false);
 const copied = ref(false);
+const publishedCount = ref(null);
+const showEmbedPreview = ref(false);
 
 const previewLoading = ref(false);
 const previewPosts = ref([]);
@@ -462,10 +438,16 @@ const feedStyleOptions = [
 
 const selectedFeedType = computed(() => '');
 
+const workspaceName = computed(() => {
+  const w = workspaces.list.find((x) => x.id === Number(workspaceId.value));
+  return w ? w.name : '…';
+});
+
 function feedTypeLabel(type) {
   if (type === 'rss') return 'RSS / Atom';
   if (type === 'twitter') return 'X / Twitter';
   if (type === 'tiktok') return 'TikTok';
+  if (type === 'threads') return 'Threads';
   if (type === 'youtube') return 'YouTube';
   if (type === 'facebook') return 'Facebook';
   if (type === 'instagram') return 'Instagram';
@@ -474,6 +456,15 @@ function feedTypeLabel(type) {
 
 /** Same stylesheet as the public embed (including ?v= cache bust). */
 const embedCssHref = computed(() => publish.code?.embed_css_url || '');
+
+const embedIframeHtml = computed(() => {
+  const code = publish.code;
+  if (!code?.embed_html) return '<p style="font-family:sans-serif;padding:1rem;color:#64748b">No embed code yet — publish first.</p>';
+  const base = window.location.origin;
+  const css = code.embed_css_url ? `<link rel="stylesheet" href="${base}${code.embed_css_url.startsWith('/') ? '' : '/api/'}${code.embed_css_url}">` : '';
+  const js = code.embed_js_url ? `<script src="${base}${code.embed_js_url.startsWith('/') ? '' : '/api/'}${code.embed_js_url}"><\/script>` : '';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body style="margin:0;padding:16px;background:#f8fafc">${code.embed_html}${js}</body></html>`;
+});
 
 const previewLayoutClass = computed(() => {
   const st = String(appearance.value?.feed_style || 'grid').replace(/-/g, '_');
@@ -593,7 +584,8 @@ async function refresh() {
 
 async function publishNow() {
   if (!workspaceId.value) return;
-  await publish.publish(workspaceId.value);
+  const result = await publish.publish(workspaceId.value);
+  publishedCount.value = result?.published ?? 0;
   await publish.fetchCode(workspaceId.value);
   await loadPreview();
 }
@@ -716,6 +708,7 @@ function formatDate(v) {
 .type-dot--facebook { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
 .type-dot--instagram { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
 .type-dot--tiktok { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-dot--threads { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 .type-dot--rss { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
 .type-dot--twitter { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 

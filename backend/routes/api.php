@@ -22,6 +22,7 @@ Route::get('social/callback/google', [SocialConnectController::class, 'callbackG
 Route::get('social/callback/facebook', [SocialConnectController::class, 'callbackFacebook']);
 Route::get('social/callback/twitter', [SocialConnectController::class, 'callbackTwitter']);
 Route::get('social/callback/tiktok', [SocialConnectController::class, 'callbackTikTok']);
+Route::get('social/callback/threads', [SocialConnectController::class, 'callbackThreads']);
 
 // Public publish endpoints (no auth)
 Route::get('public/feeds/{publicKey}/posts', [PublicFeedController::class, 'posts']);
@@ -40,12 +41,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('workspaces/{workspace}/feeds/youtube/channels', [FeedSyncController::class, 'youtubeChannels']);
     Route::get('workspaces/{workspace}/feeds/twitter/account', [FeedSyncController::class, 'twitterAccount']);
     Route::get('workspaces/{workspace}/feeds/tiktok/account', [FeedSyncController::class, 'tiktokAccount']);
+    Route::get('workspaces/{workspace}/feeds/threads/account', [FeedSyncController::class, 'threadsAccount']);
     Route::get('workspaces/{workspace}/feeds/facebook/pages', [FeedSyncController::class, 'facebookPages']);
     Route::get('workspaces/{workspace}/feeds/instagram/accounts', [FeedSyncController::class, 'instagramAccounts']);
     Route::post('workspaces/{workspace}/feeds/test-facebook', [FeedSyncController::class, 'testFacebook']);
     Route::post('workspaces/{workspace}/feeds/test-instagram', [FeedSyncController::class, 'testInstagram']);
     Route::post('workspaces/{workspace}/feeds/test-twitter', [FeedSyncController::class, 'testTwitter']);
     Route::post('workspaces/{workspace}/feeds/test-tiktok', [FeedSyncController::class, 'testTikTok']);
+    Route::post('workspaces/{workspace}/feeds/test-threads', [FeedSyncController::class, 'testThreads']);
     Route::post('workspaces/{workspace}/feeds/test-rss', [FeedSyncController::class, 'testRss']);
     Route::get('workspaces/{workspace}/publish/stats', [FeedPublishController::class, 'stats']);
     Route::put('workspaces/{workspace}/publish/settings', [FeedPublishController::class, 'updateSettings']);
@@ -54,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
 
     Route::apiResource('social-credentials', SocialCredentialController::class);
+    Route::put('social-credentials/{socialCredential}/label', [SocialCredentialController::class, 'label']);
     Route::post('social/connect', [SocialConnectController::class, 'connect']);
     Route::post('social/disconnect', [SocialConnectController::class, 'disconnect']);
 

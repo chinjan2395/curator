@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class FeedController extends Controller
 {
-    private const CREDENTIAL_TYPES = ['youtube', 'facebook', 'instagram', 'twitter', 'tiktok'];
+    private const CREDENTIAL_TYPES = ['youtube', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'];
 
     private function authorizeWorkspace(Request $request, Workspace $workspace): void
     {
@@ -122,6 +122,18 @@ class FeedController extends Controller
             if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'tiktok')) {
                 return response()->json([
                     'message' => 'Select a valid TikTok credential.',
+                ], 422);
+            }
+        }
+        if ($validated['type'] === 'threads') {
+            if (empty($validated['social_credential_id'])) {
+                return response()->json([
+                    'message' => 'Select a Threads credential for this feed.',
+                ], 422);
+            }
+            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'threads')) {
+                return response()->json([
+                    'message' => 'Select a valid Threads credential.',
                 ], 422);
             }
         }
@@ -273,6 +285,18 @@ class FeedController extends Controller
             if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'tiktok')) {
                 return response()->json([
                     'message' => 'Select a valid TikTok credential.',
+                ], 422);
+            }
+        }
+        if ($validated['type'] === 'threads') {
+            if (empty($validated['social_credential_id'])) {
+                return response()->json([
+                    'message' => 'Select a Threads credential for this feed.',
+                ], 422);
+            }
+            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'threads')) {
+                return response()->json([
+                    'message' => 'Select a valid Threads credential.',
                 ], 422);
             }
         }
