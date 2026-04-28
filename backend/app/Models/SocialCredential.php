@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\OAuthAppConfig;
+use App\Support\OAuthAppConfigResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 
@@ -64,10 +65,7 @@ class SocialCredential extends Model
             return null;
         }
 
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $this->user_id)
-            ->where('provider', 'google')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'google');
 
         $clientId = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
@@ -113,10 +111,7 @@ class SocialCredential extends Model
             return null;
         }
 
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $this->user_id)
-            ->where('provider', 'twitter')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'twitter');
 
         $clientId = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
@@ -207,10 +202,7 @@ class SocialCredential extends Model
             return null;
         }
 
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $this->user_id)
-            ->where('provider', 'tiktok')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'tiktok');
 
         $clientKey = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
