@@ -8,10 +8,10 @@ import WorkspaceForm from '../views/WorkspaceForm.vue';
 import FeedsList from '../views/FeedsList.vue';
 import FeedForm from '../views/FeedForm.vue';
 import Curate from '../views/Curate.vue';
+import WorkspaceCurate from '../views/WorkspaceCurate.vue';
 import Credentials from '../views/Credentials.vue';
 import Publish from '../views/Publish.vue';
 import { useAuthStore } from '../stores/auth';
-import { useWorkspacesStore } from '../stores/workspaces';
 
 const routes = [
   { path: '/login', component: Login },
@@ -32,6 +32,7 @@ const routes = [
       { path: 'workspaces/:workspaceId/feeds/:feedId/edit', name: 'feed-edit', component: FeedForm },
       { path: 'workspaces/:workspaceId/publish', name: 'workspace-publish', component: Publish },
       { path: 'credentials', name: 'credentials', component: Credentials },
+      { path: 'publish', name: 'publish', component: Publish },
     ],
   },
 ];
@@ -48,12 +49,9 @@ router.beforeEach(async (to, from, next) => {
   }
   if (to.meta.requiresAuth && !auth.token) {
     next('/login');
-    return;
+  } else {
+    next();
   }
-  if (to.meta.requiresAuth && auth.token) {
-    await useWorkspacesStore().fetchAll();
-  }
-  next();
 });
 
 export default router;
