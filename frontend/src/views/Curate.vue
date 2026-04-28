@@ -25,8 +25,8 @@
         <option value="approved">Approved</option>
         <option value="rejected">Rejected</option>
       </select>
-      <div class="text-2xs text-slate-500 hidden sm:block" v-if="lastSyncedAt">
-        Last sync: <span class="text-slate-600">{{ formatDate(lastSyncedAt) }}</span>
+      <div class="text-2xs text-one-sub hidden sm:block" v-if="lastSyncedAt">
+        Last sync: <span class="text-one-text">{{ formatDate(lastSyncedAt) }}</span>
       </div>
       <button
         type="button"
@@ -39,7 +39,7 @@
       <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro" @click="refresh" :disabled="posts.loading">
         {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
       </button>
-      <div class="h-4 w-px bg-slate-200 hidden sm:block" />
+      <div class="h-4 w-px bg-one-divider hidden sm:block" />
       <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-2" @click="approveAllPending" title="Approve all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
         Approve All
@@ -50,13 +50,13 @@
       </button>
     </div>
 
-    <div v-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+    <div v-if="posts.loading" class="surface-card flex items-center gap-2 text-sm-pro text-one-sub px-5 py-4">
+      <span class="inline-block w-4 h-4 border-2 border-one-divider border-t-one-primary rounded-full animate-spin" />
       Loading posts…
     </div>
-    <div v-else-if="posts.error" class="text-sm-pro text-red-600">{{ posts.error }}</div>
-    <div v-else-if="!posts.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
-      No posts yet. Click <span class="font-medium text-slate-700">Sync now</span> to pull content from your feeds.
+    <div v-else-if="posts.error" class="text-sm-pro text-rose-600">{{ posts.error }}</div>
+    <div v-else-if="!posts.list.length" class="surface-card p-6 text-center text-sm-pro text-one-sub">
+      No posts yet. Click <span class="font-semibold text-one-text">Sync now</span> to pull content from your feeds.
     </div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <article
@@ -76,12 +76,12 @@
             <span v-if="p.pinned" class="inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-medium text-amber-800 bg-amber-100 border border-amber-300">
               Pinned
             </span>
-            <span class="text-2xs text-slate-600 mt-0.5 w-full">{{ formatDate(p.posted_at) }}</span>
+            <span class="text-2xs text-one-sub mt-0.5 w-full">{{ formatDate(p.posted_at) }}</span>
           </div>
           <button
             type="button"
             class="text-2xs font-medium px-2 py-1 rounded-md border shrink-0 inline-flex items-center justify-center"
-            :class="p.pinned ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+            :class="p.pinned ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-300 hover:bg-amber-100' : 'bg-one-bg text-one-sub hover:bg-[#E8E8EA]'"
             @click="togglePin(p)"
             :title="p.pinned ? 'Unpin this post' : 'Pin this post'"
           >
@@ -98,21 +98,21 @@
             rel="noreferrer"
             class="block group"
           >
-            <div class="aspect-video w-full rounded-md overflow-hidden bg-slate-100 flex items-center justify-center">
+            <div class="aspect-video w-full rounded-xs-card overflow-hidden bg-one-bg flex items-center justify-center">
               <img
                 v-if="p.thumbnail_url"
                 :src="p.thumbnail_url"
                 :alt="p.title || 'Video thumbnail'"
                 class="w-full h-full object-cover group-hover:opacity-95 transition"
               />
-              <div v-else class="text-2xs text-slate-400">Open post</div>
+              <div v-else class="text-2xs text-one-muted">Open post</div>
             </div>
           </a>
         </div>
 
         <button
           type="button"
-          class="text-left w-full text-sm-pro text-slate-800 whitespace-pre-wrap line-clamp-[10] hover:text-indigo-700 transition-colors"
+          class="text-left w-full text-sm-pro text-one-text whitespace-pre-wrap line-clamp-[10] hover:text-one-primary transition-colors"
           @click="previewPost = p"
           title="Click to preview"
         >
@@ -120,7 +120,7 @@
           {{ p.content }}
         </button>
 
-        <div class="flex items-center gap-2 pt-3 mt-auto border-t border-slate-100">
+        <div class="flex items-center gap-2 pt-3 mt-auto border-t border-one-divider">
           <button
             type="button"
             class="curate-btn curate-btn-approve inline-flex items-center justify-center"
@@ -168,7 +168,7 @@
     <!-- Post preview modal -->
     <div v-if="previewPost" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" @click.self="previewPost = null">
       <div class="w-full max-w-lg surface-card overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+        <div class="px-4 py-3 border-b border-one-divider flex items-center justify-between">
           <span
             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
             :class="statusBadgeClass(previewPost.status)"
@@ -178,17 +178,17 @@
           </button>
         </div>
         <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
-          <div v-if="previewPost.thumbnail_url" class="aspect-video rounded-md overflow-hidden bg-slate-100">
+          <div v-if="previewPost.thumbnail_url" class="aspect-video rounded-xs-card overflow-hidden bg-one-bg">
             <img :src="previewPost.thumbnail_url" :alt="previewPost.title || 'Post'" class="w-full h-full object-cover" />
           </div>
-          <div v-if="previewPost.title" class="text-sm-pro font-semibold text-slate-800">{{ previewPost.title }}</div>
-          <div class="text-sm-pro text-slate-700 whitespace-pre-wrap">{{ previewPost.content }}</div>
-          <div class="text-2xs text-slate-400">{{ formatDate(previewPost.posted_at) }}</div>
-          <a v-if="previewPost.video_url" :href="previewPost.video_url" target="_blank" rel="noreferrer" class="inline-block text-sm-pro text-indigo-600 hover:underline">
+          <div v-if="previewPost.title" class="text-sm-pro font-semibold text-one-text">{{ previewPost.title }}</div>
+          <div class="text-sm-pro text-one-text whitespace-pre-wrap">{{ previewPost.content }}</div>
+          <div class="text-2xs text-one-muted">{{ formatDate(previewPost.posted_at) }}</div>
+          <a v-if="previewPost.video_url" :href="previewPost.video_url" target="_blank" rel="noreferrer" class="inline-block text-sm-pro text-one-primary hover:underline">
             Open original ↗
           </a>
         </div>
-        <div class="px-4 py-3 border-t border-slate-200 flex items-center gap-2">
+        <div class="px-4 py-3 border-t border-one-divider flex items-center gap-2">
           <button type="button" class="curate-btn curate-btn-approve inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'approved' }" @click="setStatus(previewPost, 'approved')" title="Approve">
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
             <span class="sr-only">Approve</span>
@@ -342,98 +342,50 @@ function formatDate(v) {
 function statusBadgeClass(status) {
   switch (status) {
     case 'approved':
-      return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+      return 'bg-emerald-100 text-emerald-800';
     case 'rejected':
-      return 'bg-rose-100 text-rose-800 border border-rose-300';
+      return 'bg-rose-100 text-rose-800';
     default:
-      return 'bg-slate-100 text-slate-600 border border-slate-200';
+      return 'bg-one-bg text-one-sub';
   }
 }
 
 function cardBorderClass(status) {
   switch (status) {
     case 'approved':
-      return 'border-emerald-300 bg-emerald-50/30';
+      return 'ring-2 ring-emerald-300';
     case 'rejected':
-      return 'border-rose-200 bg-rose-50/20';
+      return 'ring-2 ring-rose-200 opacity-70';
     default:
-      return 'border-slate-200/90';
+      return '';
   }
 }
 </script>
 
 <style scoped>
 .curate-btn {
-  /* Match app button language (like btn-secondary), with subtle semantic accents. */
-  @apply py-1.5 px-3 text-sm-pro font-medium rounded-md transition;
-  @apply border border-slate-200 bg-slate-100 text-slate-700;
-  @apply hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2;
-  transform: translateY(0);
-  transition:
-    transform 0.14s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease,
-    border-color 0.18s ease;
-}
-.curate-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 20px -18px rgba(30, 41, 59, 0.9);
-}
-.curate-btn:active:not(:disabled) {
-  transform: translateY(0);
+  @apply py-1.5 px-3 text-sm-pro font-semibold rounded-btn transition-colors;
+  @apply bg-one-bg text-one-sub;
+  @apply hover:bg-[#E8E8EA] focus:outline-none focus:ring-2 focus:ring-one-primary/20 focus:ring-offset-2;
 }
 .curate-btn-approve {
-  @apply border-emerald-200 text-emerald-800;
+  @apply text-emerald-700;
 }
 .curate-btn-approve.curate-btn-active {
-  @apply bg-emerald-50 border-emerald-300 text-emerald-900;
-  @apply focus:ring-emerald-200;
+  @apply bg-emerald-50 text-emerald-900;
 }
 .curate-btn-reject {
-  @apply border-rose-200 text-rose-700;
+  @apply text-rose-600;
 }
 .curate-btn-reject.curate-btn-active {
-  @apply bg-rose-50 border-rose-300 text-rose-900;
-  @apply focus:ring-rose-200;
+  @apply bg-rose-50 text-rose-800;
 }
 .curate-btn-delete {
-  @apply bg-white text-rose-600 border-rose-200;
-  @apply hover:bg-rose-50 hover:border-rose-300;
-  @apply focus:ring-rose-200;
+  @apply text-rose-600 hover:bg-rose-50;
 }
-
-.curate-hero {
-  background:
-    radial-gradient(860px 240px at -8% -45%, rgba(56, 189, 248, 0.12), transparent 65%),
-    radial-gradient(720px 220px at 110% -40%, rgba(99, 102, 241, 0.14), transparent 62%),
-    linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
-}
-
-.type-dot {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  background: rgba(226, 232, 240, 0.9);
-  color: rgb(51 65 85);
-}
-
-.type-dot--youtube { background: rgba(254, 226, 226, 0.95); color: rgb(220 38 38); }
-.type-dot--facebook { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
-.type-dot--instagram { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
-.type-dot--tiktok { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
-.type-dot--threads { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
-.type-dot--rss { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
-.type-dot--twitter { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
 
 @media (prefers-reduced-motion: reduce) {
-  .curate-btn {
-    transition: none !important;
-    transform: none !important;
-  }
+  .curate-btn { transition: none !important; }
 }
 
 .wizard-stepper {

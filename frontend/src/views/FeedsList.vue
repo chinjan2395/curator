@@ -32,12 +32,12 @@
       </router-link>
     </template>
 
-    <div v-if="feeds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+    <div v-if="feeds.loading" class="surface-card flex items-center gap-2 text-sm-pro text-one-sub px-5 py-4">
+      <span class="inline-block w-4 h-4 border-2 border-one-divider border-t-one-primary rounded-full animate-spin" />
       Loading…
     </div>
-    <div v-else-if="feeds.error" class="text-sm-pro text-red-600">{{ feeds.error }}</div>
-    <div v-else-if="!feeds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
+    <div v-else-if="feeds.error" class="text-sm-pro text-rose-600">{{ feeds.error }}</div>
+    <div v-else-if="!feeds.list.length" class="surface-card p-6 text-center text-sm-pro text-one-sub">
       <div>No feeds yet. Create the first feed to start workspace setup.</div>
       <router-link :to="`/workspaces/${workspaceId}/feeds/new`" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro mt-3 inline-flex">
         Create feed
@@ -53,9 +53,9 @@
             <th class="table-th w-32">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="f in feeds.list" :key="f.id" class="table-tr feed-table-row">
-            <td class="table-td font-medium text-slate-800">
+        <tbody class="divide-y divide-one-divider">
+          <tr v-for="f in feeds.list" :key="f.id" class="table-tr">
+            <td class="table-td font-semibold text-one-text">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="feed-name-dot" :class="`feed-name-dot--${String(f.type || 'other')}`" />
                 <span class="truncate">{{ f.name }}</span>
@@ -69,7 +69,7 @@
                 {{ feedTypeLabel(f.type) }}
               </span>
             </td>
-            <td class="px-4 py-2.5 text-2xs text-slate-600 truncate max-w-[240px]">
+            <td class="px-4 py-3 text-2xs text-one-sub truncate max-w-[240px]">
               <span v-if="f.source_url" class="source-chip">{{ f.source_url }}</span>
               <span v-else>—</span>
             </td>
@@ -86,8 +86,8 @@
                 </router-link>
                 <button
                   type="button"
-                  class="action-link action-link--premium"
-                  :class="canEditOrDelete ? '!text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80' : 'text-slate-400 cursor-not-allowed'"
+                  class="action-link action-link--destructive"
+                  :class="canEditOrDelete ? '' : 'opacity-40 cursor-not-allowed'"
                   @click="handleDeleteClick(f)"
                 >
                   <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
@@ -287,121 +287,16 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
 </script>
 
 <style scoped>
-.analytics-card {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(150deg, #ffffff 0%, #f8fbff 100%);
-  border-color: rgba(199, 210, 254, 0.7);
-}
-.feed-setup-hero {
-  background:
-    radial-gradient(860px 240px at -8% -45%, rgba(56, 189, 248, 0.1), transparent 65%),
-    radial-gradient(720px 220px at 110% -40%, rgba(99, 102, 241, 0.12), transparent 62%),
-    linear-gradient(170deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
-}
-.wizard-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding-top: 0.85rem;
-  border-top: 1px solid rgba(226, 232, 240, 0.8);
-}
-.analytics-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 30px -26px rgba(30, 41, 59, 0.85);
-}
-.analytics-card::before {
-  content: '';
-  position: absolute;
-  width: 140px;
-  height: 140px;
-  right: -64px;
-  top: -72px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(129, 140, 248, 0.16), rgba(129, 140, 248, 0));
-  pointer-events: none;
-}
-.analytics-card::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.7), rgba(34, 211, 238, 0.45));
-}
-.metric-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(165, 180, 252, 0.7);
-  background: rgba(238, 242, 255, 0.9);
-  color: rgb(79, 70, 229);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.donut-ring {
-  width: 48px;
-  height: 48px;
-  border-radius: 9999px;
-  display: grid;
-  place-items: center;
-}
-.donut-inner {
-  width: 33px;
-  height: 33px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.95);
-  color: rgb(51, 65, 85);
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: grid;
-  place-items: center;
-}
-.feed-table-shell {
-  border-color: rgba(191, 219, 254, 0.58);
-}
-
-.feed-table-head {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.92));
-}
-
-.feed-table-row {
-  transition: transform 0.16s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-}
-
-.feed-table-row:hover {
-  transform: translateY(-1px);
-  background: linear-gradient(90deg, rgba(248, 250, 252, 0.85), rgba(241, 245, 249, 0.7));
-  box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.33);
-}
-
-.action-link--premium {
-  border-color: rgba(203, 213, 225, 0.95);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-}
-.action-link--premium:active:not(:disabled) {
-  transform: translateY(0);
-}
-
 .type-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.38rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 0.15rem 0.5rem 0.15rem 0.38rem;
-  color: rgb(71 85 105);
+  background: #F4F4F6;
+  padding: 0.2rem 0.55rem 0.2rem 0.3rem;
+  color: #6E6E73;
   font-size: 0.8rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .type-pill__icon {
@@ -410,64 +305,50 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  font-size: 0.67rem;
-  font-weight: 700;
-  background: rgba(226, 232, 240, 0.82);
-  color: rgb(51 65 85);
+  background: #E5E5EA;
+  color: #1C1C1E;
 }
 
 .type-pill__icon :deep(svg) {
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 0.72rem;
+  height: 0.72rem;
   display: block;
 }
 
-.type-pill--youtube .type-pill__icon { background: rgba(254, 226, 226, 0.95); color: rgb(220 38 38); }
-.type-pill--facebook .type-pill__icon { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
-.type-pill--instagram .type-pill__icon { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
-.type-pill--tiktok .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
-.type-pill--threads .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
-.type-pill--rss .type-pill__icon { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
-.type-pill--twitter .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-pill--youtube .type-pill__icon { background: #FEE2E2; color: #DC2626; }
+.type-pill--facebook .type-pill__icon { background: #DBEAFE; color: #2563EB; }
+.type-pill--instagram .type-pill__icon { background: #FCE7F3; color: #BE185D; }
+.type-pill--tiktok .type-pill__icon { background: #F4F4F6; color: #1C1C1E; }
+.type-pill--threads .type-pill__icon { background: #F4F4F6; color: #1C1C1E; }
+.type-pill--rss .type-pill__icon { background: #FFEDD5; color: #EA580C; }
+.type-pill--twitter .type-pill__icon { background: #F4F4F6; color: #1C1C1E; }
 
 .feed-name-dot {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.45rem;
+  height: 0.45rem;
   border-radius: 999px;
   flex-shrink: 0;
-  background: rgb(148 163 184);
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
+  background: #AEAEB2;
 }
 
-.feed-name-dot--youtube { background: rgb(220 38 38); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14); }
-.feed-name-dot--facebook { background: rgb(37 99 235); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14); }
-.feed-name-dot--instagram { background: rgb(190 24 93); box-shadow: 0 0 0 3px rgba(190, 24, 93, 0.14); }
-.feed-name-dot--tiktok { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
-.feed-name-dot--threads { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
-.feed-name-dot--rss { background: rgb(234 88 12); box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14); }
-.feed-name-dot--twitter { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
+.feed-name-dot--youtube { background: #DC2626; }
+.feed-name-dot--facebook { background: #2563EB; }
+.feed-name-dot--instagram { background: #BE185D; }
+.feed-name-dot--tiktok { background: #1C1C1E; }
+.feed-name-dot--threads { background: #1C1C1E; }
+.feed-name-dot--rss { background: #EA580C; }
+.feed-name-dot--twitter { background: #1C1C1E; }
 
 .source-chip {
   display: inline-block;
   max-width: 100%;
-  padding: 0.2rem 0.45rem;
+  padding: 0.18rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: rgba(248, 250, 252, 0.9);
-  color: rgb(71 85 105);
+  background: #F4F4F6;
+  color: #6E6E73;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .analytics-card:hover {
-    transform: none;
-    box-shadow: none;
-  }
-  .feed-table-row:hover {
-    transform: none;
-    box-shadow: none;
-  }
 }
 </style>

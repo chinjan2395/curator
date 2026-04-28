@@ -64,62 +64,61 @@ function stepClass(key) {
 .wizard-step {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.75rem;
   flex: 1 1 180px;
-  padding: 0.7rem 0.8rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: rgba(248, 250, 252, 0.82);
+  padding: 0.75rem 0.9rem;
+  border-radius: 16px;
+  background: #F4F4F6;
   text-decoration: none;
   color: inherit;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .wizard-step:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(248, 250, 252, 0.95);
+  background: #EBF1FB;
 }
 
 .wizard-step--active {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(238, 242, 255, 0.72);
+  background: #EBF1FB;
+  outline: 2px solid #1259C3;
+  outline-offset: -2px;
 }
 
 .wizard-step--done {
-  border-color: rgba(191, 219, 254, 0.8);
+  background: #F4F4F6;
 }
 
 .wizard-step__index {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 999px;
   display: grid;
   place-items: center;
   font-size: 0.72rem;
   font-weight: 700;
-  color: rgb(51 65 85);
-  background: rgba(226, 232, 240, 0.95);
+  color: #6E6E73;
+  background: #E5E5EA;
   flex: 0 0 auto;
 }
 
 .wizard-step--active .wizard-step__index {
-  color: rgb(67 56 202);
-  background: rgba(199, 210, 254, 0.95);
+  color: #fff;
+  background: #1259C3;
 }
 
 .wizard-step--done .wizard-step__index {
-  color: rgb(30 64 175);
-  background: rgba(219, 234, 254, 0.95);
+  color: #1259C3;
+  background: #D0E4FF;
 }
 
 .wizard-step__label {
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(30 41 59);
+  color: #1C1C1E;
 }
 
 .wizard-step__meta {
   font-size: 0.7rem;
-  color: rgb(100 116 139);
+  color: #6E6E73;
 }
 </style>

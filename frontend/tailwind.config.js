@@ -6,30 +6,39 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        samsung: ['SamsungOne', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       fontSize: {
-        '2xs': ['0.8125rem', { lineHeight: '1.25rem' }],   // 11.375px (14px root)
-        'xs-pro': ['0.875rem', { lineHeight: '1.375rem' }], // 12.25px (14px root)
-        'sm-pro': ['0.9375rem', { lineHeight: '1.4375rem' }], // 13.125px (14px root)
-        'base-pro': ['1rem', { lineHeight: '1.5rem' }],    // 14px (14px root)
-        'md-pro': ['1.0625rem', { lineHeight: '1.5rem' }], // 14.875px (14px root)
-        'lg-pro': ['1.125rem', { lineHeight: '1.5rem' }],  // 15.75px (14px root)
-        'xl-pro': ['1.1875rem', { lineHeight: '1.5rem' }], // 16.625px (14px root)
+        '2xs':      ['0.6875rem', { lineHeight: '1.4', fontWeight: '400' }],  // 11px
+        'xs-pro':   ['0.75rem',   { lineHeight: '1.4', fontWeight: '400' }],  // 12px
+        'sm-pro':   ['0.8125rem', { lineHeight: '1.45', fontWeight: '400' }], // 13px
+        'base-pro': ['0.9375rem', { lineHeight: '1.5', fontWeight: '500' }],  // 15px
+        'md-pro':   ['1.0625rem', { lineHeight: '1.4', fontWeight: '600' }],  // 17px
+        'lg-pro':   ['1.25rem',   { lineHeight: '1.3', fontWeight: '700' }],  // 20px
+        'xl-pro':   ['1.5rem',    { lineHeight: '1.2', fontWeight: '700' }],  // 24px
       },
       colors: {
-        slate: {
-          850: '#172033',
-          925: '#0f1419',
-          950: '#0a0d12',
-        },
+        'one-bg':      '#F4F4F6',
+        'one-surface': '#FFFFFF',
+        'one-primary': '#1259C3',
+        'one-accent':  '#25C5DA',
+        'one-text':    '#1C1C1E',
+        'one-sub':     '#6E6E73',
+        'one-muted':   '#AEAEB2',
+        'one-divider': '#E5E5EA',
+        'one-tint':    '#EBF1FB',
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
-        'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
-        'panel': '0 18px 36px -30px rgb(15 23 42 / 0.55), 0 1px 1px 0 rgb(15 23 42 / 0.04)',
-        'floating': '0 30px 60px -42px rgb(15 23 42 / 0.6), 0 10px 18px -16px rgb(15 23 42 / 0.22)',
+        'card':    '0 2px 12px 0 rgba(0,0,0,0.06)',
+        'panel':   '0 4px 20px 0 rgba(0,0,0,0.08)',
+        'panel-lg':'0 8px 32px 0 rgba(0,0,0,0.10)',
       },
       borderRadius: {
-        'xl-soft': '14px',
+        'card': '24px',
+        'btn':  '14px',
+        'sm-card': '16px',
+        'xs-card': '10px',
       },
     },
   },

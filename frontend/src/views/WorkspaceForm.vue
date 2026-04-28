@@ -27,7 +27,7 @@
           required
         />
       </div>
-      <div v-if="workspaces.error" class="text-2xs text-red-600">{{ workspaces.error }}</div>
+      <div v-if="workspaces.error" class="text-2xs text-rose-600 bg-rose-50 rounded-btn px-3 py-2">{{ workspaces.error }}</div>
     </form>
 
     <template #footer>

@@ -3,7 +3,7 @@
     <div class="space-y-3 mb-4">
       <div>
         <h1 class="page-title flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <svg class="w-5 h-5 text-one-primary" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path d="M10 2.5a4.5 4.5 0 0 0-4.5 4.5v1H5A2 2 0 0 0 3 10v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-.5V7A4.5 4.5 0 0 0 10 2.5Zm3 5.5V7a3 3 0 1 0-6 0v1h6Z" />
           </svg>
           Credentials
@@ -12,8 +12,8 @@
       </div>
       <div class="surface-card credentials-provider-panel p-4">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p class="text-xs-pro font-medium text-slate-700">Select social media</p>
-          <p class="text-2xs text-slate-500">Matches Add/Update Feed selection flow</p>
+          <p class="text-xs-pro font-semibold text-one-text">Select social media</p>
+          <p class="text-2xs text-one-sub">Matches Add/Update Feed selection flow</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <button
@@ -28,13 +28,13 @@
               <SocialIcon :type="item.type" class="w-4 h-4" />
             </div>
             <div class="text-left min-w-0">
-              <div class="text-sm-pro font-medium text-slate-800 truncate">{{ item.label }}</div>
-              <div class="text-2xs text-slate-500 truncate">{{ item.tagline }}</div>
+              <div class="text-sm-pro font-medium text-one-text truncate">{{ item.label }}</div>
+              <div class="text-2xs text-one-sub truncate">{{ item.tagline }}</div>
             </div>
           </button>
         </div>
         <div class="mt-3 flex items-center justify-between gap-3">
-          <p class="text-2xs text-slate-500">Selected: <span class="font-medium text-slate-700">{{ providerLabels[provider] || provider }}</span></p>
+          <p class="text-2xs text-one-sub">Selected: <span class="font-semibold text-one-text">{{ providerLabels[provider] || provider }}</span></p>
           <button type="button" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro" @click="startConnect" :disabled="creds.connecting">
             {{ creds.connecting ? 'Redirecting…' : connectButtonLabel }}
           </button>
@@ -61,13 +61,13 @@
     <div class="surface-card oauth-settings-shell p-5">
       <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <div class="text-sm-pro font-semibold text-slate-800 flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <div class="text-sm-pro font-semibold text-one-text flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-one-primary" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M11.49 2.17a1.75 1.75 0 0 0-2.98 0l-.62 1.08a1.75 1.75 0 0 1-1.25.85l-1.22.22a1.75 1.75 0 0 0-.92 2.95l.84.86a1.75 1.75 0 0 1 .48 1.48l-.14 1.3a1.75 1.75 0 0 0 2.4 1.83l1.13-.48a1.75 1.75 0 0 1 1.38 0l1.13.48a1.75 1.75 0 0 0 2.4-1.83l-.14-1.3a1.75 1.75 0 0 1 .48-1.48l.84-.86a1.75 1.75 0 0 0-.92-2.95l-1.22-.22a1.75 1.75 0 0 1-1.25-.85l-.62-1.08ZM10 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
             </svg>
             OAuth app settings
           </div>
-          <div class="mt-0.5 text-2xs text-slate-500">Configure client credentials for <span class="font-medium text-slate-700">{{ providerLabels[provider] || provider }}</span> (stored encrypted).</div>
+          <div class="mt-0.5 text-2xs text-one-sub">Configure client credentials for <span class="font-semibold text-one-text">{{ providerLabels[provider] || provider }}</span> (stored encrypted).</div>
         </div>
         <div class="oauth-status-pill" :class="oauthApps.configFor(oauthProviderKey) ? 'oauth-status-pill--ok' : ''">
           <span class="oauth-status-pill__dot" />
@@ -99,17 +99,17 @@
             />
             <p class="mt-1 text-2xs text-slate-500">
               Use your backend callback URL. Suggested for this selection:
-              <span class="font-medium text-slate-700">{{ selectedCallbackPath }}</span>
+              <span class="font-semibold text-one-text">{{ selectedCallbackPath }}</span>
             </p>
           </div>
         </div>
         <div class="oauth-hints">
-          <p class="text-2xs text-slate-500">Common callback paths:</p>
-          <p class="text-2xs text-slate-500">
+          <p class="text-2xs text-one-sub">Common callback paths:</p>
+          <p class="text-2xs text-one-sub">
             Google / YouTube: <span class="font-medium">/api/social/callback/google</span> ·
             Facebook / Instagram: <span class="font-medium">/api/social/callback/facebook</span>
           </p>
-          <p class="text-2xs text-slate-500">
+          <p class="text-2xs text-one-sub">
             Twitter / X: <span class="font-medium">/api/social/callback/twitter</span> ·
             TikTok: <span class="font-medium">/api/social/callback/tiktok</span> ·
             Threads: <span class="font-medium">/api/social/callback/threads</span>
@@ -132,17 +132,17 @@
           >
             Remove
           </button>
-          <div v-if="oauthApps.error" class="text-2xs text-red-600">{{ oauthApps.error }}</div>
+          <div v-if="oauthApps.error" class="text-2xs text-rose-600">{{ oauthApps.error }}</div>
         </div>
       </div>
     </div>
 
-    <div v-if="creds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+    <div v-if="creds.loading" class="surface-card flex items-center gap-2 text-sm-pro text-one-sub px-5 py-4">
+      <span class="inline-block w-4 h-4 border-2 border-one-divider border-t-one-primary rounded-full animate-spin" />
       Loading…
     </div>
-    <div v-else-if="creds.error" class="text-sm-pro text-red-600">{{ creds.error }}</div>
-    <div v-else-if="!creds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
+    <div v-else-if="creds.error" class="text-sm-pro text-rose-600">{{ creds.error }}</div>
+    <div v-else-if="!creds.list.length" class="surface-card p-6 text-center text-sm-pro text-one-sub">
       No credentials connected yet.
     </div>
     <div v-else class="space-y-3">
@@ -151,13 +151,13 @@
         :key="prov"
         class="surface-card overflow-hidden"
       >
-        <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div class="px-4 py-3 border-b border-one-divider flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <div class="type-dot" :class="`type-dot--${prov}`">
               <SocialIcon :type="prov" />
             </div>
-            <span class="text-sm-pro font-semibold text-slate-800">{{ providerLabels[prov] || prov }}</span>
-            <span class="text-2xs text-slate-400">({{ providerCreds.length }} account{{ providerCreds.length > 1 ? 's' : '' }})</span>
+            <span class="text-sm-pro font-semibold text-one-text">{{ providerLabels[prov] || prov }}</span>
+            <span class="text-2xs text-one-muted">({{ providerCreds.length }} account{{ providerCreds.length > 1 ? 's' : '' }})</span>
           </div>
           <button
             type="button"
@@ -170,14 +170,14 @@
           </button>
         </div>
         <table class="w-full text-left">
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-one-divider">
             <tr v-for="c in providerCreds" :key="c.id" class="table-tr">
               <td class="table-td">
                 <div v-if="renamingId !== c.id" class="flex items-center gap-2">
-                  <span class="font-medium text-slate-800">{{ c.account_label || c.account_id || '—' }}</span>
+                  <span class="font-semibold text-one-text">{{ c.account_label || c.account_id || '—' }}</span>
                   <button
                     type="button"
-                    class="text-2xs text-slate-400 hover:text-slate-600 underline"
+                    class="text-2xs text-one-muted hover:text-one-sub underline"
                     @click="startRename(c)"
                   >edit</button>
                 </div>
@@ -194,11 +194,11 @@
                   <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</button>
                 </div>
               </td>
-              <td class="table-td text-2xs text-slate-500">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</td>
+              <td class="table-td text-2xs text-one-sub">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</td>
               <td class="table-td w-28">
                 <button
                   type="button"
-                  class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80"
+                  class="action-link action-link--destructive"
                   @click="disconnect(c)"
                 >
                   Disconnect
@@ -371,38 +371,30 @@ function formatDate(v) {
 </script>
 
 <style scoped>
-.credentials-provider-panel {
-  background:
-    radial-gradient(700px 200px at -8% -60%, rgba(56, 189, 248, 0.09), transparent 62%),
-    radial-gradient(560px 200px at 120% -58%, rgba(99, 102, 241, 0.11), transparent 62%),
-    linear-gradient(170deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-}
-
 .credentials-provider-card {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
+  gap: 0.75rem;
+  border-radius: 14px;
+  background: #F4F4F6;
   padding: 0.65rem 0.75rem;
-  transition: all 0.18s ease;
+  transition: background-color 0.15s ease;
+  text-align: left;
 }
 
 .credentials-provider-card:hover {
-  border-color: rgba(165, 180, 252, 0.72);
-  background: rgba(238, 242, 255, 0.62);
+  background: #EBF1FB;
 }
 
 .credentials-provider-card--active {
-  border-color: rgba(99, 102, 241, 0.55);
-  background: rgba(238, 242, 255, 0.92);
-  box-shadow: 0 10px 24px -18px rgba(79, 70, 229, 0.85);
+  background: #EBF1FB;
+  outline: 2px solid #1259C3;
+  outline-offset: -2px;
 }
 
 .credentials-provider-icon {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -413,58 +405,49 @@ function formatDate(v) {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.72);
+  background: #F4F4F6;
   border-radius: 999px;
-  padding: 0.28rem 0.62rem;
-  color: rgb(100 116 139);
-  font-size: 0.68rem;
+  padding: 0.3rem 0.65rem;
+  color: #6E6E73;
+  font-size: 0.75rem;
 }
 
 .credentials-step__dot {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.1rem;
+  height: 1.1rem;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(226, 232, 240, 0.88);
-  color: rgb(71 85 105);
+  background: #E5E5EA;
+  color: #1C1C1E;
   font-size: 0.62rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .credentials-step--active {
-  border-color: rgba(129, 140, 248, 0.55);
-  color: rgb(67 56 202);
-  background: rgba(238, 242, 255, 0.84);
+  background: #EBF1FB;
+  color: #1259C3;
 }
 
 .credentials-step--active .credentials-step__dot {
-  background: rgba(99, 102, 241, 0.95);
+  background: #1259C3;
   color: white;
 }
 
 .credentials-step-divider {
   width: 1rem;
   height: 1px;
-  background: rgba(203, 213, 225, 0.9);
-}
-
-.oauth-settings-shell {
-  background:
-    radial-gradient(620px 180px at 105% -45%, rgba(79, 70, 229, 0.08), transparent 60%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+  background: #E5E5EA;
 }
 
 .oauth-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(248, 250, 252, 0.9);
-  color: rgb(100 116 139);
-  font-size: 0.68rem;
-  padding: 0.28rem 0.55rem;
+  background: #F4F4F6;
+  color: #6E6E73;
+  font-size: 0.72rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 999px;
 }
 
@@ -472,40 +455,61 @@ function formatDate(v) {
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 999px;
-  background: rgb(148 163 184);
+  background: #AEAEB2;
 }
 
 .oauth-status-pill--ok {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(236, 253, 245, 0.92);
-  color: rgb(6 95 70);
+  background: #E6F9F0;
+  color: #1C8C52;
 }
 
 .oauth-status-pill--ok .oauth-status-pill__dot {
-  background: rgb(5 150 105);
+  background: #1C8C52;
 }
 
 .oauth-empty {
-  border: 1px dashed rgba(203, 213, 225, 0.9);
-  border-radius: 0.75rem;
-  background: rgba(248, 250, 252, 0.72);
-  padding: 0.8rem 0.9rem;
+  border-radius: 14px;
+  background: #F4F4F6;
+  padding: 0.8rem 1rem;
+  color: #6E6E73;
+  font-size: 0.75rem;
 }
 
 .oauth-field-card {
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 0.75rem;
+  border-radius: 14px;
+  background: #F4F4F6;
+  padding: 0.85rem;
 }
 
 .oauth-hints {
-  border: 1px dashed rgba(203, 213, 225, 0.9);
-  border-radius: 0.75rem;
-  background: rgba(248, 250, 252, 0.82);
-  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  background: #F4F4F6;
+  padding: 0.7rem 0.85rem;
   display: grid;
-  gap: 0.2rem;
+  gap: 0.25rem;
 }
+
+.type-dot {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #F4F4F6;
+  color: #6E6E73;
+}
+
+.type-dot :deep(svg) {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.type-dot--youtube { background: #FEE2E2; color: #DC2626; }
+.type-dot--facebook { background: #DBEAFE; color: #2563EB; }
+.type-dot--instagram { background: #FCE7F3; color: #BE185D; }
+.type-dot--tiktok { background: #F4F4F6; color: #1C1C1E; }
+.type-dot--threads { background: #F4F4F6; color: #1C1C1E; }
+.type-dot--rss { background: #FFEDD5; color: #EA580C; }
+.type-dot--twitter { background: #F4F4F6; color: #1C1C1E; }
 </style>
 

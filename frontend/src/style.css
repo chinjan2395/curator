@@ -4,19 +4,15 @@
 
 @layer base {
   html {
-    font-size: 14px;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-family: 'SamsungOne', system-ui, -apple-system, sans-serif;
   }
   body {
-    @apply text-slate-700 bg-slate-100;
+    @apply bg-one-bg text-one-text;
     margin: 0;
-    line-height: 1.4;
-    background-image:
-      radial-gradient(1280px 560px at -8% -15%, rgba(186, 230, 253, 0.34), transparent 56%),
-      radial-gradient(1080px 600px at 102% -20%, rgba(165, 180, 252, 0.26), transparent 58%),
-      radial-gradient(980px 560px at 50% 120%, rgba(224, 231, 255, 0.42), transparent 62%);
-    background-attachment: fixed;
+    line-height: 1.45;
   }
   #app {
     min-height: 100vh;
@@ -24,128 +20,99 @@
   }
 }
 
-/* Shared design language */
+/* ─── Inputs ─────────────────────────────────────────── */
 .input-pro {
-  @apply w-full px-3 py-2 text-sm-pro border border-slate-200/90 rounded-md bg-white/90;
-  @apply placeholder:text-slate-500;
-  @apply focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition;
+  @apply w-full px-3.5 py-2.5 text-sm-pro bg-one-bg rounded-btn border-0 text-one-text;
+  @apply placeholder:text-one-muted;
+  @apply focus:outline-none focus:ring-2 focus:ring-one-primary/25 transition-shadow;
 }
+
 .label-pro {
-  @apply block text-2xs font-medium text-slate-600 uppercase tracking-wider mb-1.5;
+  @apply block text-2xs font-semibold text-one-sub uppercase tracking-wider mb-1.5;
 }
+
+/* ─── Buttons ─────────────────────────────────────────── */
 .btn-primary {
-  @apply w-full py-2 text-sm-pro font-medium text-white rounded-md;
-  @apply bg-gradient-to-r from-indigo-600 to-violet-600 shadow-[0_10px_24px_-14px_rgba(79,70,229,0.8)];
-  @apply hover:from-indigo-500 hover:to-violet-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 transition;
-  transform: translateY(0);
-  transition:
-    transform 0.14s ease,
-    box-shadow 0.18s ease,
-    filter 0.18s ease;
+  @apply w-full py-2.5 px-5 text-sm-pro font-semibold text-white rounded-btn bg-one-primary;
+  @apply hover:bg-[#0F4BA8] focus:outline-none focus:ring-2 focus:ring-one-primary/40 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 26px -18px rgba(79, 70, 229, 0.95);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-  filter: saturate(0.98);
-}
 .btn-secondary {
-  @apply py-2 px-3 text-sm-pro font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md shadow-[0_8px_18px_-18px_rgba(30,41,59,0.8)];
-  @apply hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-colors;
-  transform: translateY(0);
-  transition:
-    transform 0.14s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease,
-    border-color 0.18s ease;
+  @apply py-2.5 px-5 text-sm-pro font-semibold text-one-text bg-one-bg rounded-btn border-0;
+  @apply hover:bg-[#E8E8EA] focus:outline-none focus:ring-2 focus:ring-one-primary/20 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  transition: background-color 0.15s ease;
 }
 
-.btn-secondary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px -20px rgba(30, 41, 59, 0.95);
-}
-
-.btn-secondary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
+/* ─── Cards / Surfaces ────────────────────────────────── */
 .surface-card {
-  @apply border border-slate-200/80 rounded-xl-soft bg-white;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.22s ease,
-    transform 0.2s ease;
+  @apply bg-one-surface rounded-card shadow-card;
 }
 
 .surface-card-soft {
-  @apply border border-slate-200/75 rounded-xl-soft bg-white;
+  @apply bg-one-surface rounded-card;
 }
 
+/* ─── Tables ──────────────────────────────────────────── */
 .table-shell {
-  @apply surface-card overflow-hidden;
+  @apply bg-one-surface rounded-card shadow-card overflow-hidden;
 }
 
 .table-head {
-  @apply bg-white/85 border-b border-slate-200/75;
+  @apply bg-one-surface border-b border-one-divider;
 }
 
 .table-th {
-  @apply px-4 py-2.5 text-2xs font-semibold text-slate-600 uppercase tracking-wider;
+  @apply px-4 py-3 text-2xs font-semibold text-one-sub uppercase tracking-wider;
 }
 
 .table-tr {
-  @apply hover:bg-slate-50 transition-colors;
+  @apply hover:bg-one-bg transition-colors;
 }
 
 .table-td {
-  @apply px-4 py-2.5 text-sm-pro text-slate-600;
+  @apply px-4 py-3 text-sm-pro text-one-text;
 }
 
+/* ─── Typography ──────────────────────────────────────── */
 .page-title {
-  @apply text-base-pro font-semibold text-slate-900 tracking-tight;
+  @apply text-xl-pro font-bold text-one-text tracking-tight;
 }
 
 .page-kicker {
-  @apply text-2xs text-slate-600;
+  @apply text-sm-pro text-one-sub;
 }
 
 .page-breadcrumb {
-  @apply flex items-center gap-1.5 text-sm-pro text-slate-500 mb-3;
+  @apply flex items-center gap-1.5 text-sm-pro text-one-sub mb-3;
 }
 
 .page-breadcrumb a {
-  @apply text-indigo-600 hover:text-indigo-700 transition-colors;
+  @apply text-one-primary hover:text-[#0F4BA8] transition-colors;
 }
 
 .page-breadcrumb span {
-  @apply text-slate-400;
+  @apply text-one-muted;
 }
 
+/* ─── Action links ────────────────────────────────────── */
 .action-link {
-  @apply inline-flex items-center rounded-md border border-slate-200/90 bg-white/90 px-2.5 py-1 text-2xs font-medium text-slate-600 transition-colors;
-  @apply hover:bg-indigo-50/70 hover:border-indigo-200/80 hover:text-indigo-700;
-  transform: translateY(0);
-  transition:
-    transform 0.14s ease,
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    color 0.18s ease;
+  @apply inline-flex items-center rounded-xs-card bg-one-bg px-2.5 py-1 text-2xs font-semibold text-one-primary transition-colors;
+  @apply hover:bg-one-tint;
 }
 
-.action-link:hover:not(:disabled) {
-  transform: translateY(-1px);
+.action-link--destructive {
+  @apply text-rose-600 hover:bg-rose-50;
 }
 
+/* ─── Reduced motion ──────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .btn-primary,
   .btn-secondary,
   .surface-card,
   .action-link {
     transition: none !important;
-    transform: none !important;
   }
 }

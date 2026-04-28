@@ -40,8 +40,8 @@
             <SocialIcon :type="t.type" class="w-4 h-4" />
           </div>
           <div class="text-left min-w-0">
-            <div class="text-xs-pro font-medium text-slate-700 truncate">{{ t.label }}</div>
-            <div class="text-2xs text-slate-500 truncate">{{ t.tagline }}</div>
+            <div class="text-xs-pro font-medium text-one-text truncate">{{ t.label }}</div>
+            <div class="text-2xs text-one-sub truncate">{{ t.tagline }}</div>
           </div>
         </button>
       </div>
@@ -80,7 +80,7 @@
           <option value="facebook">Facebook</option>
           <option value="other">Other</option>
         </select>
-        <p class="mt-1 text-2xs text-slate-500">{{ selectedTypeMeta.tagline }}</p>
+        <p class="mt-1 text-2xs text-one-sub">{{ selectedTypeMeta.tagline }}</p>
       </div>
       <transition name="fade-slide" mode="out-in">
       <div v-if="form.type === 'youtube'" key="youtube">
@@ -130,7 +130,7 @@
               {{ loadingYoutubeChannels ? 'Loading…' : 'Refresh' }}
             </button>
           </div>
-          <p class="mt-1 text-2xs text-slate-500">
+          <p class="mt-1 text-2xs text-one-sub">
             Only channels managed by this Google account are listed (YouTube <span class="font-medium">channels.list?mine=true</span>).
           </p>
         </div>
@@ -192,7 +192,7 @@
               {{ loadingFacebookPages ? 'Loading…' : 'Refresh' }}
             </button>
           </div>
-          <p class="mt-1 text-2xs text-slate-500">
+          <p class="mt-1 text-2xs text-one-sub">
             We’ll list Pages from your Facebook account via <span class="font-medium">/me/accounts</span>. If your Page doesn’t appear, disconnect/reconnect Facebook and ensure Page permissions are granted.
           </p>
         </div>
@@ -260,7 +260,7 @@
               {{ loadingInstagramAccounts ? 'Loading…' : 'Refresh' }}
             </button>
           </div>
-          <p class="mt-1 text-2xs text-slate-500">
+          <p class="mt-1 text-2xs text-one-sub">
             Only Facebook Pages with a linked Instagram Professional account appear here (<span class="font-medium">/me/accounts</span> + <span class="font-medium">instagram_business_account</span>).
           </p>
           <p
@@ -338,7 +338,7 @@
               {{ loadingTwitterAccount ? 'Loading…' : 'Refresh' }}
             </button>
           </div>
-          <p class="mt-1 text-2xs text-slate-500">
+          <p class="mt-1 text-2xs text-one-sub">
             From X <span class="font-medium">users/me</span> for this credential—only that account’s posts are synced. Reconnect X if this fails; offline access is required for token refresh.
           </p>
         </div>
@@ -406,7 +406,7 @@
               {{ loadingTikTokAccount ? 'Loading…' : 'Refresh' }}
             </button>
           </div>
-          <p class="mt-1 text-2xs text-slate-500">
+          <p class="mt-1 text-2xs text-one-sub">
             From TikTok account info for this credential. Only that connected account’s videos are synced.
           </p>
           <p
@@ -480,7 +480,7 @@
               {{ loadingThreadsAccount ? 'Loading…' : 'Refresh' }}
             </button>
           </div>
-          <p class="mt-1 text-2xs text-slate-500">
+          <p class="mt-1 text-2xs text-one-sub">
             From Threads <span class="font-medium">/me</span> for this credential—only that account’s posts are synced.
           </p>
           <p
@@ -516,7 +516,7 @@
           placeholder="https://example.com/feed.xml"
           required
         />
-        <p class="mt-1 text-2xs text-slate-500">
+        <p class="mt-1 text-2xs text-one-sub">
           Supports RSS 2.0 and Atom. The server fetches this URL on sync (no OAuth). Use a stable public URL.
         </p>
         <div class="mt-3 flex items-center gap-2 flex-wrap">
@@ -531,26 +531,26 @@
         </div>
         <div
           v-if="rssTestSummary"
-          class="mt-3 rounded-md border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-2xs text-slate-700 space-y-1"
+          class="mt-3 rounded-md border border-one-divider/90 bg-one-bg/80 px-3 py-2 text-2xs text-one-text space-y-1"
         >
           <div v-if="rssTestSummary.feed_title">
-            <span class="font-medium text-slate-600">Feed:</span>
+            <span class="font-medium text-one-sub">Feed:</span>
             {{ rssTestSummary.feed_title }}
           </div>
           <div v-if="rssTestSummary.item_count != null">
-            <span class="font-medium text-slate-600">Entries found:</span>
+            <span class="font-medium text-one-sub">Entries found:</span>
             {{ rssTestSummary.item_count }}
           </div>
           <div v-if="rssTestSummary.sample_title">
-            <span class="font-medium text-slate-600">Latest title:</span>
+            <span class="font-medium text-one-sub">Latest title:</span>
             {{ rssTestSummary.sample_title }}
           </div>
         </div>
       </div>
       <div v-else key="other">
-        <label class="label-pro">Source URL <span class="text-slate-400 font-normal">(optional)</span></label>
+        <label class="label-pro">Source URL <span class="text-one-muted font-normal">(optional)</span></label>
         <input v-model="form.source_url" type="url" class="input-pro" placeholder="https://…" />
-        <p class="mt-1 text-2xs text-slate-500">
+        <p class="mt-1 text-2xs text-one-sub">
           Optional reference URL for this feed type.
         </p>
       </div>
@@ -1302,37 +1302,27 @@ watch(
 </script>
 
 <style scoped>
-.feed-form-shell {
-  position: relative;
-}
-
-.feed-form-hero {
-  background:
-    radial-gradient(880px 260px at -8% -48%, rgba(56, 189, 248, 0.15), transparent 65%),
-    radial-gradient(760px 240px at 110% -40%, rgba(99, 102, 241, 0.18), transparent 62%),
-    linear-gradient(170deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.94));
-}
-
 .feed-type-card {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  border-radius: 0.7rem;
-  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #E5E5EA;
+  border-radius: 14px;
+  background: #ffffff;
   padding: 0.55rem 0.65rem;
-  transition: all 0.18s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .feed-type-card:hover {
-  border-color: rgba(165, 180, 252, 0.72);
-  background: rgba(238, 242, 255, 0.6);
+  border-color: rgba(18, 89, 195, 0.3);
+  background: #EBF1FB;
 }
 
 .feed-type-card--active {
-  border-color: rgba(99, 102, 241, 0.52);
-  background: rgba(238, 242, 255, 0.88);
-  box-shadow: 0 10px 24px -18px rgba(79, 70, 229, 0.9);
+  border-color: #1259C3;
+  background: #EBF1FB;
+  outline: 2px solid #1259C3;
+  outline-offset: -2px;
 }
 
 .feed-type-icon-wrap {
@@ -1348,11 +1338,10 @@ watch(
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.72);
+  background: #F4F4F6;
   border-radius: 999px;
   padding: 0.28rem 0.62rem;
-  color: rgb(100 116 139);
+  color: #6E6E73;
   font-size: 0.68rem;
 }
 
@@ -1362,27 +1351,32 @@ watch(
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(226, 232, 240, 0.88);
-  color: rgb(71 85 105);
+  background: #E5E5EA;
+  color: #6E6E73;
   font-size: 0.62rem;
   font-weight: 600;
 }
 
 .setup-step--active {
-  border-color: rgba(129, 140, 248, 0.55);
-  color: rgb(67 56 202);
-  background: rgba(238, 242, 255, 0.84);
+  color: #1259C3;
+  background: #EBF1FB;
 }
 
 .setup-step--active .setup-step__dot {
-  background: rgba(99, 102, 241, 0.95);
+  background: #1259C3;
   color: white;
 }
 
 .setup-step-divider {
   width: 1rem;
   height: 1px;
-  background: rgba(203, 213, 225, 0.9);
+  background: #E5E5EA;
+}
+
+.rss-test-summary {
+  border-radius: 10px;
+  border: 1px solid #E5E5EA;
+  background: #F4F4F6;
 }
 
 .fade-slide-enter-active,
