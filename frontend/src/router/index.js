@@ -10,6 +10,7 @@ import FeedForm from '../views/FeedForm.vue';
 import Curate from '../views/Curate.vue';
 import WorkspaceCurate from '../views/WorkspaceCurate.vue';
 import Credentials from '../views/Credentials.vue';
+import OAuthApps from '../views/OAuthApps.vue';
 import Publish from '../views/Publish.vue';
 import { useAuthStore } from '../stores/auth';
 
@@ -32,6 +33,7 @@ const routes = [
       { path: 'workspaces/:workspaceId/feeds/:feedId/edit', name: 'feed-edit', component: FeedForm },
       { path: 'workspaces/:workspaceId/publish', name: 'workspace-publish', component: Publish },
       { path: 'credentials', name: 'credentials', component: Credentials },
+      { path: 'oauth-apps', name: 'oauth-apps', component: OAuthApps },
       { path: 'publish', name: 'publish', component: Publish },
     ],
   },

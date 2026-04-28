@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OAuthAppConfig;
 use App\Models\SocialCredential;
+use App\Support\OAuthAppConfigResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
@@ -115,7 +116,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
         if (! $oauth) {
-            return response()->json(['message' => 'YouTube connect is not configured. Add Google OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'YouTube connect is not configured. Add Google OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'youtube');
@@ -148,7 +149,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
         if (! $oauth) {
-            return response()->json(['message' => 'Google connect is not configured. Add Google OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Google connect is not configured. Add Google OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'google');
@@ -180,7 +181,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
         if (! $oauth) {
-            return response()->json(['message' => 'Facebook connect is not configured. Add Facebook OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Facebook connect is not configured. Add Facebook OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'facebook');
@@ -205,7 +206,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
         if (! $oauth) {
-            return response()->json(['message' => 'Instagram connect is not configured. Add Facebook OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Instagram connect is not configured. Add Facebook OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'instagram');
@@ -230,7 +231,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'twitter');
         if (! $oauth) {
-            return response()->json(['message' => 'Twitter connect is not configured. Add Twitter OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Twitter connect is not configured. Add Twitter OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $redirectUrl = $this->normalizeAbsoluteUrl(
@@ -267,7 +268,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'tiktok');
         if (! $oauth) {
-            return response()->json(['message' => 'TikTok connect is not configured. Add TikTok OAuth client key/secret in Credentials.'], 503);
+            return response()->json(['message' => 'TikTok connect is not configured. Add TikTok OAuth client key/secret in OAuth Apps.'], 503);
         }
 
         $redirectUrl = $this->normalizeAbsoluteUrl(
@@ -293,7 +294,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'threads');
         if (! $oauth) {
-            return response()->json(['message' => 'Threads connect is not configured. Add Threads OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Threads connect is not configured. Add Threads OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $redirectUrl = $this->normalizeAbsoluteUrl(
@@ -812,10 +813,7 @@ class SocialConnectController extends Controller
 
     private function oauthConfigForUser(int $userId, string $provider): ?OAuthAppConfig
     {
-        return OAuthAppConfig::query()
-            ->where('user_id', $userId)
-            ->where('provider', $provider)
-            ->first();
+        return OAuthAppConfigResolver::resolveForUser($userId, $provider);
     }
 
     private function setFacebookConfig(OAuthAppConfig $oauth, string $redirectUrl): void

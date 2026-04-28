@@ -29,7 +29,7 @@
     <div class="feed-form-hero surface-card p-5 md:p-6">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         <button
-          v-for="t in socialTypes"
+          v-for="t in availableSocialTypes"
           :key="t.type"
           type="button"
           class="feed-type-card"
@@ -71,14 +71,7 @@
         <label class="label-pro">Type</label>
         <select v-model="form.type" class="input-pro" required>
           <option value="">Select type</option>
-          <option value="instagram">Instagram</option>
-          <option value="twitter">Twitter / X</option>
-          <option value="youtube">YouTube</option>
-          <option value="rss">RSS</option>
-          <option value="tiktok">TikTok</option>
-          <option value="threads">Threads</option>
-          <option value="facebook">Facebook</option>
-          <option value="other">Other</option>
+          <option v-for="t in availableSocialTypes" :key="`type-${t.type}`" :value="t.type">{{ t.label }}</option>
         </select>
         <p class="mt-1 text-2xs text-slate-500">{{ selectedTypeMeta.tagline }}</p>
       </div>
@@ -690,6 +683,14 @@ const tiktokCredentials = computed(() =>
 const threadsCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'threads'),
 );
+const credentialCounts = computed(() => ({
+  youtube: youtubeCredentials.value.length,
+  facebook: facebookCredentials.value.length,
+  instagram: instagramCredentials.value.length,
+  twitter: twitterCredentials.value.length,
+  tiktok: tiktokCredentials.value.length,
+  threads: threadsCredentials.value.length,
+}));
 
 const socialTypes = [
   { type: 'instagram', label: 'Instagram', tagline: 'Stories, reels, and posts', color: '#e1306c', softBg: 'rgba(225,48,108,0.13)' },
@@ -701,6 +702,12 @@ const socialTypes = [
   { type: 'facebook', label: 'Facebook', tagline: 'Pages and updates', color: '#1877f2', softBg: 'rgba(24,119,242,0.12)' },
   { type: 'other', label: 'Other', tagline: 'Custom source setup', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
+const accountOptionalTypes = new Set(['rss', 'other']);
+const availableSocialTypes = computed(() => socialTypes.filter((item) => (
+  accountOptionalTypes.has(item.type)
+  || (credentialCounts.value[item.type] || 0) > 0
+  || item.type === form.type
+)));
 
 const selectedTypeMeta = computed(() =>
   socialTypes.find((item) => item.type === form.type) || { tagline: 'Choose a source type to configure credentials and sync settings.' },
@@ -1006,6 +1013,12 @@ function formatDate(v) {
 onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
   if (!credentials.list.length) await credentials.fetchAll();
+  if (!isEdit.value) {
+    const firstAvailableType = availableSocialTypes.value[0]?.type || '';
+    if (!form.type || !availableSocialTypes.value.some((item) => item.type === form.type)) {
+      form.type = firstAvailableType;
+    }
+  }
   if (isEdit.value && workspaceId.value) {
     await feeds.fetchAll(workspaceId.value);
     const f = feeds.list.find((x) => x.id === Number(feedId.value));

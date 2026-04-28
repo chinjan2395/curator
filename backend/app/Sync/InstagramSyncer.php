@@ -3,9 +3,9 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\OAuthAppConfig;
 use App\Models\Post;
 use App\Models\SocialCredential;
+use App\Support\OAuthAppConfigResolver;
 use App\Sync\Concerns\ResolvesFacebookPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -223,10 +223,7 @@ class InstagramSyncer
 
     private function debugTokens(int $userId, ?string $userToken, ?string $pageToken): array
     {
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $userId)
-            ->where('provider', 'facebook')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser($userId, 'facebook');
 
         if (! $oauth?->client_id || ! $oauth?->client_secret) {
             return [null, null];

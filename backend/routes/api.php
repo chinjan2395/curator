@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('oauth-app-configs', [OAuthAppConfigController::class, 'index']);
     Route::post('oauth-app-configs', [OAuthAppConfigController::class, 'upsert']);
+    Route::post('oauth-app-configs/promote-my-user-configs-to-shared', [OAuthAppConfigController::class, 'promoteMyUserConfigsToShared']);
     Route::delete('oauth-app-configs/{provider}', [OAuthAppConfigController::class, 'destroy']);
 });
 
