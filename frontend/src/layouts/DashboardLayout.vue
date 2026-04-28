@@ -71,6 +71,12 @@
                 </svg>
                 Credentials
               </router-link>
+              <router-link to="/oauth-apps" class="topnav-item" :class="{ 'topnav-item-active': $route.path.startsWith('/oauth-apps') }">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path d="M10 2a2 2 0 0 1 2 2v1.07a5.002 5.002 0 0 1 2.93 2.93H16a2 2 0 1 1 0 4h-1.07a5.002 5.002 0 0 1-2.93 2.93V16a2 2 0 1 1-4 0v-1.07a5.002 5.002 0 0 1-2.93-2.93H4a2 2 0 1 1 0-4h1.07A5.002 5.002 0 0 1 8 5.07V4a2 2 0 0 1 2-2Zm0 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                </svg>
+                OAuth apps
+              </router-link>
             </nav>
             <div class="flex items-center gap-2 ml-auto">
               <!-- Nav mode toggle -->
@@ -188,6 +194,14 @@
                       <path d="M11.49 2.17a1.75 1.75 0 0 0-2.98 0l-.62 1.08a1.75 1.75 0 0 1-1.25.85l-1.22.22a1.75 1.75 0 0 0-.92 2.95l.84.86a1.75 1.75 0 0 1 .48 1.48l-.14 1.3a1.75 1.75 0 0 0 2.4 1.83l1.13-.48a1.75 1.75 0 0 1 1.38 0l1.13.48a1.75 1.75 0 0 0 2.4-1.83l-.14-1.3a1.75 1.75 0 0 1 .48-1.48l.84-.86a1.75 1.75 0 0 0-.92-2.95l-1.22-.22a1.75 1.75 0 0 1-1.25-.85l-.62-1.08ZM10 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
                     </svg>
                     Credentials
+                  </router-link>
+                </li>
+                <li>
+                  <router-link to="/oauth-apps" class="nav-item" :class="{ 'nav-item-active': $route.path.startsWith('/oauth-apps') }">
+                    <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path d="M10 2a2 2 0 0 1 2 2v1.07a5.002 5.002 0 0 1 2.93 2.93H16a2 2 0 1 1 0 4h-1.07a5.002 5.002 0 0 1-2.93 2.93V16a2 2 0 1 1-4 0v-1.07a5.002 5.002 0 0 1-2.93-2.93H4a2 2 0 1 1 0-4h1.07A5.002 5.002 0 0 1 8 5.07V4a2 2 0 0 1 2-2Zm0 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                    OAuth apps
                   </router-link>
                 </li>
               </ul>
