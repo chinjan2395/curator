@@ -145,19 +145,26 @@
     <div v-else-if="!creds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
       No credentials connected yet.
     </div>
-    <div v-else class="space-y-3">
+    <div v-else class="connected-accounts-shell space-y-3 p-3 sm:p-4 rounded-xl">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+        <p class="text-xs-pro font-medium text-slate-700">Current connected accounts</p>
+        <p class="text-2xs text-slate-500">{{ creds.list.length }} total account{{ creds.list.length > 1 ? 's' : '' }}</p>
+      </div>
       <div
         v-for="(providerCreds, prov) in creds.byProvider"
         :key="prov"
-        class="surface-card overflow-hidden"
+        class="connected-provider-card overflow-hidden"
       >
-        <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div class="px-4 py-3 border-b border-slate-100/95 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <div class="type-dot" :class="`type-dot--${prov}`">
+            <div class="connected-provider-icon" :style="{ background: providerUi[prov]?.softBg || 'rgba(148,163,184,0.14)', color: providerUi[prov]?.color || '#475569' }">
               <SocialIcon :type="prov" />
             </div>
-            <span class="text-sm-pro font-semibold text-slate-800">{{ providerLabels[prov] || prov }}</span>
-            <span class="text-2xs text-slate-400">({{ providerCreds.length }} account{{ providerCreds.length > 1 ? 's' : '' }})</span>
+            <div>
+              <p class="text-sm-pro font-semibold text-slate-800">{{ providerLabels[prov] || prov }}</p>
+              <p class="text-2xs text-slate-500">{{ providerUi[prov]?.tagline || 'Connected accounts' }}</p>
+            </div>
+            <span class="connected-provider-count">{{ providerCreds.length }} account{{ providerCreds.length > 1 ? 's' : '' }}</span>
           </div>
           <button
             type="button"
@@ -169,12 +176,11 @@
             + Add
           </button>
         </div>
-        <table class="w-full text-left">
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="c in providerCreds" :key="c.id" class="table-tr">
-              <td class="table-td">
+        <div class="p-2 space-y-2">
+          <div v-for="c in providerCreds" :key="c.id" class="connected-account-row">
+            <div class="min-w-0">
                 <div v-if="renamingId !== c.id" class="flex items-center gap-2">
-                  <span class="font-medium text-slate-800">{{ c.account_label || c.account_id || '—' }}</span>
+                  <span class="font-medium text-slate-800 truncate">{{ c.account_label || c.account_id || '—' }}</span>
                   <button
                     type="button"
                     class="text-2xs text-slate-400 hover:text-slate-600 underline"
@@ -193,9 +199,11 @@
                   <button type="button" class="btn-primary !w-auto !py-1 !px-2 text-xs-pro" @click="saveRename(c.id)">Save</button>
                   <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</button>
                 </div>
-              </td>
-              <td class="table-td text-2xs text-slate-500">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</td>
-              <td class="table-td w-28">
+              <p class="text-2xs text-slate-500 mt-1">
+                Expires: <span class="font-medium text-slate-600">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
                 <button
                   type="button"
                   class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80"
@@ -203,10 +211,9 @@
                 >
                   Disconnect
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -236,6 +243,7 @@ const socialProviders = [
   { type: 'threads', label: 'Threads', tagline: 'Meta Threads access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'other', label: 'Other', tagline: 'Custom provider', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
+const providerUi = Object.fromEntries(socialProviders.map((item) => [item.type, item]));
 
 const providerLabels = {
   youtube: 'YouTube',
@@ -506,6 +514,49 @@ function formatDate(v) {
   padding: 0.65rem 0.75rem;
   display: grid;
   gap: 0.2rem;
+}
+
+.connected-accounts-shell {
+  background:
+    radial-gradient(640px 180px at -6% -50%, rgba(56, 189, 248, 0.08), transparent 62%),
+    radial-gradient(540px 180px at 115% -50%, rgba(99, 102, 241, 0.09), transparent 62%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(248, 250, 252, 0.45));
+}
+
+.connected-provider-card {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px -28px rgba(15, 23, 42, 0.6);
+}
+
+.connected-provider-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.connected-provider-count {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(248, 250, 252, 0.9);
+  color: rgb(100 116 139);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.68rem;
+}
+
+.connected-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 0.7rem;
+  background: rgba(248, 250, 252, 0.68);
+  padding: 0.6rem 0.7rem;
 }
 </style>
 
