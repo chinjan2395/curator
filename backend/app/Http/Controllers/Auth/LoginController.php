@@ -31,6 +31,15 @@ class LoginController extends Controller
 
         /** @var \App\Models\User $user */
         $user = $request->user();
+
+        if ($user->isDeactivated()) {
+            Auth::logout();
+
+            return response()->json([
+                'message' => 'Your account has been deactivated. Please contact support.',
+            ], 403);
+        }
+
         $token = $user->createToken('auth')->plainTextToken;
 
         return response()->json([

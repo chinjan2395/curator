@@ -27,6 +27,9 @@ class User extends Authenticatable
         'email',
         'role',
         'password',
+        'social_provider',
+        'social_provider_id',
+        'deactivated_at',
     ];
 
     /**
@@ -48,6 +51,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -55,6 +59,11 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
     }
 
     public function workspaces()

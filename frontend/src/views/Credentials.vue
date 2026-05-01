@@ -19,7 +19,7 @@
       No providers are ready yet. Configure shared defaults or your override in
       <router-link to="/oauth-apps" class="text-indigo-600 font-medium hover:underline">OAuth apps</router-link>.
     </div>
-    <div v-else class="connected-accounts-shell compact-accounts-shell space-y-2.5 p-2.5 sm:p-3 rounded-xl">
+    <div v-else class="connected-accounts-shell compact-accounts-shell space-y-2.5 sm:p-3 rounded-xl">
       <div class="flex flex-wrap items-center justify-between gap-2 px-1">
         <p class="text-xs-pro font-medium text-slate-700">Current connected accounts</p>
         <p class="text-2xs text-slate-500">{{ creds.list.length }} total account{{ creds.list.length > 1 ? 's' : '' }}</p>
@@ -86,10 +86,14 @@
                   </p>
                   <button
                     type="button"
-                    class="action-link !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80"
+                    class="compact-disconnect-btn"
                     @click="disconnect(c)"
+                    title="Disconnect account"
                   >
-                    Disconnect
+                    <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="hidden sm:inline">Disconnect</span>
                   </button>
               </div>
             </div>
@@ -372,6 +376,26 @@ function formatDate(v) {
 .compact-expiry {
   white-space: nowrap;
   padding-right: 0.15rem;
+}
+
+.compact-disconnect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid rgba(254, 205, 211, 0.9);
+  background: rgba(255, 241, 242, 0.8);
+  color: rgb(190 18 60);
+  border-radius: 0.5rem;
+  padding: 0.22rem 0.38rem;
+  font-size: 0.68rem;
+  line-height: 1;
+  transition: all 0.16s ease;
+}
+
+.compact-disconnect-btn:hover {
+  border-color: rgba(251, 113, 133, 0.55);
+  background: rgba(255, 228, 230, 0.92);
+  color: rgb(159 18 57);
 }
 </style>
 
