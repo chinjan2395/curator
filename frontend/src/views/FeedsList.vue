@@ -203,7 +203,13 @@ function feedTypeLabel(type) {
 }
 
 function sourceDescriptor(f) {
-  if (f.type === 'youtube' && f.youtube_channel_id) return `Channel: ${f.youtube_channel_id}`;
+  if (f.type === 'youtube') {
+    const pub = f.source_account_label?.trim();
+    if (pub) return pub;
+    const nm = f.name?.trim();
+    if (nm) return nm;
+    return 'YouTube';
+  }
   if (f.type === 'facebook' && f.facebook_page_id) return `Page: ${f.facebook_page_id}`;
   if (f.type === 'instagram' && f.instagram_business_account_id) {
     const page = f.facebook_page_id ? ` · Page ${f.facebook_page_id}` : '';

@@ -70,6 +70,17 @@ class ThreadsSyncer
             return response()->json(['message' => 'Threads credential has expired or could not be refreshed. Reconnect Threads in Credentials.'], 422);
         }
 
+        $meResolved = $this->resolveMe($token);
+        if ($meResolved instanceof JsonResponse) {
+            return $meResolved;
+        }
+
+        $threadsUser = trim((string) ($meResolved['username'] ?? ''));
+        if ($threadsUser !== '') {
+            $feed->source_account_label = '@'.ltrim($threadsUser, '@');
+            $feed->save();
+        }
+
         $resp = Http::withToken($token)->timeout(20)->get(self::THREADS_API_BASE.'/me/threads', [
             'fields' => self::THREAD_FIELDS,
             'limit' => 25,
