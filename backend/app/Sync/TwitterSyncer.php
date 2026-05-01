@@ -70,6 +70,13 @@ class TwitterSyncer
             return $resolved;
         }
 
+        $uname = trim((string) ($resolved['username'] ?? ''));
+        if ($uname !== '') {
+            $feed->twitter_username = ltrim($uname, '@');
+            $feed->source_account_label = '@'.ltrim($uname, '@');
+            $feed->save();
+        }
+
         $resp = Http::withToken($token)->timeout(20)->get(self::X_API_BASE.'/users/'.$resolved['id'].'/tweets', [
             'max_results' => 25,
             'tweet.fields' => 'created_at,text,note_tweet,attachments',

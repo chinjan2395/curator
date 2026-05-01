@@ -142,6 +142,18 @@ class InstagramSyncer
             return response()->json(['message' => 'Could not access this Page. Confirm the Page is linked to the Instagram account, that you manage it, and reconnect Instagram with Page permissions granted.'], 422);
         }
 
+        $userResp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId, [
+            'fields' => 'username',
+            'access_token' => $pageToken,
+        ]);
+        if ($userResp->ok()) {
+            $uname = trim((string) ($userResp->json('username') ?? ''));
+            if ($uname !== '') {
+                $feed->source_account_label = '@'.ltrim($uname, '@');
+                $feed->save();
+            }
+        }
+
         $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId.'/media', [
             'fields' => 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp',
             'limit' => 25,

@@ -121,9 +121,34 @@
               <input v-model="appearance.post.autoplay_videos" type="checkbox" class="rounded border-slate-300" />
               Autoplay videos (YouTube embed, muted)
             </label>
+            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
+              <input v-model="appearance.post.show_platform_icon" type="checkbox" class="rounded border-slate-300" />
+              Show platform icon
+            </label>
+            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
+              <input v-model="appearance.post.show_feed_name" type="checkbox" class="rounded border-slate-300" />
+              Show feed / account name
+            </label>
+            <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Icon &amp; name layout</div>
+                <select v-model="appearance.post.source_row_layout" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="stacked">Stacked (like Curator.io)</option>
+                  <option value="inline">Inline (compact)</option>
+                </select>
+              </div>
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Alignment</div>
+                <select v-model="appearance.post.source_row_alignment" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="center">Center</option>
+                  <option value="start">Start (left)</option>
+                </select>
+              </div>
+            </div>
           </div>
           <p class="text-2xs text-slate-500 max-w-2xl">
-            Like/comment rows are visual hints on the card; live counts require a future social integration.
+            Platform icon and name come from each post’s feed (type + feed name). Like/comment rows are visual hints;
+            live counts require a future social integration.
           </p>
         </div>
 
@@ -183,6 +208,117 @@
             </div>
           </div>
         </div>
+
+        <div v-if="appearance?.branding" class="space-y-5 border-t border-slate-100 pt-4">
+          <div>
+            <h3 class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">
+              Showcase branding
+            </h3>
+            <p class="text-2xs text-slate-500 mt-1 max-w-2xl">
+              Controls icons on the <strong class="font-medium text-slate-600">Showcase carousel</strong> embed.
+              Use HTTPS URLs for custom images (square PNG or JPG works best).
+            </p>
+          </div>
+
+          <div class="space-y-2 max-w-2xl">
+            <div class="text-xs-pro font-medium text-slate-700">Thumbnail badge</div>
+            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
+              <input v-model="appearance.branding.media_badge.show" type="checkbox" class="rounded border-slate-300" />
+              Show badge on media
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Image</div>
+                <select v-model="appearance.branding.media_badge.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="platform">Platform icon</option>
+                  <option value="custom">Custom URL</option>
+                  <option value="none">Hidden</option>
+                </select>
+              </div>
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Position on thumbnail</div>
+                <select v-model="appearance.branding.media_badge.position" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="center">Center</option>
+                  <option value="top_left">Top left</option>
+                  <option value="top_right">Top right</option>
+                  <option value="bottom_left">Bottom left</option>
+                  <option value="bottom_right">Bottom right</option>
+                </select>
+              </div>
+            </div>
+            <input
+              v-if="appearance.branding.media_badge.image_source === 'custom'"
+              v-model="appearance.branding.media_badge.custom_url"
+              type="url"
+              placeholder="https://example.com/badge.png"
+              class="input-pro !py-1.5 !text-sm-pro w-full font-mono text-xs"
+            />
+          </div>
+
+          <div class="space-y-2 max-w-2xl">
+            <div class="text-xs-pro font-medium text-slate-700">Account row icon</div>
+            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
+              <input v-model="appearance.branding.source_icon.show" type="checkbox" class="rounded border-slate-300" />
+              Show icon next to feed name
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Image</div>
+                <select v-model="appearance.branding.source_icon.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="platform">Platform icon</option>
+                  <option value="custom">Custom URL</option>
+                  <option value="none">Hidden</option>
+                </select>
+              </div>
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Position</div>
+                <select v-model="appearance.branding.source_icon.position" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="before_name">Before feed name</option>
+                  <option value="after_name">After feed name</option>
+                </select>
+              </div>
+            </div>
+            <input
+              v-if="appearance.branding.source_icon.image_source === 'custom'"
+              v-model="appearance.branding.source_icon.custom_url"
+              type="url"
+              placeholder="https://example.com/icon.png"
+              class="input-pro !py-1.5 !text-sm-pro w-full font-mono text-xs"
+            />
+          </div>
+
+          <div class="space-y-2 max-w-2xl">
+            <div class="text-xs-pro font-medium text-slate-700">Footer avatar</div>
+            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
+              <input v-model="appearance.branding.account_avatar.show" type="checkbox" class="rounded border-slate-300" />
+              Show avatar in footer
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Image</div>
+                <select v-model="appearance.branding.account_avatar.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="initial">Letter from feed name</option>
+                  <option value="custom">Custom URL</option>
+                  <option value="none">Hidden</option>
+                </select>
+              </div>
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Position in footer</div>
+                <select v-model="appearance.branding.account_avatar.position" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="footer_start">Left (before handle)</option>
+                  <option value="footer_end">Right (after share)</option>
+                </select>
+              </div>
+            </div>
+            <input
+              v-if="appearance.branding.account_avatar.image_source === 'custom'"
+              v-model="appearance.branding.account_avatar.custom_url"
+              type="url"
+              placeholder="https://example.com/avatar.jpg"
+              class="input-pro !py-1.5 !text-sm-pro w-full font-mono text-xs"
+            />
+          </div>
+        </div>
       </div>
 
         </div>
@@ -220,7 +356,7 @@
                   type="button"
                   class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
                   @click="showEmbedPreview = true"
-                  :disabled="!publish.code?.public_key"
+                  :disabled="!embedPublicKey"
                   title="Test embed in iframe"
                 >
                   Test embed
@@ -235,8 +371,8 @@
             </div>
           </div>
           <a
-            v-if="publish.code?.public_posts_url"
-            :href="publish.code.public_posts_url"
+            v-if="previewPostsJsonUrl"
+            :href="previewPostsJsonUrl"
             target="_blank"
             rel="noreferrer"
             class="text-sm-pro text-slate-600 hover:text-slate-800 underline underline-offset-2 shrink-0"
@@ -264,58 +400,306 @@
           </p>
         </div>
         <div
-          v-else-if="appearance && embedCssHref"
+          v-else-if="appearance && previewUsesEmbedStylesheet"
           class="rounded-lg border border-slate-200/90 bg-slate-50/90 p-3 overflow-x-auto curator-embed-preview"
+          :class="{ 'curator-embed-preview--showcase': previewIsShowcase }"
         >
-          <div class="crt-wrap" :style="previewColorCssVars">
-            <div :class="['crt-inner', previewLayoutClass]" :style="previewInnerStyle">
-              <a
-                v-for="(p, idx) in previewPosts"
-                :key="p.id"
-                :href="p.video_url || '#'"
-                target="_blank"
-                rel="noreferrer"
-                class="crt-card crt-link"
-                :style="previewCardStyle(idx)"
-              >
-                <div v-if="p.thumbnail_url" class="crt-media">
-                  <img :src="p.thumbnail_url" :alt="p.title || 'Post'" loading="lazy" />
+          <div
+            class="crt-wrap"
+            :class="{ 'crt-wrap--showcase': previewIsShowcase }"
+            :style="previewColorCssVars"
+          >
+            <template v-if="previewIsShowcase">
+              <div class="crt-showcase-viewport">
+                <button
+                  type="button"
+                  class="crt-showcase-nav crt-showcase-nav--prev"
+                  aria-label="Previous posts"
+                  @click="showcasePreviewScroll(-1)"
+                >
+                  ‹
+                </button>
+                <div
+                  ref="previewStripRef"
+                  :class="['crt-inner', previewLayoutClass]"
+                  :style="previewInnerStyle"
+                >
+                  <a
+                    v-for="(row, idx) in showcasePreviewRows"
+                    :key="row.p.id"
+                    :href="row.p.video_url || '#'"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="crt-card crt-card--showcase crt-link"
+                    :style="previewCardStyle(idx)"
+                  >
+                    <div v-if="row.p.thumbnail_url" class="crt-media">
+                      <img :src="row.p.thumbnail_url" :alt="row.p.title || 'Post'" loading="lazy" />
+                      <div
+                        v-if="previewMediaBadgeVisible"
+                        :class="['crt-media-overlay', `crt-media-overlay--${previewMediaOverlayPositionClass}`]"
+                      >
+                        <img
+                          v-if="previewMediaBadgeUsesCustom"
+                          :src="appearance.branding.media_badge.custom_url"
+                          alt=""
+                          class="crt-brand-img crt-brand-img--media"
+                          loading="lazy"
+                        />
+                        <span
+                          v-else
+                          :class="[
+                            'crt-showcase-provider-icon flex items-center justify-center',
+                            previewSocialIconClass(row.p.provider),
+                          ]"
+                        >
+                          <SocialIcon
+                            :type="previewProviderIconType(row.p.provider)"
+                            class="w-14 h-14 opacity-95 drop-shadow-md"
+                          />
+                        </span>
+                      </div>
+                    </div>
+                    <div class="crt-body crt-body--showcase">
+                      <div class="crt-showcase-source">
+                        <template v-if="previewSourceIconAfterName">
+                          <span class="crt-showcase-feed-name">{{
+                            previewPostAccountLabel(row.p) || row.p.provider || 'Social'
+                          }}</span>
+                          <span
+                            v-if="previewSourceIconVisible"
+                            :class="[
+                              'crt-showcase-source-icon flex items-center justify-center',
+                              previewSocialIconClass(row.p.provider),
+                            ]"
+                          >
+                            <img
+                              v-if="previewSourceIconUsesCustom"
+                              :src="appearance.branding.source_icon.custom_url"
+                              alt=""
+                              class="crt-brand-img crt-brand-img--inline"
+                              loading="lazy"
+                            />
+                            <SocialIcon
+                              v-else
+                              :type="previewProviderIconType(row.p.provider)"
+                              class="w-4 h-4"
+                            />
+                          </span>
+                        </template>
+                        <template v-else>
+                          <span
+                            v-if="previewSourceIconVisible"
+                            :class="[
+                              'crt-showcase-source-icon flex items-center justify-center',
+                              previewSocialIconClass(row.p.provider),
+                            ]"
+                          >
+                            <img
+                              v-if="previewSourceIconUsesCustom"
+                              :src="appearance.branding.source_icon.custom_url"
+                              alt=""
+                              class="crt-brand-img crt-brand-img--inline"
+                              loading="lazy"
+                            />
+                            <SocialIcon
+                              v-else
+                              :type="previewProviderIconType(row.p.provider)"
+                              class="w-4 h-4"
+                            />
+                          </span>
+                          <span class="crt-showcase-feed-name">{{
+                            previewPostAccountLabel(row.p) || row.p.provider || 'Social'
+                          }}</span>
+                        </template>
+                      </div>
+                      <div v-if="appearance.post.show_titles !== false" class="crt-title crt-title--showcase">
+                        {{ row.p.title || 'Untitled' }}
+                      </div>
+                      <div class="crt-text crt-text--showcase">
+                        {{ clampPreview(row.plain, 260) }}
+                      </div>
+                      <div v-if="row.tags.length" class="crt-hashtags">
+                        <span v-for="tag in row.tags.slice(0, 8)" :key="tag" class="crt-hashtag">{{
+                          tag
+                        }}</span>
+                      </div>
+                      <div class="crt-showcase-footer">
+                        <template v-if="previewAccountFooterEnd">
+                          <div class="crt-showcase-meta-stack">
+                            <span class="crt-showcase-handle">{{ previewShowcaseHandle(row.p) }}</span>
+                            <span class="crt-showcase-foot-date">{{
+                              formatPreviewDateShowcase(row.p.posted_at)
+                            }}</span>
+                          </div>
+                          <a
+                            v-if="row.p.video_url"
+                            class="crt-showcase-share-btn"
+                            :href="
+                              'https://twitter.com/intent/tweet?url=' +
+                              encodeURIComponent(row.p.video_url)
+                            "
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Share"
+                            @click.stop
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                            </svg>
+                          </a>
+                          <img
+                            v-if="previewAccountVisible && previewAccountUsesCustom"
+                            :src="appearance.branding.account_avatar.custom_url"
+                            alt=""
+                            class="crt-showcase-avatar crt-showcase-avatar--img"
+                            loading="lazy"
+                          />
+                          <span
+                            v-else-if="previewAccountVisible"
+                            class="crt-showcase-avatar"
+                            >{{ previewShowcaseAvatarLetter(row.p) }}</span
+                          >
+                        </template>
+                        <template v-else>
+                          <img
+                            v-if="previewAccountVisible && previewAccountUsesCustom"
+                            :src="appearance.branding.account_avatar.custom_url"
+                            alt=""
+                            class="crt-showcase-avatar crt-showcase-avatar--img"
+                            loading="lazy"
+                          />
+                          <span
+                            v-else-if="previewAccountVisible"
+                            class="crt-showcase-avatar"
+                            >{{ previewShowcaseAvatarLetter(row.p) }}</span
+                          >
+                          <div class="crt-showcase-meta-stack">
+                            <span class="crt-showcase-handle">{{ previewShowcaseHandle(row.p) }}</span>
+                            <span class="crt-showcase-foot-date">{{
+                              formatPreviewDateShowcase(row.p.posted_at)
+                            }}</span>
+                          </div>
+                          <a
+                            v-if="row.p.video_url"
+                            class="crt-showcase-share-btn"
+                            :href="
+                              'https://twitter.com/intent/tweet?url=' +
+                              encodeURIComponent(row.p.video_url)
+                            "
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Share"
+                            @click.stop
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                            </svg>
+                          </a>
+                        </template>
+                      </div>
+                    </div>
+                  </a>
                 </div>
-                <div class="crt-body">
-                  <div v-if="appearance.post.show_titles !== false" class="crt-title">
-                    {{ p.title || 'Untitled' }}
+                <button
+                  type="button"
+                  class="crt-showcase-nav crt-showcase-nav--next"
+                  aria-label="Next posts"
+                  @click="showcasePreviewScroll(1)"
+                >
+                  ›
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div :class="['crt-inner', previewLayoutClass]" :style="previewInnerStyle">
+                <a
+                  v-for="(p, idx) in previewPosts"
+                  :key="p.id"
+                  :href="p.video_url || '#'"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="crt-card crt-link"
+                  :style="previewCardStyle(idx)"
+                >
+                  <div v-if="p.thumbnail_url" class="crt-media">
+                    <img :src="p.thumbnail_url" :alt="p.title || 'Post'" loading="lazy" />
                   </div>
-                  <div class="crt-text">{{ clampPreview(p.content, 220) }}</div>
-                  <div class="crt-meta">
-                    <span class="crt-meta-date">{{ formatPreviewDate(p.posted_at) }}</span>
-                    <span
-                      v-if="appearance.post.show_likes || appearance.post.show_comments"
-                      class="crt-meta-social"
-                    >
-                      <template v-if="appearance.post.show_likes">♥</template>
-                      <template v-if="appearance.post.show_likes && appearance.post.show_comments"> </template>
-                      <template v-if="appearance.post.show_comments">💬</template>
-                    </span>
+                  <div class="crt-body">
+                    <div v-if="previewStandardSourceRowShowsForPost(p)" :class="previewStandardSourceRowClassList()">
+                      <span
+                        v-if="appearance.post.show_platform_icon !== false && p.provider"
+                        :class="['crt-platform-badge crt-platform-badge--inline', previewSocialIconClass(p.provider)]"
+                      >
+                        <SocialIcon :type="previewProviderIconType(p.provider)" class="w-[22px] h-[22px]" />
+                      </span>
+                      <span
+                        v-if="
+                          appearance.post.show_feed_name !== false &&
+                          String(previewPostAccountLabel(p) || p.provider || '').trim()
+                        "
+                        class="crt-source-label"
+                      >
+                        {{ String(previewPostAccountLabel(p) || p.provider || '').trim() }}
+                      </span>
+                    </div>
+                    <div v-if="appearance.post.show_titles !== false" class="crt-title">
+                      {{ p.title || 'Untitled' }}
+                    </div>
+                    <div class="crt-text">{{ clampPreview(p.content, 220) }}</div>
+                    <div class="crt-meta">
+                      <span class="crt-meta-date">{{ formatPreviewDate(p.posted_at) }}</span>
+                      <span
+                        v-if="appearance.post.show_likes || appearance.post.show_comments"
+                        class="crt-meta-social"
+                      >
+                        <template v-if="appearance.post.show_likes">♥</template>
+                        <template v-if="appearance.post.show_likes && appearance.post.show_comments">
+                        </template>
+                        <template v-if="appearance.post.show_comments">💬</template>
+                      </span>
+                    </div>
+                    <div v-if="appearance.post.show_share_icons && p.video_url" class="crt-share">
+                      <a
+                        :href="'https://twitter.com/intent/tweet?url=' + encodeURIComponent(p.video_url)"
+                        target="_blank"
+                        rel="noreferrer"
+                        class="crt-share-link"
+                        title="Share"
+                        >𝕏</a
+                      >
+                      <a
+                        :href="
+                          'https://www.facebook.com/sharer/sharer.php?u=' +
+                          encodeURIComponent(p.video_url)
+                        "
+                        target="_blank"
+                        rel="noreferrer"
+                        class="crt-share-link"
+                        title="Share"
+                        >f</a
+                      >
+                    </div>
                   </div>
-                  <div v-if="appearance.post.show_share_icons && p.video_url" class="crt-share">
-                    <a
-                      :href="'https://twitter.com/intent/tweet?url=' + encodeURIComponent(p.video_url)"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="crt-share-link"
-                      title="Share"
-                    >𝕏</a>
-                    <a
-                      :href="'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(p.video_url)"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="crt-share-link"
-                      title="Share"
-                    >f</a>
-                  </div>
-                </div>
-              </a>
-            </div>
+                </a>
+              </div>
+            </template>
           </div>
         </div>
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -369,7 +753,7 @@
           <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="showEmbedPreview = false">Close</button>
         </div>
         <iframe
-          v-if="publish.code?.public_key"
+          v-if="embedPublicKey"
           :srcdoc="embedIframeHtml"
           class="flex-1 w-full border-0"
           title="Embed preview"
@@ -411,6 +795,52 @@ const publish = usePublishStore();
 
 const workspaceId = ref('');
 
+/** Mirrors backend PublishSettings branding defaults for nested form + preview */
+const BRANDING_DEFAULTS = {
+  media_badge: {
+    show: true,
+    image_source: 'platform',
+    custom_url: '',
+    position: 'center',
+  },
+  source_icon: {
+    show: true,
+    image_source: 'platform',
+    custom_url: '',
+    position: 'before_name',
+  },
+  account_avatar: {
+    show: true,
+    image_source: 'initial',
+    custom_url: '',
+    position: 'footer_start',
+  },
+};
+
+const POST_DEFAULTS = {
+  show_titles: true,
+  show_share_icons: false,
+  show_comments: false,
+  show_likes: false,
+  autoplay_videos: false,
+  show_platform_icon: true,
+  show_feed_name: true,
+  source_row_layout: 'stacked',
+  source_row_alignment: 'center',
+};
+
+function mergePublishAppearance(raw) {
+  const clone = JSON.parse(JSON.stringify(raw));
+  clone.post = { ...POST_DEFAULTS, ...(clone.post || {}) };
+  const b = clone.branding || {};
+  clone.branding = {
+    media_badge: { ...BRANDING_DEFAULTS.media_badge, ...(b.media_badge || {}) },
+    source_icon: { ...BRANDING_DEFAULTS.source_icon, ...(b.source_icon || {}) },
+    account_avatar: { ...BRANDING_DEFAULTS.account_avatar, ...(b.account_avatar || {}) },
+  };
+  return clone;
+}
+
 const showCode = ref(false);
 const copied = ref(false);
 const publishedCount = ref(null);
@@ -418,6 +848,7 @@ const showEmbedPreview = ref(false);
 
 const previewLoading = ref(false);
 const previewPosts = ref([]);
+const previewStripRef = ref(null);
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
@@ -427,6 +858,10 @@ const feedStyleOptions = [
   { value: 'grid', label: 'Grid' },
   { value: 'grid_carousel', label: 'Grid carousel' },
   { value: 'carousel', label: 'Carousel' },
+  {
+    value: 'showcase_carousel',
+    label: 'Showcase carousel',
+  },
   { value: 'mosaic', label: 'Mosaic' },
   { value: 'tetris', label: 'Tetris' },
   { value: 'select', label: 'Select' },
@@ -454,22 +889,135 @@ function feedTypeLabel(type) {
   return type || '—';
 }
 
-/** Same stylesheet as the public embed (including ?v= cache bust). */
-const embedCssHref = computed(() => publish.code?.embed_css_url || '');
+/** Workspace public key from embed code response or publish stats (either may load first). */
+const embedPublicKey = computed(
+  () => publish.code?.public_key || publish.stats?.public_key || '',
+);
+
+function toSameOriginPath(url) {
+  if (!url || typeof window === 'undefined') return '';
+  try {
+    const u = new URL(url, window.location.origin);
+
+    return u.pathname + u.search;
+  } catch {
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+}
+
+/** Relative `/api/embed/...` so the SPA origin + Vite proxy load CSS (APP_URL on another host breaks otherwise). */
+const embedCssHref = computed(() => {
+  const key = embedPublicKey.value;
+  if (!key) return '';
+
+  const fromCode = publish.code?.embed_css_url;
+  if (fromCode) return toSameOriginPath(fromCode);
+
+  const v = encodeURIComponent(String(publish.stats?.last_published_at || Date.now()));
+
+  return `/api/embed/${encodeURIComponent(key)}.css?v=${v}`;
+});
+
+const embedJsPath = computed(() => {
+  const key = embedPublicKey.value;
+  if (!key) return '';
+
+  const fromCode = publish.code?.embed_js_url;
+  if (fromCode) return toSameOriginPath(fromCode);
+
+  const v = encodeURIComponent(String(publish.stats?.last_published_at || Date.now()));
+
+  return `/api/embed/${encodeURIComponent(key)}.js?v=${v}`;
+});
+
+const previewUsesEmbedStylesheet = computed(() => !!embedCssHref.value);
+
+const previewPostsJsonUrl = computed(() => {
+  const key = embedPublicKey.value;
+  if (!key) return '';
+  if (publish.code?.public_posts_url) return publish.code.public_posts_url;
+  return `/api/public/feeds/${encodeURIComponent(key)}/posts`;
+});
 
 const embedIframeHtml = computed(() => {
-  const code = publish.code;
-  if (!code?.embed_html) return '<p style="font-family:sans-serif;padding:1rem;color:#64748b">No embed code yet — publish first.</p>';
-  const base = window.location.origin;
-  const css = code.embed_css_url ? `<link rel="stylesheet" href="${base}${code.embed_css_url.startsWith('/') ? '' : '/api/'}${code.embed_css_url}">` : '';
-  const js = code.embed_js_url ? `<script src="${base}${code.embed_js_url.startsWith('/') ? '' : '/api/'}${code.embed_js_url}"><\/script>` : '';
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body style="margin:0;padding:16px;background:#f8fafc">${code.embed_html}${js}</body></html>`;
+  const key = embedPublicKey.value;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const markup =
+    publish.code?.embed_html ||
+    (key ? `<div data-curator-feed="${key}"></div>` : '');
+
+  if (!key || !markup) {
+    return '<p style="font-family:sans-serif;padding:1rem;color:#64748b">No embed code yet — publish once so this workspace has a public key, then try again.</p>';
+  }
+
+  const cssPath = embedCssHref.value;
+  const jsPath = embedJsPath.value;
+  const css = cssPath ? `<link rel="stylesheet" href="${origin}${cssPath}">` : '';
+  const js = jsPath ? `<script src="${origin}${jsPath}"><\/script>` : '';
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body style="margin:0;padding:16px;background:#f8fafc">${markup}${js}</body></html>`;
 });
 
 const previewLayoutClass = computed(() => {
   const st = String(appearance.value?.feed_style || 'grid').replace(/-/g, '_');
   return `crt-layout--${st}`;
 });
+
+const previewIsShowcase = computed(
+  () => String(appearance.value?.feed_style || '').replace(/-/g, '_') === 'showcase_carousel',
+);
+
+const showcasePreviewRows = computed(() =>
+  previewPosts.value.map((p) => {
+    const { plain, tags } = splitPreviewHashtags(p.content || '');
+    return { p, plain, tags };
+  }),
+);
+
+const previewMediaBadgeVisible = computed(() => {
+  const mb = appearance.value?.branding?.media_badge;
+  if (!mb) return true;
+  return mb.show !== false && mb.image_source !== 'none';
+});
+
+const previewMediaBadgeUsesCustom = computed(() => {
+  const mb = appearance.value?.branding?.media_badge;
+  return mb?.image_source === 'custom' && !!String(mb?.custom_url || '').trim();
+});
+
+const previewMediaOverlayPositionClass = computed(() =>
+  String(appearance.value?.branding?.media_badge?.position || 'center').replace(/_/g, '-'),
+);
+
+const previewSourceIconVisible = computed(() => {
+  const si = appearance.value?.branding?.source_icon;
+  if (!si) return true;
+  return si.show !== false && si.image_source !== 'none';
+});
+
+const previewSourceIconUsesCustom = computed(() => {
+  const si = appearance.value?.branding?.source_icon;
+  return si?.image_source === 'custom' && !!String(si?.custom_url || '').trim();
+});
+
+const previewSourceIconAfterName = computed(
+  () => appearance.value?.branding?.source_icon?.position === 'after_name',
+);
+
+const previewAccountVisible = computed(() => {
+  const a = appearance.value?.branding?.account_avatar;
+  if (!a) return true;
+  return a.show !== false && a.image_source !== 'none';
+});
+
+const previewAccountUsesCustom = computed(() => {
+  const a = appearance.value?.branding?.account_avatar;
+  return a?.image_source === 'custom' && !!String(a?.custom_url || '').trim();
+});
+
+const previewAccountFooterEnd = computed(
+  () => appearance.value?.branding?.account_avatar?.position === 'footer_end',
+);
 
 const previewColorCssVars = computed(() => {
   const a = appearance.value;
@@ -527,6 +1075,96 @@ function clampPreview(text, n) {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
 
+function splitPreviewHashtags(raw) {
+  const tags = [];
+  const plain = String(raw || '').replace(/#([a-zA-Z0-9_]+)/g, (_, w) => {
+    tags.push(`#${w}`);
+    return '';
+  });
+  return { plain: plain.replace(/\s+/g, ' ').trim(), tags };
+}
+
+function previewPostAccountLabel(p) {
+  const a = String(p?.account_label || '').trim();
+  if (a) return a;
+  return String(p?.feed_name || '').trim();
+}
+
+function previewShowcaseHandle(p) {
+  let raw = previewPostAccountLabel(p);
+  if (!raw) raw = String(p?.provider || 'social').trim();
+  if (!raw) return '@social';
+  if (raw.startsWith('@')) return raw;
+  return `@${raw}`;
+}
+
+function previewShowcaseAvatarLetter(p) {
+  const raw = previewPostAccountLabel(p);
+  const n = raw.replace(/^@+/, '').trim() || String(p?.provider || '?').trim();
+  return n ? n.charAt(0).toUpperCase() : '?';
+}
+
+function previewSocialIconClass(provider) {
+  const p = String(provider || '').toLowerCase();
+  const map = {
+    youtube: 'text-[#FF0000]',
+    facebook: 'text-[#1877F2]',
+    instagram: 'text-[#E4405F]',
+    tiktok: 'text-[#000000]',
+    twitter: 'text-[#000000]',
+    threads: 'text-[#101419]',
+    rss: 'text-[#ea580c]',
+  };
+  return map[p] || 'text-slate-600';
+}
+
+function previewProviderIconType(provider) {
+  const p = String(provider || '').toLowerCase();
+  if (['youtube', 'facebook', 'instagram', 'tiktok', 'twitter', 'threads', 'rss'].includes(p)) {
+    return p;
+  }
+  return 'other';
+}
+
+function previewStandardSourceRowShowsForPost(p) {
+  const po = appearance.value?.post;
+  if (!po) return true;
+  const showIcon = po.show_platform_icon !== false;
+  const showName = po.show_feed_name !== false;
+  const label = String(previewPostAccountLabel(p) || p.provider || '').trim();
+  const prov = String(p.provider || '').trim();
+  if (!showIcon && !showName) return false;
+  if (!showIcon && (!showName || !label)) return false;
+  if (!showName && (!showIcon || !prov)) return false;
+  return true;
+}
+
+function previewStandardSourceRowClassList() {
+  const po = appearance.value?.post || {};
+  let layout = String(po.source_row_layout || 'stacked').replace(/-/g, '_');
+  if (layout !== 'inline') layout = 'stacked';
+  let align = String(po.source_row_alignment || 'center').replace(/-/g, '_');
+  if (align !== 'start') align = 'center';
+  return [`crt-source-row`, `crt-source-row--${layout}`, `crt-source-row--align-${align}`];
+}
+
+function formatPreviewDateShowcase(v) {
+  try {
+    return new Date(v)
+      .toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      .toUpperCase();
+  } catch {
+    return '';
+  }
+}
+
+function showcasePreviewScroll(dir) {
+  const el = previewStripRef.value;
+  if (!el) return;
+  const step = Math.max(260, Math.floor(el.clientWidth * 0.82));
+  el.scrollBy({ left: dir * step, behavior: 'smooth' });
+}
+
 function formatPreviewDate(v) {
   try {
     return new Date(v).toLocaleDateString();
@@ -538,7 +1176,7 @@ function formatPreviewDate(v) {
 watch(
   () => publish.publishSettings,
   (s) => {
-    appearance.value = s ? JSON.parse(JSON.stringify(s)) : null;
+    appearance.value = s ? mergePublishAppearance(s) : null;
   },
   { immediate: true },
 );
@@ -579,6 +1217,7 @@ async function saveAppearance() {
 async function refresh() {
   if (!workspaceId.value) return;
   await publish.fetchStats(workspaceId.value);
+  await publish.fetchCode(workspaceId.value);
   await loadPreview();
 }
 
@@ -607,7 +1246,7 @@ async function copyCode() {
 }
 
 async function loadPreview() {
-  const key = publish.code?.public_key;
+  const key = publish.code?.public_key || publish.stats?.public_key;
   if (!key) return;
   // Same-origin `/api/...` matches other stores (and Vite proxy) so preview works when APP_URL
   // differs from the SPA origin or CORS blocks absolute public_posts_url.
@@ -633,6 +1272,11 @@ function formatDate(v) {
 </script>
 
 <style scoped>
+.curator-embed-preview--showcase {
+  background: #0b0f19;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
 .publish-widget {
   position: relative;
   overflow: hidden;

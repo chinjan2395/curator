@@ -129,8 +129,11 @@
         </div>
 
         <div class="mt-3" v-if="form.youtube_channel_id">
-          <label class="label-pro">Selected channel ID</label>
+          <label class="label-pro">Channel ID (internal)</label>
           <input v-model="form.youtube_channel_id" type="text" class="input-pro" readonly />
+          <p class="mt-1 text-2xs text-slate-500">
+            Embeds use your channel’s public @handle or title — not this ID. It updates when you save or sync.
+          </p>
         </div>
 
         <div class="mt-3">
@@ -268,7 +271,18 @@
           <label class="label-pro">Backing Page ID</label>
           <input v-model="form.facebook_page_id" type="text" class="input-pro mb-2" readonly />
           <label class="label-pro">Instagram Business account ID</label>
-          <input v-model="form.instagram_business_account_id" type="text" class="input-pro" readonly />
+          <input v-model="form.instagram_business_account_id" type="text" class="input-pro mb-2" readonly />
+          <label class="label-pro">Instagram handle (embed label)</label>
+          <input
+            v-model="form.instagram_username"
+            type="text"
+            class="input-pro"
+            placeholder="username without @"
+            autocomplete="off"
+          />
+          <p class="mt-1 text-2xs text-slate-500">
+            Prefilled from the selected account; edit if needed. Shown on published widgets instead of the feed title.
+          </p>
         </div>
 
         <div class="mt-3">
@@ -617,6 +631,7 @@ const form = reactive({
   youtube_channel_id: '',
   facebook_page_id: '',
   instagram_business_account_id: '',
+  instagram_username: '',
   social_credential_id: '',
 });
 const saving = ref(false);
@@ -714,8 +729,26 @@ const selectedTypeMeta = computed(() =>
 );
 
 function youtubeChannelLabel(ch) {
-  const handle = ch.custom_url ? ` · ${ch.custom_url}` : '';
-  return `${ch.title || 'Channel'}${handle} (${ch.id})`;
+  const title = ch.title || 'Channel';
+  const cu = String(ch.custom_url || '').trim();
+  if (cu) {
+    const h = cu.startsWith('@') ? cu : `@${cu}`;
+    return `${title} (${h})`;
+  }
+  return `${title} (${ch.id})`;
+}
+
+/** Public handle/title for embeds — matches backend youtube_display_label. */
+function youtubePublicLabelForSubmit() {
+  if (form.type !== 'youtube' || !form.youtube_channel_id) return null;
+  const ch = youtubeChannels.value.find((x) => String(x.id) === String(form.youtube_channel_id));
+  if (!ch) return null;
+  const cu = String(ch.custom_url || '').trim();
+  if (cu) {
+    return cu.startsWith('@') ? cu : `@${cu}`;
+  }
+  const t = String(ch.title || '').trim();
+  return t || null;
 }
 
 function twitterAccountLabel(a) {
@@ -904,6 +937,7 @@ watch(
     selectedInstagramCombo.value = '';
     form.facebook_page_id = '';
     form.instagram_business_account_id = '';
+    form.instagram_username = '';
     instagramAccounts.value = [];
     if (cred) await loadInstagramAccounts();
   },
@@ -981,16 +1015,21 @@ watch(
     if (!v || typeof v !== 'string') {
       form.facebook_page_id = '';
       form.instagram_business_account_id = '';
+      form.instagram_username = '';
       return;
     }
     const i = v.indexOf('|');
     if (i <= 0) {
       form.facebook_page_id = '';
       form.instagram_business_account_id = '';
+      form.instagram_username = '';
       return;
     }
     form.facebook_page_id = String(v.slice(0, i));
     form.instagram_business_account_id = String(v.slice(i + 1));
+    const match = instagramAccounts.value.find((a) => instagramAccountValue(a) === v);
+    const uname = match?.instagram_username != null ? String(match.instagram_username).trim() : '';
+    form.instagram_username = uname.replace(/^@/, '');
   },
 );
 
@@ -1044,6 +1083,9 @@ onMounted(async () => {
       form.youtube_channel_id = f.youtube_channel_id || '';
       form.facebook_page_id = f.facebook_page_id || '';
       form.instagram_business_account_id = f.instagram_business_account_id || '';
+      form.instagram_username = String(f.source_account_label || '')
+        .trim()
+        .replace(/^@/, '');
       form.social_credential_id = f.social_credential_id || '';
       if (f.type === 'facebook' && f.social_credential_id) {
         selectedFacebookPageId.value = String(f.facebook_page_id || '');
@@ -1103,6 +1145,11 @@ async function submit() {
       facebook_page_id:
         form.type === 'facebook' || form.type === 'instagram' ? form.facebook_page_id : null,
       instagram_business_account_id: form.type === 'instagram' ? form.instagram_business_account_id : null,
+      instagram_username:
+        form.type === 'instagram' && String(form.instagram_username || '').trim()
+          ? String(form.instagram_username).trim().replace(/^@/, '')
+          : null,
+      youtube_display_label: form.type === 'youtube' ? youtubePublicLabelForSubmit() : null,
       social_credential_id:
         (form.type === 'youtube' ||
           form.type === 'facebook' ||

@@ -110,6 +110,18 @@ class FacebookSyncer
             return response()->json(['message' => 'Could not access this Page. Confirm the Page ID, that you manage the Page, and reconnect Facebook with Page permissions granted.'], 422);
         }
 
+        $pageMeta = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId, [
+            'fields' => 'name',
+            'access_token' => $pageToken,
+        ]);
+        if ($pageMeta->ok()) {
+            $pageName = trim((string) ($pageMeta->json('name') ?? ''));
+            if ($pageName !== '') {
+                $feed->source_account_label = $pageName;
+                $feed->save();
+            }
+        }
+
         $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId.'/feed', [
             'fields' => 'id,message,story,created_time,permalink_url,full_picture,attachments{media,subattachments}',
             'limit' => 25,

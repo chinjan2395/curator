@@ -86,6 +86,8 @@ class YouTubeSyncer
             $feed->save();
         }
 
+        $this->refreshFeedAccountLabel($feed, $token, $resolved['channel_id']);
+
         $response = Http::withToken($token)->get('https://www.googleapis.com/youtube/v3/playlistItems', [
             'part' => 'snippet,contentDetails',
             'playlistId' => (string) $feed->youtube_uploads_playlist_id,
@@ -224,5 +226,40 @@ class YouTubeSyncer
         }
 
         return response()->json(['message' => 'This YouTube channel is not owned by the connected Google account. Only channels you manage can be synced.'], 422);
+    }
+
+    private function refreshFeedAccountLabel(Feed $feed, string $token, string $channelId): void
+    {
+        $r = Http::withToken($token)->get('https://www.googleapis.com/youtube/v3/channels', [
+            'part' => 'snippet',
+            'id' => $channelId,
+            'maxResults' => 1,
+        ]);
+
+        if (! $r->ok()) {
+            return;
+        }
+
+        $snippet = $r->json('items.0.snippet');
+        if (! is_array($snippet)) {
+            return;
+        }
+
+        $custom = isset($snippet['customUrl']) ? trim((string) $snippet['customUrl']) : '';
+        $title = isset($snippet['title']) ? trim((string) $snippet['title']) : '';
+
+        $label = '';
+        if ($custom !== '') {
+            $label = str_starts_with($custom, '@') ? $custom : '@'.$custom;
+        } elseif ($title !== '') {
+            $label = $title;
+        }
+
+        if ($label === '') {
+            return;
+        }
+
+        $feed->source_account_label = $label;
+        $feed->save();
     }
 }

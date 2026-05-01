@@ -78,6 +78,12 @@ class TikTokSyncer
             return $user;
         }
 
+        $tikTokUser = trim((string) ($user['username'] ?? ''));
+        if ($tikTokUser !== '') {
+            $feed->source_account_label = '@'.ltrim($tikTokUser, '@');
+            $feed->save();
+        }
+
         $resp = Http::withToken($token)->timeout(20)->acceptJson()->post(self::TIKTOK_API_BASE.'/video/list/', [
             'max_count' => 20,
             'fields' => self::VIDEO_FIELDS,
