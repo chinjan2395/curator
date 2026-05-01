@@ -8,11 +8,11 @@
         <h1 class="page-title">{{ title }}</h1>
         <p class="page-kicker">{{ description }}</p>
       </div>
+      <div class="wizard-page__header-actions">
+        <slot name="actions" />
+      </div>
     </div>
     <WorkspaceWizardStepper :current="current" :workspaceId="workspaceId" class="mt-1" />
-    <div class="wizard-page__actions">
-      <slot name="actions" />
-    </div>
     <div class="wizard-page__body">
       <slot />
     </div>
@@ -56,11 +56,11 @@ defineProps({
   gap: 1rem;
 }
 
-.wizard-page__actions {
+.wizard-page__header-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 

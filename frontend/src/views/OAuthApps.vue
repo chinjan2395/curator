@@ -106,8 +106,11 @@
             <label class="label-pro">Redirect URI</label>
             <input v-model="oauthForm.redirect_uri" type="url" class="input-pro" placeholder="https://your-backend-domain.com/api/social/callback/youtube" />
             <p class="mt-1 text-2xs text-slate-500">
-              Suggested callback:
-              <span class="font-medium text-slate-700">{{ selectedCallbackPath }}</span>
+              Register this with the provider for <span class="font-medium text-slate-600">connect / sync</span> only.
+              Suggested path: <span class="font-medium text-slate-700">{{ selectedCallbackPath }}</span>
+              (prepend your public API origin). Social login callbacks live under
+              <span class="font-mono text-slate-600">/api/auth/social/…/callback</span>
+              — add those on the OAuth client configured in deployment <span class="font-mono text-slate-600">.env</span>, not in this form.
             </p>
           </div>
         </div>

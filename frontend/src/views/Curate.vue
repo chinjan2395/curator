@@ -18,33 +18,39 @@
       </router-link>
     </template>
 
-    <div class="flex items-center gap-2 flex-wrap mb-4">
+    <div class="flex items-center gap-1.5 flex-wrap mb-3">
       <select v-model="filterStatus" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
-        <option value="">All</option>
+        <option value="">All statuses</option>
         <option value="pending">Pending</option>
         <option value="approved">Approved</option>
         <option value="rejected">Rejected</option>
+      </select>
+      <select v-model="filterPlatform" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
+        <option value="">All platforms</option>
+        <option v-for="platform in platformOptions" :key="platform" :value="platform">
+          {{ feedTypeLabel(platform) }}
+        </option>
       </select>
       <div class="text-2xs text-slate-500 hidden sm:block" v-if="lastSyncedAt">
         Last sync: <span class="text-slate-600">{{ formatDate(lastSyncedAt) }}</span>
       </div>
       <button
         type="button"
-        class="btn-secondary !py-1.5 !px-3 text-sm-pro"
+        class="btn-secondary !py-1 !px-2.5 text-xs-pro"
         @click="syncNow"
         :disabled="feeds.syncing"
       >
         {{ feeds.syncing ? 'Syncing…' : 'Sync now' }}
       </button>
-      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro" @click="refresh" :disabled="posts.loading">
+      <button type="button" class="btn-secondary !py-1 !px-2.5 text-xs-pro" @click="refresh" :disabled="posts.loading">
         {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
       </button>
       <div class="h-4 w-px bg-slate-200 hidden sm:block" />
-      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-2" @click="approveAllPending" title="Approve all pending posts">
+      <button type="button" class="btn-secondary !py-1 !px-2.5 text-xs-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-1.5" @click="approveAllPending" title="Approve all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
         Approve All
       </button>
-      <button type="button" class="btn-secondary !py-1.5 !px-3 text-sm-pro text-rose-700 border-rose-200 hover:bg-rose-50 inline-flex items-center gap-2" @click="rejectAllPending" title="Reject all pending posts">
+      <button type="button" class="btn-secondary !py-1 !px-2.5 text-xs-pro text-rose-700 border-rose-200 hover:bg-rose-50 inline-flex items-center gap-1.5" @click="rejectAllPending" title="Reject all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
         Reject All
       </button>
@@ -58,39 +64,44 @@
     <div v-else-if="!posts.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
       No posts yet. Click <span class="font-medium text-slate-700">Sync now</span> to pull content from your feeds.
     </div>
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2">
       <article
-        v-for="p in posts.list"
+        v-for="p in filteredPosts"
         :key="p.id"
-        class="surface-card rounded-xl border-2 p-4 flex flex-col transition-colors"
+        class="surface-card rounded-lg border p-2 flex flex-col transition-colors"
         :class="cardBorderClass(p.status)"
       >
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div class="min-w-0 flex items-center gap-2 flex-wrap">
+        <div class="flex items-start justify-between gap-1 mb-1">
+          <div class="min-w-0 flex items-center gap-1 flex-wrap">
             <span
-              class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider shrink-0"
+              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-semibold uppercase tracking-wider shrink-0"
               :class="statusBadgeClass(p.status)"
             >
-              {{ p.status }}
+              {{ p.status.charAt(0) }}
             </span>
-            <span v-if="p.pinned" class="inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-medium text-amber-800 bg-amber-100 border border-amber-300">
-              Pinned
+            <span v-if="p.pinned" class="inline-flex items-center px-1 py-0.5 rounded text-2xs font-medium text-amber-800 bg-amber-100 border border-amber-300">
+              📌
             </span>
-            <span class="text-2xs text-slate-600 mt-0.5 w-full">{{ formatDate(p.posted_at) }}</span>
           </div>
           <button
             type="button"
-            class="text-2xs font-medium px-2 py-1 rounded-md border shrink-0 inline-flex items-center justify-center"
-            :class="p.pinned ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+            class="text-2xs font-medium px-1 py-0.5 rounded shrink-0 inline-flex items-center justify-center ml-auto"
+            :class="p.pinned ? 'text-amber-700' : 'text-slate-400 hover:text-slate-600'"
             @click="togglePin(p)"
             :title="p.pinned ? 'Unpin this post' : 'Pin this post'"
           >
-            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" /></svg>
-            <span class="sr-only">{{ p.pinned ? 'Unpin' : 'Pin' }}</span>
+            📌
           </button>
         </div>
 
-        <div class="mb-2" v-if="p.thumbnail_url || p.video_url">
+        <div class="flex items-center gap-1 mb-1 pb-1 border-b border-slate-100">
+          <div class="w-4 h-4 flex-shrink-0 flex items-center justify-center text-xs-pro" :class="`feed-icon-${getPostFeedType(p)}`">
+            <SocialIcon :type="getPostFeedType(p)" />
+          </div>
+          <span class="text-2xs text-slate-500">{{ formatDate(p.posted_at) }}</span>
+        </div>
+
+        <div class="mb-1" v-if="p.thumbnail_url || p.video_url">
           <a
             v-if="p.video_url"
             :href="p.video_url"
@@ -98,57 +109,53 @@
             rel="noreferrer"
             class="block group"
           >
-            <div class="aspect-video w-full rounded-md overflow-hidden bg-slate-100 flex items-center justify-center">
+            <div class="aspect-video w-full rounded overflow-hidden bg-slate-100 flex items-center justify-center">
               <img
                 v-if="p.thumbnail_url"
                 :src="p.thumbnail_url"
                 :alt="p.title || 'Video thumbnail'"
                 class="w-full h-full object-cover group-hover:opacity-95 transition"
               />
-              <div v-else class="text-2xs text-slate-400">Open post</div>
             </div>
           </a>
         </div>
 
         <button
           type="button"
-          class="text-left w-full text-sm-pro text-slate-800 whitespace-pre-wrap line-clamp-[10] hover:text-indigo-700 transition-colors"
+          class="text-left w-full text-2xs text-slate-800 whitespace-pre-wrap line-clamp-3 hover:text-indigo-700 transition-colors flex-grow"
           @click="previewPost = p"
           title="Click to preview"
         >
-          <strong v-if="p.title" class="block mb-1">{{ p.title }}</strong>
+          <strong v-if="p.title" class="block mb-0.5">{{ p.title }}</strong>
           {{ p.content }}
         </button>
 
-        <div class="flex items-center gap-2 pt-3 mt-auto border-t border-slate-100">
+        <div class="flex items-center gap-1 pt-1 mt-auto border-t border-slate-100">
           <button
             type="button"
-            class="curate-btn curate-btn-approve inline-flex items-center justify-center"
+            class="curate-btn-compact curate-btn-approve"
             :class="{ 'curate-btn-active': p.status === 'approved' }"
             @click="setStatus(p, 'approved')"
-            title="Approve this post"
+            title="Approve"
           >
-            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
-            <span class="sr-only">Approve</span>
+            ✓
           </button>
           <button
             type="button"
-            class="curate-btn curate-btn-reject inline-flex items-center justify-center"
+            class="curate-btn-compact curate-btn-reject"
             :class="{ 'curate-btn-active': p.status === 'rejected' }"
             @click="setStatus(p, 'rejected')"
-            title="Reject this post"
+            title="Reject"
           >
-            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
-            <span class="sr-only">Reject</span>
+            ✕
           </button>
           <button
             type="button"
-            class="curate-btn curate-btn-delete ml-auto inline-flex items-center justify-center"
+            class="curate-btn-compact curate-btn-delete ml-auto"
             @click="deletePost(p)"
-            title="Delete this post"
+            title="Delete"
           >
-            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
-            <span class="sr-only">Delete post</span>
+            🗑
           </button>
         </div>
       </article>
@@ -211,6 +218,7 @@ import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useToastStore } from '../stores/toast';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
+import SocialIcon from '../components/SocialIcon.vue';
 
 const toast = useToastStore();
 
@@ -223,6 +231,7 @@ const workspaceId = computed(() => route.params.workspaceId);
 const feedId = computed(() => route.params.feedId);
 
 const filterStatus = ref('');
+const filterPlatform = ref('');
 const previewPost = ref(null);
 
 const lastSyncedAt = computed(() => {
@@ -235,6 +244,29 @@ const workspaceName = computed(() => {
   const w = workspaces.list.find((x) => x.id === Number(workspaceId.value));
   return w ? w.name : '…';
 });
+
+const platformOptions = computed(() => {
+  const platforms = new Set();
+  posts.list.forEach(p => {
+    const feedType = getPostFeedType(p);
+    if (feedType) platforms.add(feedType);
+  });
+  return Array.from(platforms).sort();
+});
+
+const filteredPosts = computed(() => {
+  return posts.list.filter(p => {
+    const statusMatch = !filterStatus.value || p.status === filterStatus.value;
+    const platformMatch = !filterPlatform.value || getPostFeedType(p) === filterPlatform.value;
+    return statusMatch && platformMatch;
+  });
+});
+
+function getPostFeedType(post) {
+  if (!post._feedId) return null;
+  const feed = feeds.list.find(f => f.id === post._feedId);
+  return feed ? feed.type : null;
+}
 
 function feedTypeLabel(type) {
   if (type === 'rss') return 'RSS / Atom';
@@ -290,19 +322,17 @@ async function syncNow() {
 }
 
 async function approveAllPending() {
-  const pending = posts.list.filter((p) => p.status === 'pending');
+  const pending = filteredPosts.value.filter((p) => p.status === 'pending');
   if (!pending.length) { toast.info('No pending posts'); return; }
   await Promise.all(pending.map((p) => posts.update(workspaceId.value, p._feedId, p.id, { status: 'approved' })));
   toast.success(`Approved ${pending.length} post${pending.length !== 1 ? 's' : ''}`);
-  await refresh();
 }
 
 async function rejectAllPending() {
-  const pending = posts.list.filter((p) => p.status === 'pending');
+  const pending = filteredPosts.value.filter((p) => p.status === 'pending');
   if (!pending.length) { toast.info('No pending posts'); return; }
   await Promise.all(pending.map((p) => posts.update(workspaceId.value, p._feedId, p.id, { status: 'rejected' })));
   toast.success(`Rejected ${pending.length} post${pending.length !== 1 ? 's' : ''}`);
-  await refresh();
 }
 
 onMounted(async () => {
@@ -311,8 +341,8 @@ onMounted(async () => {
   await refresh();
 });
 
-watch(filterStatus, () => {
-  refresh();
+watch([filterStatus, filterPlatform], () => {
+  // Filters are applied via computed property, no refresh needed
 });
 
 async function setStatus(p, status) {
@@ -365,7 +395,7 @@ function cardBorderClass(status) {
 <style scoped>
 .curate-btn {
   /* Match app button language (like btn-secondary), with subtle semantic accents. */
-  @apply py-1.5 px-3 text-sm-pro font-medium rounded-md transition;
+  @apply py-1 px-2 text-xs-pro font-medium rounded-md transition;
   @apply border border-slate-200 bg-slate-100 text-slate-700;
   @apply hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2;
   transform: translateY(0);
@@ -377,7 +407,7 @@ function cardBorderClass(status) {
 }
 .curate-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 12px 20px -18px rgba(30, 41, 59, 0.9);
+  box-shadow: 0 10px 16px -16px rgba(30, 41, 59, 0.9);
 }
 .curate-btn:active:not(:disabled) {
   transform: translateY(0);
@@ -401,6 +431,34 @@ function cardBorderClass(status) {
   @apply hover:bg-rose-50 hover:border-rose-300;
   @apply focus:ring-rose-200;
 }
+
+.curate-btn-compact {
+  @apply inline-flex items-center justify-center text-xs font-medium px-1.5 py-0.5 rounded border transition;
+  @apply border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100;
+}
+.curate-btn-compact.curate-btn-approve {
+  @apply border-emerald-200 text-emerald-800 bg-emerald-50 hover:bg-emerald-100;
+}
+.curate-btn-compact.curate-btn-approve.curate-btn-active {
+  @apply bg-emerald-100 border-emerald-300 text-emerald-900 font-bold;
+}
+.curate-btn-compact.curate-btn-reject {
+  @apply border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100;
+}
+.curate-btn-compact.curate-btn-reject.curate-btn-active {
+  @apply bg-rose-100 border-rose-300 text-rose-900 font-bold;
+}
+.curate-btn-compact.curate-btn-delete {
+  @apply bg-white text-rose-600 border-rose-200 hover:bg-rose-50;
+}
+
+.feed-icon-youtube { color: rgb(220 38 38); }
+.feed-icon-facebook { color: rgb(37 99 235); }
+.feed-icon-instagram { color: rgb(190 24 93); }
+.feed-icon-tiktok { color: rgb(15 23 42); }
+.feed-icon-threads { color: rgb(15 23 42); }
+.feed-icon-rss { color: rgb(234 88 12); }
+.feed-icon-twitter { color: rgb(15 23 42); }
 
 .curate-hero {
   background:

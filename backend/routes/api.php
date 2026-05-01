@@ -2,9 +2,12 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\FeedSyncController;
 use App\Http\Controllers\PostController;
@@ -15,6 +18,7 @@ use App\Http\Controllers\OAuthAppConfigController;
 use App\Http\Controllers\FeedPublishController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\EmbedController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 
 // OAuth callbacks (public, no auth)
 Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
@@ -70,9 +74,22 @@ Route::middleware('auth:sanctum')->group(function () {
 // Public routes
 Route::post('/register', [RegisterController::class, 'register']);
 Route::post('/login', [LoginController::class, 'login']);
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
+
+// Social login (public, browser redirect flow)
+Route::get('auth/social/providers', [SocialAuthController::class, 'providers']);
+Route::get('auth/social/{provider}', [SocialAuthController::class, 'redirect']);
+Route::get('auth/social/{provider}/callback', [SocialAuthController::class, 'callback']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LogoutController::class, 'logout']);
 });
 
-// ...existing code...
+// Admin routes
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::apiResource('users', AdminUserController::class)->except(['store']);
+    Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);
+    Route::post('users/{user}/deactivate', [AdminUserController::class, 'deactivate']);
+    Route::post('users/{user}/activate', [AdminUserController::class, 'activate']);
+});

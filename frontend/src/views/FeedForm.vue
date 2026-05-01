@@ -62,7 +62,7 @@
         </div>
       </div>
     </div>
-    <form id="feed-form" @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-3xl">
+    <form id="feed-form" @submit.prevent="submit" class="surface-card mt-4 p-5 space-y-4 max-w-3xl">
       <div>
         <label class="label-pro">Name</label>
         <input v-model="form.name" type="text" class="input-pro" placeholder="Feed name" required />
