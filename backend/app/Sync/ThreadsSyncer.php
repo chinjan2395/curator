@@ -78,6 +78,12 @@ class ThreadsSyncer
         $threadsUser = trim((string) ($meResolved['username'] ?? ''));
         if ($threadsUser !== '') {
             $feed->source_account_label = '@'.ltrim($threadsUser, '@');
+        }
+        $pic = trim((string) ($meResolved['threads_profile_picture_url'] ?? ''));
+        if ($pic !== '') {
+            $feed->account_avatar_url = $pic;
+        }
+        if ($feed->isDirty()) {
             $feed->save();
         }
 
@@ -127,7 +133,7 @@ class ThreadsSyncer
     private function resolveMe(string $token): array|JsonResponse
     {
         $resp = Http::withToken($token)->get(self::THREADS_API_BASE.'/me', [
-            'fields' => 'id,username,name',
+            'fields' => 'id,username,name,threads_profile_picture_url',
         ]);
 
         if (! $resp->ok()) {
@@ -143,6 +149,7 @@ class ThreadsSyncer
             'id' => (string) $id,
             'username' => (string) ($resp->json('username') ?? ''),
             'name' => (string) ($resp->json('name') ?? ''),
+            'threads_profile_picture_url' => (string) ($resp->json('threads_profile_picture_url') ?? ''),
         ];
     }
 

@@ -50,6 +50,9 @@ class PublicFeedController extends Controller
                 'provider' => $feed?->type,
                 'feed_name' => $feed?->name,
                 'account_label' => FeedAccountDisplay::resolve($feed),
+                'account_avatar_url' => $feed?->account_avatar_url
+                    ? (string) $feed->account_avatar_url
+                    : null,
             ];
         });
 

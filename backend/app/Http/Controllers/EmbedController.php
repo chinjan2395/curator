@@ -159,11 +159,19 @@ class EmbedController extends Controller
   width:44px;height:44px;
   border:none;border-radius:999px;
   background:rgba(255,255,255,.14);
-  color:#fff;font-size:26px;line-height:1;
+  color:#fff;
+  padding:0;
+  font-size:0;
+  line-height:0;
   cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 2px 12px rgba(0,0,0,.35);
   transition:background .2s ease,transform .15s ease;
+}
+.crt-showcase-nav svg{
+  display:block;
+  width:22px;
+  height:22px;
 }
 .crt-showcase-nav:hover{background:rgba(255,255,255,.24);}
 .crt-showcase-nav:active{transform:translateY(-50%) scale(.96);}
@@ -178,12 +186,13 @@ class EmbedController extends Controller
   scroll-snap-type:x mandatory;
   scroll-padding:0 52px;
   padding:6px 52px 12px;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(255,255,255,.25) transparent;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
 }
-.crt-inner.crt-layout--showcase_carousel::-webkit-scrollbar{height:6px;}
-.crt-inner.crt-layout--showcase_carousel::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,.22);border-radius:99px;
+.crt-inner.crt-layout--showcase_carousel::-webkit-scrollbar{
+  width:0;
+  height:0;
+  display:none;
 }
 
 .crt-card.crt-card--showcase{
@@ -327,6 +336,24 @@ class EmbedController extends Controller
   background:rgba(56,189,248,.08);
 }
 .crt-card.crt-card--showcase.crt-link:hover .crt-title{color:var(--crt-link,#38bdf8);}
+
+.crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-source{
+  justify-content:center;
+}
+.crt-body.crt-body--showcase.crt-showcase--align-center .crt-title.crt-title--showcase,
+.crt-body.crt-body--showcase.crt-showcase--align-center .crt-text.crt-text--showcase{
+  text-align:center;
+}
+.crt-body.crt-body--showcase.crt-showcase--align-center .crt-hashtags{
+  justify-content:center;
+}
+.crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-footer{
+  justify-content:center;
+}
+.crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-meta-stack{
+  align-items:center;
+  text-align:center;
+}
 
 .crt-inner.crt-layout--mosaic{
   display:grid;

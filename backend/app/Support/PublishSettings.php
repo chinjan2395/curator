@@ -39,6 +39,8 @@ class PublishSettings
                 'show_feed_name' => true,
                 'source_row_layout' => 'stacked',
                 'source_row_alignment' => 'center',
+                'showcase_content_alignment' => 'start',
+                'showcase_share_icon' => 'upload_share',
             ],
             'colors' => [
                 'post_icon' => '#64748b',
@@ -70,7 +72,7 @@ class PublishSettings
                 ],
                 'account_avatar' => [
                     'show' => true,
-                    'image_source' => 'initial',
+                    'image_source' => 'connected',
                     'custom_url' => '',
                     'position' => 'footer_start',
                 ],
@@ -122,6 +124,16 @@ class PublishSettings
             str_replace('-', '_', (string) ($out['post']['source_row_alignment'] ?? 'center')),
             ['start', 'center'],
             'center',
+        );
+        $out['post']['showcase_content_alignment'] = self::enumOrFallback(
+            str_replace('-', '_', (string) ($out['post']['showcase_content_alignment'] ?? 'start')),
+            ['start', 'center'],
+            'start',
+        );
+        $out['post']['showcase_share_icon'] = self::enumOrFallback(
+            str_replace('-', '_', (string) ($out['post']['showcase_share_icon'] ?? 'upload_share')),
+            ['upload_share', 'arrow', 'none'],
+            'upload_share',
         );
 
         foreach (['post_icon', 'post_text', 'post_date', 'post_link', 'post_button'] as $key) {
@@ -182,9 +194,9 @@ class PublishSettings
         $acct = array_replace_recursive($defaults['account_avatar'], $b['account_avatar'] ?? []);
         $acct['show'] = (bool) ($acct['show'] ?? true);
         $acct['image_source'] = self::enumOrFallback(
-            (string) ($acct['image_source'] ?? 'initial'),
-            ['initial', 'custom', 'none'],
-            'initial',
+            (string) ($acct['image_source'] ?? 'connected'),
+            ['connected', 'initial', 'custom', 'none'],
+            'connected',
         );
         $acct['custom_url'] = self::sanitizeOptionalHttpUrl((string) ($acct['custom_url'] ?? ''));
         $acct['position'] = self::enumOrFallback(

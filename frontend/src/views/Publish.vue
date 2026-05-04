@@ -145,6 +145,23 @@
                 </select>
               </div>
             </div>
+            <div v-if="previewIsShowcase" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Showcase: title &amp; body alignment</div>
+                <select v-model="appearance.post.showcase_content_alignment" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="start">Start (left)</option>
+                  <option value="center">Center</option>
+                </select>
+              </div>
+              <div>
+                <div class="text-2xs text-slate-500 mb-1">Showcase: share button icon</div>
+                <select v-model="appearance.post.showcase_share_icon" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="upload_share">Upload / share (classic)</option>
+                  <option value="arrow">Arrow only</option>
+                  <option value="none">Hidden</option>
+                </select>
+              </div>
+            </div>
           </div>
           <p class="text-2xs text-slate-500 max-w-2xl">
             Platform icon and name come from each post’s feed (type + feed name). Like/comment rows are visual hints;
@@ -297,6 +314,7 @@
               <div>
                 <div class="text-2xs text-slate-500 mb-1">Image</div>
                 <select v-model="appearance.branding.account_avatar.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
+                  <option value="connected">Connected account photo</option>
                   <option value="initial">Letter from feed name</option>
                   <option value="custom">Custom URL</option>
                   <option value="none">Hidden</option>
@@ -417,7 +435,20 @@
                   aria-label="Previous posts"
                   @click="showcasePreviewScroll(-1)"
                 >
-                  ‹
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.25"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M15 18 9 12l6-6" />
+                  </svg>
                 </button>
                 <div
                   ref="previewStripRef"
@@ -460,7 +491,10 @@
                         </span>
                       </div>
                     </div>
-                    <div class="crt-body crt-body--showcase">
+                    <div
+                      class="crt-body crt-body--showcase"
+                      :class="{ 'crt-showcase--align-center': previewShowcaseAlignCenter }"
+                    >
                       <div class="crt-showcase-source">
                         <template v-if="previewSourceIconAfterName">
                           <span class="crt-showcase-feed-name">{{
@@ -533,7 +567,7 @@
                             }}</span>
                           </div>
                           <a
-                            v-if="row.p.video_url"
+                            v-if="row.p.video_url && !previewShowcaseShareHidden"
                             class="crt-showcase-share-btn"
                             :href="
                               'https://twitter.com/intent/tweet?url=' +
@@ -545,6 +579,21 @@
                             @click.stop
                           >
                             <svg
+                              v-if="previewShowcaseShareIsArrow"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M7 17 17 7M17 7H9M17 7v8" />
+                            </svg>
+                            <svg
+                              v-else
                               xmlns="http://www.w3.org/2000/svg"
                               width="18"
                               height="18"
@@ -563,8 +612,20 @@
                             class="crt-showcase-avatar crt-showcase-avatar--img"
                             loading="lazy"
                           />
+                          <img
+                            v-else-if="
+                              previewAccountVisible &&
+                              previewAccountUsesConnected &&
+                              row.p.account_avatar_url
+                            "
+                            :src="row.p.account_avatar_url"
+                            alt=""
+                            class="crt-showcase-avatar crt-showcase-avatar--img"
+                            loading="lazy"
+                            referrerpolicy="no-referrer"
+                          />
                           <span
-                            v-else-if="previewAccountVisible"
+                            v-else-if="previewAccountVisible && previewShowcaseAvatarUsesLetter(row.p)"
                             class="crt-showcase-avatar"
                             >{{ previewShowcaseAvatarLetter(row.p) }}</span
                           >
@@ -577,8 +638,20 @@
                             class="crt-showcase-avatar crt-showcase-avatar--img"
                             loading="lazy"
                           />
+                          <img
+                            v-else-if="
+                              previewAccountVisible &&
+                              previewAccountUsesConnected &&
+                              row.p.account_avatar_url
+                            "
+                            :src="row.p.account_avatar_url"
+                            alt=""
+                            class="crt-showcase-avatar crt-showcase-avatar--img"
+                            loading="lazy"
+                            referrerpolicy="no-referrer"
+                          />
                           <span
-                            v-else-if="previewAccountVisible"
+                            v-else-if="previewAccountVisible && previewShowcaseAvatarUsesLetter(row.p)"
                             class="crt-showcase-avatar"
                             >{{ previewShowcaseAvatarLetter(row.p) }}</span
                           >
@@ -589,7 +662,7 @@
                             }}</span>
                           </div>
                           <a
-                            v-if="row.p.video_url"
+                            v-if="row.p.video_url && !previewShowcaseShareHidden"
                             class="crt-showcase-share-btn"
                             :href="
                               'https://twitter.com/intent/tweet?url=' +
@@ -601,6 +674,21 @@
                             @click.stop
                           >
                             <svg
+                              v-if="previewShowcaseShareIsArrow"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M7 17 17 7M17 7H9M17 7v8" />
+                            </svg>
+                            <svg
+                              v-else
                               xmlns="http://www.w3.org/2000/svg"
                               width="18"
                               height="18"
@@ -623,7 +711,20 @@
                   aria-label="Next posts"
                   @click="showcasePreviewScroll(1)"
                 >
-                  ›
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.25"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
                 </button>
               </div>
             </template>
@@ -811,7 +912,7 @@ const BRANDING_DEFAULTS = {
   },
   account_avatar: {
     show: true,
-    image_source: 'initial',
+    image_source: 'connected',
     custom_url: '',
     position: 'footer_start',
   },
@@ -827,6 +928,8 @@ const POST_DEFAULTS = {
   show_feed_name: true,
   source_row_layout: 'stacked',
   source_row_alignment: 'center',
+  showcase_content_alignment: 'start',
+  showcase_share_icon: 'upload_share',
 };
 
 function mergePublishAppearance(raw) {
@@ -1015,6 +1118,28 @@ const previewAccountUsesCustom = computed(() => {
   return a?.image_source === 'custom' && !!String(a?.custom_url || '').trim();
 });
 
+const previewAccountUsesConnected = computed(
+  () => appearance.value?.branding?.account_avatar?.image_source === 'connected',
+);
+
+const previewShowcaseAlignCenter = computed(
+  () =>
+    String(appearance.value?.post?.showcase_content_alignment || 'start').replace(/-/g, '_') ===
+    'center',
+);
+
+const previewShowcaseShareHidden = computed(
+  () =>
+    String(appearance.value?.post?.showcase_share_icon || 'upload_share').replace(/-/g, '_') ===
+    'none',
+);
+
+const previewShowcaseShareIsArrow = computed(
+  () =>
+    String(appearance.value?.post?.showcase_share_icon || 'upload_share').replace(/-/g, '_') ===
+    'arrow',
+);
+
 const previewAccountFooterEnd = computed(
   () => appearance.value?.branding?.account_avatar?.position === 'footer_end',
 );
@@ -1102,6 +1227,14 @@ function previewShowcaseAvatarLetter(p) {
   const raw = previewPostAccountLabel(p);
   const n = raw.replace(/^@+/, '').trim() || String(p?.provider || '?').trim();
   return n ? n.charAt(0).toUpperCase() : '?';
+}
+
+function previewShowcaseAvatarUsesLetter(p) {
+  const a = appearance.value?.branding?.account_avatar;
+  if (!a || a.show === false || a.image_source === 'none') return false;
+  if (a.image_source === 'custom' && String(a.custom_url || '').trim()) return false;
+  if (a.image_source === 'connected' && String(p?.account_avatar_url || '').trim()) return false;
+  return true;
 }
 
 function previewSocialIconClass(provider) {
@@ -1275,6 +1408,41 @@ function formatDate(v) {
 .curator-embed-preview--showcase {
   background: #0b0f19;
   border-color: rgba(148, 163, 184, 0.25);
+}
+
+.curator-embed-preview .crt-inner.crt-layout--showcase_carousel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.curator-embed-preview .crt-inner.crt-layout--showcase_carousel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.curator-embed-preview .crt-showcase-nav {
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+}
+.curator-embed-preview .crt-showcase-nav svg {
+  display: block;
+}
+.curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-source {
+  justify-content: center;
+}
+.curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-title.crt-title--showcase,
+.curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-text.crt-text--showcase {
+  text-align: center;
+}
+.curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-hashtags {
+  justify-content: center;
+}
+.curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-footer {
+  justify-content: center;
+}
+.curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-meta-stack {
+  align-items: center;
+  text-align: center;
 }
 
 .publish-widget {
