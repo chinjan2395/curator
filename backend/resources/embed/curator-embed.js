@@ -27,6 +27,18 @@
   var lazyLoad = feedOpts.lazy_load !== false;
   var showLoadMore = feedOpts.show_load_more !== false;
 
+  var SHARE_SHOWCASE_UPLOAD =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>';
+
+  var SHARE_SHOWCASE_ARROW =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M17 7H9M17 7v8"/></svg>';
+
+  var NAV_CHEV_LEFT =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg>';
+
+  var NAV_CHEV_RIGHT =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
   function clamp(s, n) {
     s = String(s || '');
     return s.length > n ? s.slice(0, n - 1) + '…' : s;
@@ -169,10 +181,18 @@
 
     var avatarEl = null;
     if (avCfg.show !== false && avCfg.image_source !== 'none') {
-      var useImg = avCfg.image_source === 'custom' && avCfg.custom_url;
-      if (useImg) {
-        avatarEl = brandingImg(avCfg.custom_url, 'crt-showcase-avatar crt-showcase-avatar--img');
-      } else {
+      var avSrc = String(avCfg.image_source || 'connected').toLowerCase();
+      var connectedUrl = String((p && p.account_avatar_url) || '').trim();
+      var customUrl = avCfg.custom_url ? String(avCfg.custom_url).trim() : '';
+      var imgUrl =
+        avSrc === 'custom' && customUrl !== ''
+          ? customUrl
+          : avSrc === 'connected' && connectedUrl !== ''
+            ? connectedUrl
+            : '';
+      if (imgUrl !== '') {
+        avatarEl = brandingImg(imgUrl, 'crt-showcase-avatar crt-showcase-avatar--img');
+      } else if (avSrc === 'initial' || avSrc === 'connected' || (avSrc === 'custom' && customUrl === '')) {
         avatarEl = document.createElement('span');
         avatarEl.className = 'crt-showcase-avatar';
         avatarEl.textContent = showcaseAvatarLetter(p);
@@ -191,8 +211,13 @@
     meta.appendChild(d);
 
     var shareUrl = p.video_url || linkHref;
+    var shareMode = normalizeUnderscore(postOpts.showcase_share_icon || 'upload_share');
+    if (shareMode !== 'arrow' && shareMode !== 'upload_share' && shareMode !== 'none') {
+      shareMode = 'upload_share';
+    }
+
     var shareEl = null;
-    if (shareUrl && shareUrl !== '#') {
+    if (shareMode !== 'none' && shareUrl && shareUrl !== '#') {
       shareEl = document.createElement('a');
       shareEl.className = 'crt-showcase-share-btn';
       shareEl.href =
@@ -200,8 +225,7 @@
       shareEl.target = '_blank';
       shareEl.rel = 'noreferrer';
       shareEl.setAttribute('aria-label', 'Share');
-      shareEl.innerHTML =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>';
+      shareEl.innerHTML = shareMode === 'arrow' ? SHARE_SHOWCASE_ARROW : SHARE_SHOWCASE_UPLOAD;
       shareEl.addEventListener('click', function (e) {
         e.stopPropagation();
       });
@@ -509,12 +533,12 @@
     prev.type = 'button';
     prev.className = 'crt-showcase-nav crt-showcase-nav--prev';
     prev.setAttribute('aria-label', 'Previous posts');
-    prev.innerHTML = '‹';
+    prev.innerHTML = NAV_CHEV_LEFT;
     var next = document.createElement('button');
     next.type = 'button';
     next.className = 'crt-showcase-nav crt-showcase-nav--next';
     next.setAttribute('aria-label', 'Next posts');
-    next.innerHTML = '›';
+    next.innerHTML = NAV_CHEV_RIGHT;
     function step() {
       return Math.max(260, Math.floor(inner.clientWidth * 0.82));
     }
@@ -555,6 +579,10 @@
 
     var body = document.createElement('div');
     body.className = 'crt-body crt-body--showcase';
+    var sac = normalizeUnderscore(postOpts.showcase_content_alignment || 'start');
+    if (sac === 'center') {
+      body.classList.add('crt-showcase--align-center');
+    }
 
     appendSourceRow(body, p);
 

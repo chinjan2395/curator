@@ -255,11 +255,23 @@ class YouTubeSyncer
             $label = $title;
         }
 
-        if ($label === '') {
-            return;
+        $avatarUrl = null;
+        $thumbs = $snippet['thumbnails'] ?? [];
+        if (is_array($thumbs)) {
+            $avatarUrl = $thumbs['high']['url'] ?? $thumbs['medium']['url'] ?? $thumbs['default']['url'] ?? null;
+            $avatarUrl = is_string($avatarUrl) ? trim($avatarUrl) : '';
+            $avatarUrl = $avatarUrl !== '' ? $avatarUrl : null;
         }
 
-        $feed->source_account_label = $label;
-        $feed->save();
+        if ($label !== '') {
+            $feed->source_account_label = $label;
+        }
+        if ($avatarUrl !== null) {
+            $feed->account_avatar_url = $avatarUrl;
+        }
+
+        if ($feed->isDirty()) {
+            $feed->save();
+        }
     }
 }

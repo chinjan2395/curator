@@ -111,13 +111,19 @@ class FacebookSyncer
         }
 
         $pageMeta = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId, [
-            'fields' => 'name',
+            'fields' => 'name,picture.type(large){url}',
             'access_token' => $pageToken,
         ]);
         if ($pageMeta->ok()) {
             $pageName = trim((string) ($pageMeta->json('name') ?? ''));
             if ($pageName !== '') {
                 $feed->source_account_label = $pageName;
+            }
+            $pic = trim((string) ($pageMeta->json('picture.data.url') ?? ''));
+            if ($pic !== '') {
+                $feed->account_avatar_url = $pic;
+            }
+            if ($feed->isDirty()) {
                 $feed->save();
             }
         }

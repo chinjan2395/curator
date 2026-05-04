@@ -143,13 +143,19 @@ class InstagramSyncer
         }
 
         $userResp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId, [
-            'fields' => 'username',
+            'fields' => 'username,profile_picture_url',
             'access_token' => $pageToken,
         ]);
         if ($userResp->ok()) {
             $uname = trim((string) ($userResp->json('username') ?? ''));
             if ($uname !== '') {
                 $feed->source_account_label = '@'.ltrim($uname, '@');
+            }
+            $pic = trim((string) ($userResp->json('profile_picture_url') ?? ''));
+            if ($pic !== '') {
+                $feed->account_avatar_url = $pic;
+            }
+            if ($feed->isDirty()) {
                 $feed->save();
             }
         }
