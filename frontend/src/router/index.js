@@ -17,6 +17,8 @@ import OAuthApps from '../views/OAuthApps.vue';
 import Publish from '../views/Publish.vue';
 import UsersList from '../views/admin/UsersList.vue';
 import UserDetail from '../views/admin/UserDetail.vue';
+import SyncOperations from '../views/admin/SyncOperations.vue';
+import ActivityLogs from '../views/admin/ActivityLogs.vue';
 import { useAuthStore } from '../stores/auth';
 
 const routes = [
@@ -45,6 +47,8 @@ const routes = [
       { path: 'publish', name: 'publish', component: Publish },
       { path: 'admin/users', name: 'admin-users', component: UsersList, meta: { requiresAdmin: true } },
       { path: 'admin/users/:id', name: 'admin-user', component: UserDetail, meta: { requiresAdmin: true } },
+      { path: 'admin/sync-ops', name: 'admin-sync-ops', component: SyncOperations, meta: { requiresAdmin: true } },
+      { path: 'admin/activity', name: 'admin-activity', component: ActivityLogs, meta: { requiresAdmin: true } },
     ],
   },
 ];

@@ -13,12 +13,16 @@ use App\Http\Controllers\FeedSyncController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SocialConnectController;
 use App\Http\Controllers\SocialCredentialController;
+use App\Http\Controllers\UserSyncSummaryController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\OAuthAppConfigController;
 use App\Http\Controllers\FeedPublishController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\EmbedController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\Admin\ActivityController as AdminActivityController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\SyncController as AdminSyncController;
 
 // OAuth callbacks (public, no auth)
 Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
@@ -38,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::get('/user/sync-summary', [UserSyncSummaryController::class, 'show']);
     Route::apiResource('workspaces', WorkspaceController::class);
     Route::apiResource('workspaces.feeds', FeedController::class);
     Route::post('workspaces/{workspace}/feeds/{feed}/sync', [FeedSyncController::class, 'sync']);
@@ -64,6 +69,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('social-credentials/{socialCredential}/label', [SocialCredentialController::class, 'label']);
     Route::post('social/connect', [SocialConnectController::class, 'connect']);
     Route::post('social/disconnect', [SocialConnectController::class, 'disconnect']);
+
+    Route::get('activity-logs', [ActivityLogController::class, 'index']);
 
     Route::get('oauth-app-configs', [OAuthAppConfigController::class, 'index']);
     Route::post('oauth-app-configs', [OAuthAppConfigController::class, 'upsert']);
@@ -92,4 +99,15 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);
     Route::post('users/{user}/deactivate', [AdminUserController::class, 'deactivate']);
     Route::post('users/{user}/activate', [AdminUserController::class, 'activate']);
+
+    Route::get('activity-logs', [AdminActivityController::class, 'index']);
+
+    Route::prefix('sync')->group(function () {
+        Route::get('status', [AdminSyncController::class, 'status']);
+        Route::get('logs', [AdminSyncController::class, 'logs']);
+        Route::get('broken-credentials', [AdminSyncController::class, 'brokenCredentials']);
+        Route::post('run-all', [AdminSyncController::class, 'runAll']);
+        Route::post('credentials/{credential}/resync', [AdminSyncController::class, 'resyncCredential']);
+        Route::post('feeds/{feed}', [AdminSyncController::class, 'syncFeed']);
+    });
 });

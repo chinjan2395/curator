@@ -10,6 +10,27 @@
       <p class="page-kicker">Connected social accounts (including configured providers without accounts yet).</p>
     </div>
 
+    <div
+      v-if="auth.brokenCredentials?.length"
+      class="rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 flex items-start gap-3"
+    >
+      <svg class="w-5 h-5 text-rose-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+      </svg>
+      <div>
+        <p class="text-sm-pro font-semibold text-rose-700">
+          {{ auth.brokenCredentials.length }} account{{ auth.brokenCredentials.length !== 1 ? 's' : '' }} need reconnection
+        </p>
+        <p class="text-xs-pro text-rose-600 mt-0.5">
+          Background sync failed for:
+          <span v-for="(c, i) in auth.brokenCredentials" :key="c.id">
+            <strong>{{ c.account_label || c.account_id || c.provider }}</strong><span v-if="i < auth.brokenCredentials.length - 1">, </span>
+          </span>.
+          Click "+ Add" on the affected provider to reconnect.
+        </p>
+      </div>
+    </div>
+
     <div v-if="creds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
       Loading…
@@ -110,12 +131,14 @@ import { useRoute } from 'vue-router';
 import { useCredentialsStore } from '../stores/credentials';
 import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useToastStore } from '../stores/toast';
+import { useAuthStore } from '../stores/auth';
 import SocialIcon from '../components/SocialIcon.vue';
 
 const route = useRoute();
 const creds = useCredentialsStore();
 const oauthApps = useOAuthAppsStore();
 const toast = useToastStore();
+const auth = useAuthStore();
 const provider = ref('youtube');
 
 const socialProviders = [

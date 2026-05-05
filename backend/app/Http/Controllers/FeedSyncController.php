@@ -6,6 +6,8 @@ use App\Models\Feed;
 use App\Models\Post;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
+use App\Services\FeedSyncService;
+use App\Support\ActivityLogger;
 use App\Sync\FacebookSyncer;
 use App\Sync\InstagramSyncer;
 use App\Sync\RssSyncer;
@@ -27,6 +29,7 @@ class FeedSyncController extends Controller
         private TikTokSyncer $tiktok,
         private ThreadsSyncer $threads,
         private RssSyncer $rss,
+        private FeedSyncService $syncService,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -256,16 +259,18 @@ class FeedSyncController extends Controller
             return $credErr;
         }
 
-        return match ($feed->type) {
-            'youtube' => $this->youtube->sync($feed),
-            'rss' => $this->rss->sync($feed),
-            'facebook' => $this->facebook->sync($feed),
-            'instagram' => $this->instagram->sync($feed),
-            'twitter' => $this->twitter->sync($feed),
-            'tiktok' => $this->tiktok->sync($feed),
-            'threads' => $this->threads->sync($feed),
-            default => $this->syncStub($request, $feed),
-        };
+        $feed->load('socialCredential');
+
+        if (in_array($feed->type, ['youtube', 'rss', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'], true)) {
+            $result = $this->syncService->syncFeed($feed, 'user');
+            if ($result !== null) {
+                ActivityLogger::log($request->user(), 'feed.synced', "Synced {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
+            }
+
+            return $result ?? response()->json(['message' => 'Credential expired or revoked. Reconnect in Credentials.'], 422);
+        }
+
+        return $this->syncStub($request, $feed);
     }
 
     // -------------------------------------------------------------------------

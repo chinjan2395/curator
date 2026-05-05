@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -39,6 +40,10 @@ class LoginController extends Controller
                 'message' => 'Your account has been deactivated. Please contact support.',
             ], 403);
         }
+
+        $user->update(['last_login_at' => now()]);
+
+        ActivityLogger::log($user, 'auth.login', 'Logged in');
 
         $token = $user->createToken('auth')->plainTextToken;
 

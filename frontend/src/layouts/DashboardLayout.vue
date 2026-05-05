@@ -72,10 +72,44 @@
                   </svg>
                   Users
                 </router-link>
+                <router-link
+                  to="/admin/sync-ops"
+                  class="topnav-admin-pill"
+                  :class="{ 'topnav-admin-pill--active': $route.path.startsWith('/admin/sync-ops') }"
+                  title="Sync operations (admin)"
+                >
+                  <svg class="topnav-admin-pill__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+                  </svg>
+                  Sync
+                </router-link>
+                <router-link
+                  to="/admin/activity"
+                  class="topnav-admin-pill"
+                  :class="{ 'topnav-admin-pill--active': $route.path.startsWith('/admin/activity') }"
+                  title="Activity logs (admin)"
+                >
+                  <svg class="topnav-admin-pill__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
+                  </svg>
+                  Activity
+                </router-link>
               </div>
             </nav>
             </div>
             <div class="flex items-center gap-2 ml-auto order-2 md:order-none shrink-0">
+              <!-- Activity panel toggle -->
+              <button
+                type="button"
+                class="p-1.5 rounded-md transition-colors"
+                :class="activityLog.panelOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100/70'"
+                title="My activity"
+                @click="activityLog.togglePanel()"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
+                </svg>
+              </button>
               <!-- Nav mode toggle -->
               <button
                 type="button"
@@ -229,7 +263,7 @@
                     </span>
                     <div class="sidebar-admin-deck__head-text">
                       <p class="sidebar-admin-deck__title">Operator deck</p>
-                      <p class="sidebar-admin-deck__sub">Apps · roster · keys</p>
+                      <p class="sidebar-admin-deck__sub">Apps · roster · sync</p>
                     </div>
                   </div>
                   <ul class="sidebar-admin-list space-y-1">
@@ -261,6 +295,34 @@
                         <span v-if="!sidebarCollapsed" class="sidebar-admin-deck__hint">roster</span>
                       </router-link>
                     </li>
+                    <li>
+                      <router-link
+                        to="/admin/sync-ops"
+                        class="nav-item nav-item-admin-deck"
+                        :class="[{ 'nav-item-admin-deck--active': $route.path.startsWith('/admin/sync-ops') }, sidebarCollapsed ? 'nav-item-collapsed' : '']"
+                        :title="sidebarCollapsed ? 'Sync operations (admin)' : ''"
+                      >
+                        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+                        </svg>
+                        <span v-if="!sidebarCollapsed">Sync</span>
+                        <span v-if="!sidebarCollapsed" class="sidebar-admin-deck__hint">ops</span>
+                      </router-link>
+                    </li>
+                    <li>
+                      <router-link
+                        to="/admin/activity"
+                        class="nav-item nav-item-admin-deck"
+                        :class="[{ 'nav-item-admin-deck--active': $route.path.startsWith('/admin/activity') }, sidebarCollapsed ? 'nav-item-collapsed' : '']"
+                        :title="sidebarCollapsed ? 'Activity logs (admin)' : ''"
+                      >
+                        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
+                        </svg>
+                        <span v-if="!sidebarCollapsed">Activity</span>
+                        <span v-if="!sidebarCollapsed" class="sidebar-admin-deck__hint">logs</span>
+                      </router-link>
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -276,6 +338,19 @@
                   <path fill-rule="evenodd" d="M2 3.75A.75.75 0 012.75 3h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 3.75zm0 4.5A.75.75 0 012.75 7.5h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 8.25zm0 4.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75z" clip-rule="evenodd"/>
                 </svg>
                 <span v-if="!sidebarCollapsed">Switch to top bar</span>
+              </button>
+              <!-- Activity panel toggle -->
+              <button
+                type="button"
+                class="w-full flex items-center gap-2 px-3 py-2 mb-1 rounded-md text-sm-pro transition-colors"
+                :class="[sidebarCollapsed ? 'justify-center px-2' : '', activityLog.panelOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-100/70 hover:text-slate-700']"
+                :title="sidebarCollapsed ? 'My activity' : ''"
+                @click="activityLog.togglePanel()"
+              >
+                <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
+                </svg>
+                <span v-if="!sidebarCollapsed">My Activity</span>
               </button>
               <div class="relative" ref="profileDropdownRef">
                 <button
@@ -326,6 +401,115 @@
 
       </div>
     </div>
+
+    <!-- Activity panel (fixed right drawer, works in both nav modes) -->
+    <Transition name="activity-panel">
+      <aside
+        v-if="activityLog.panelOpen"
+        class="fixed top-0 right-0 h-full w-96 z-30 flex flex-col bg-white border-l border-slate-200/80 shadow-2xl"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0 bg-gradient-to-r from-slate-50/80 to-white">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-sm-pro font-semibold text-slate-800">Activity</div>
+              <div class="text-2xs text-slate-400">Your recent actions</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              class="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              title="Refresh"
+              @click="activityLog.fetchMyLogs()"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              title="Close"
+              @click="activityLog.togglePanel()"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-y-auto px-5 py-4">
+          <!-- Loading -->
+          <div v-if="activityLog.loading" class="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
+            <span class="inline-block w-6 h-6 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
+            <span class="text-sm-pro">Loading activity…</span>
+          </div>
+
+          <!-- Empty -->
+          <div v-else-if="activityLog.logs.length === 0" class="flex flex-col items-center justify-center py-16 gap-2 text-slate-400">
+            <svg class="w-8 h-8 text-slate-200" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
+            </svg>
+            <span class="text-sm-pro">No activity yet</span>
+          </div>
+
+          <!-- Timeline -->
+          <div v-else class="relative">
+            <!-- Vertical line -->
+            <div class="absolute left-[18px] top-2 bottom-2 w-px bg-slate-100" aria-hidden="true" />
+
+            <div class="space-y-1">
+              <div
+                v-for="(log, index) in activityLog.logs"
+                :key="log.id"
+                class="relative flex gap-4 group"
+              >
+                <!-- Timeline dot -->
+                <div class="relative z-10 shrink-0 w-9 flex justify-center pt-2.5">
+                  <div
+                    class="w-6 h-6 rounded-full flex items-center justify-center text-xs ring-2 ring-white transition-transform group-hover:scale-110"
+                    :class="activityDotClass(log.action)"
+                  >
+                    {{ activityPanelIcon(log.action) }}
+                  </div>
+                </div>
+
+                <!-- Content card -->
+                <div class="flex-1 min-w-0 pb-4">
+                  <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-3 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all">
+                    <!-- Action badge + time -->
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-semibold" :class="activityBadgeClass(log.action)">
+                        {{ activityActionLabel(log.action) }}
+                      </span>
+                      <span class="text-2xs text-slate-400 whitespace-nowrap shrink-0">{{ formatActivityDate(log.created_at) }}</span>
+                    </div>
+                    <!-- Description -->
+                    <div class="text-sm-pro text-slate-700 leading-snug">{{ log.description }}</div>
+                    <!-- Entity name if present -->
+                    <div v-if="log.entity_name" class="mt-1.5 flex items-center gap-1 text-2xs text-slate-400">
+                      <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg>
+                      <span class="truncate">{{ log.entity_name }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="shrink-0 px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+          <div class="text-2xs text-slate-400 text-center">Showing last {{ activityLog.logs.length }} actions</div>
+        </div>
+      </aside>
+    </Transition>
   </div>
 </template>
 
@@ -334,10 +518,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useWorkspacesStore } from '../stores/workspaces';
+import { useActivityLogStore } from '../stores/activityLog';
 
 const auth = useAuthStore();
 const router = useRouter();
 const workspaces = useWorkspacesStore();
+const activityLog = useActivityLogStore();
 const showProfileDropdown = ref(false);
 const profileDropdownRef = ref(null);
 const sidebarCollapsed = ref(false);
@@ -347,6 +533,70 @@ const navMode = ref(localStorage.getItem('curator_nav_mode') || 'topbar');
 function setNavMode(mode) {
   navMode.value = mode;
   localStorage.setItem('curator_nav_mode', mode);
+}
+
+function activityPanelIcon(action) {
+  if (action?.startsWith('auth')) return '🔑'
+  if (action?.startsWith('workspace')) return '🗂'
+  if (action?.startsWith('feed')) return '📡'
+  if (action?.startsWith('post')) return '📝'
+  if (action?.startsWith('credential')) return '🔗'
+  return '·'
+}
+
+function activityActionLabel(action) {
+  const labels = {
+    'auth.login': 'Login',
+    'auth.logout': 'Logout',
+    'workspace.created': 'Workspace created',
+    'workspace.updated': 'Workspace updated',
+    'workspace.deleted': 'Workspace deleted',
+    'feed.created': 'Feed created',
+    'feed.updated': 'Feed updated',
+    'feed.deleted': 'Feed deleted',
+    'feed.synced': 'Feed synced',
+    'feed.sync_all': 'Sync all',
+    'feed.resync_credential': 'Re-synced',
+    'post.approved': 'Post approved',
+    'post.rejected': 'Post rejected',
+    'post.pinned': 'Post pinned',
+    'post.unpinned': 'Post unpinned',
+    'post.deleted': 'Post deleted',
+    'credential.connected': 'Connected',
+    'credential.disconnected': 'Disconnected',
+  }
+  return labels[action] ?? action
+}
+
+function activityDotClass(action) {
+  if (action?.startsWith('auth')) return 'bg-violet-100 text-violet-600'
+  if (action?.startsWith('workspace')) return 'bg-indigo-100 text-indigo-600'
+  if (action?.startsWith('feed')) return 'bg-sky-100 text-sky-600'
+  if (action?.startsWith('post')) return 'bg-amber-100 text-amber-600'
+  if (action?.startsWith('credential')) return 'bg-emerald-100 text-emerald-600'
+  return 'bg-slate-100 text-slate-500'
+}
+
+function activityBadgeClass(action) {
+  if (action?.startsWith('auth')) return 'bg-violet-50 text-violet-700'
+  if (action?.startsWith('workspace')) return 'bg-indigo-50 text-indigo-700'
+  if (action?.startsWith('feed')) return 'bg-sky-50 text-sky-700'
+  if (action?.startsWith('post')) return 'bg-amber-50 text-amber-700'
+  if (action?.startsWith('credential')) return 'bg-emerald-50 text-emerald-700'
+  return 'bg-slate-100 text-slate-600'
+}
+
+function formatActivityDate(iso) {
+  if (!iso) return ''
+  try {
+    const diff = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    return `${Math.floor(hrs / 24)}d ago`
+  } catch { return iso }
 }
 
 function toggleSidebar() {
@@ -368,6 +618,9 @@ onMounted(async () => {
     sidebarCollapsed.value = window.innerWidth < 768;
   } else {
     sidebarCollapsed.value = savedCollapse === '1';
+  }
+  if (activityLog.panelOpen) {
+    activityLog.fetchMyLogs();
   }
   document.addEventListener('click', onClickOutside);
 });
@@ -719,5 +972,15 @@ function onClickOutside(e) {
 
 .topnav-scroll {
   scrollbar-width: thin;
+}
+
+.activity-panel-enter-active,
+.activity-panel-leave-active {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.activity-panel-enter-from,
+.activity-panel-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
 }
 </style>
