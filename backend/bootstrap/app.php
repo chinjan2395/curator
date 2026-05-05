@@ -1,8 +1,11 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Models\Feed;
+use App\Services\FeedSyncService;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,6 +18,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->call(function () {
+            $service = app(FeedSyncService::class);
+            Feed::with('socialCredential')->chunk(50, function ($feeds) use ($service) {
+                foreach ($feeds as $feed) {
+                    $service->syncFeed($feed);
+                }
+            });
+        })->everyFifteenMinutes()->name('sync-all-feeds')->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

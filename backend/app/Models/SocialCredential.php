@@ -20,6 +20,7 @@ class SocialCredential extends Model
         'access_token',
         'refresh_token',
         'expires_at',
+        'status',
     ];
 
     protected $hidden = [

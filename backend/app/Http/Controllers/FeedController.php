@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Feed;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class FeedController extends Controller
@@ -181,6 +182,8 @@ class FeedController extends Controller
                 : null,
             'twitter_username' => null,
         ]);
+
+        ActivityLogger::log($request->user(), 'feed.created', "Created {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
 
         return response()->json($feed, 201);
     }
@@ -379,6 +382,8 @@ class FeedController extends Controller
 
         $feed->update($updateData);
 
+        ActivityLogger::log($request->user(), 'feed.updated', "Updated feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
+
         return response()->json($feed);
     }
 
@@ -397,6 +402,8 @@ class FeedController extends Controller
                 'message' => 'This feed has accepted posts and cannot be deleted. Remove or unaccept those posts first.',
             ], 422);
         }
+
+        ActivityLogger::log($request->user(), 'feed.deleted', "Deleted feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
 
         $feed->delete();
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\OAuthAppConfig;
 use App\Models\SocialCredential;
+use App\Models\User;
+use App\Support\ActivityLogger;
 use App\Support\OAuthAppConfigResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -357,7 +359,7 @@ class SocialConnectController extends Controller
         }
     }
 
-    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null, ?string $accountId = null, ?string $accountLabel = null): void
+    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null, ?string $accountId = null, ?string $accountLabel = null): SocialCredential
     {
         $expiresAt = $expiresIn ? now()->addSeconds($expiresIn) : null;
 
@@ -375,6 +377,8 @@ class SocialConnectController extends Controller
             $cred->refresh_token = $refreshToken;
             $cred->save();
         }
+
+        return $cred;
     }
 
     public function callbackYouTube(Request $request)
@@ -408,7 +412,7 @@ class SocialConnectController extends Controller
             $accountId = $googleUser->id;
             $accountLabel = $googleUser->name ?: $googleUser->email ?: null;
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'youtube',
                 $googleUser->token,
@@ -417,6 +421,10 @@ class SocialConnectController extends Controller
                 $accountId,
                 $accountLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected YouTube', 'credential', $credential->id, $credential->account_label ?? 'YouTube');
+            }
 
             return $this->redirectSuccess('youtube');
         } catch (InvalidStateException $e) {
@@ -456,7 +464,7 @@ class SocialConnectController extends Controller
                 )
                 ->user();
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'google',
                 $googleUser->token,
@@ -465,6 +473,10 @@ class SocialConnectController extends Controller
                 $googleUser->id,
                 $googleUser->name ?: $googleUser->email ?: null
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected Google', 'credential', $credential->id, $credential->account_label ?? 'Google');
+            }
 
             return $this->redirectSuccess('google');
         } catch (InvalidStateException $e) {
@@ -507,7 +519,7 @@ class SocialConnectController extends Controller
                 $expiresIn = $longLived['expires_in'];
             }
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 $provider,
                 $token,
@@ -516,6 +528,11 @@ class SocialConnectController extends Controller
                 $fbUser->id,
                 $fbUser->name ?: null
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                $providerLabel = ucfirst($provider);
+                ActivityLogger::log($user, 'credential.connected', "Connected {$providerLabel}", 'credential', $credential->id, $credential->account_label ?? $providerLabel);
+            }
 
             return $this->redirectSuccess($provider);
         } catch (InvalidStateException $e) {
@@ -594,7 +611,7 @@ class SocialConnectController extends Controller
                 $twitterLabel = $handle ? "@{$handle}" . ($name ? " ({$name})" : '') : null;
             }
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'twitter',
                 $accessToken,
@@ -603,6 +620,10 @@ class SocialConnectController extends Controller
                 $twitterAccountId,
                 $twitterLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected Twitter / X', 'credential', $credential->id, $credential->account_label ?? 'Twitter');
+            }
 
             return $this->redirectSuccess('twitter');
         } catch (InvalidStateException $e) {
@@ -679,7 +700,7 @@ class SocialConnectController extends Controller
                 $tiktokLabel = $username ? "@{$username}" . ($displayName ? " ({$displayName})" : '') : $displayName;
             }
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'tiktok',
                 $accessToken,
@@ -688,6 +709,10 @@ class SocialConnectController extends Controller
                 $tiktokAccountId,
                 $tiktokLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected TikTok', 'credential', $credential->id, $credential->account_label ?? 'TikTok');
+            }
 
             return $this->redirectSuccess('tiktok');
         } catch (\Throwable $e) {
@@ -779,7 +804,7 @@ class SocialConnectController extends Controller
                 $threadsLabel = $username ? "@{$username}" . ($name ? " ({$name})" : '') : ($name ?: null);
             }
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'threads',
                 $accessToken,
@@ -788,6 +813,10 @@ class SocialConnectController extends Controller
                 $threadsAccountId,
                 $threadsLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected Threads', 'credential', $credential->id, $credential->account_label ?? 'Threads');
+            }
 
             return $this->redirectSuccess('threads');
         } catch (\Throwable $e) {
@@ -803,10 +832,19 @@ class SocialConnectController extends Controller
             'id' => ['required', 'integer'],
         ]);
 
-        $deleted = $request->user()
+        $credential = $request->user()
             ->socialCredentials()
             ->where('id', $validated['id'])
-            ->delete();
+            ->first();
+
+        if ($credential) {
+            $providerLabel = ucfirst($credential->provider);
+            ActivityLogger::log($request->user(), 'credential.disconnected', "Disconnected {$providerLabel}", 'credential', $credential->id, $credential->account_label ?? $providerLabel);
+            $credential->delete();
+            $deleted = 1;
+        } else {
+            $deleted = 0;
+        }
 
         return response()->json(['deleted' => $deleted, 'message' => 'Disconnected']);
     }
