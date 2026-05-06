@@ -22,13 +22,13 @@
       </router-link>
       <router-link
         :to="nextCurateUrl"
-        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center"
+        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center gap-2"
         :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
         :aria-disabled="!feeds.list.length"
         title="Continue to curate posts"
       >
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-        <span class="sr-only">Continue to curate posts</span>
+        Curate
       </router-link>
     </template>
 
@@ -103,17 +103,17 @@
     <template #footer>
       <router-link to="/workspaces" class="btn-secondary !w-auto inline-flex items-center justify-center" title="Go back">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
-        <span class="sr-only">Go back</span>
+        <span class="ml-1">Back</span>
       </router-link>
       <router-link
         :to="nextCurateUrl"
-        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center"
+        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center gap-2"
         :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
         :aria-disabled="!feeds.list.length"
         title="Continue to curate posts"
       >
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-        <span class="sr-only">Continue to curate posts</span>
+        Curate
       </router-link>
     </template>
   </WizardPageLayout>
@@ -203,7 +203,13 @@ function feedTypeLabel(type) {
 }
 
 function sourceDescriptor(f) {
-  if (f.type === 'youtube' && f.youtube_channel_id) return `Channel: ${f.youtube_channel_id}`;
+  if (f.type === 'youtube') {
+    const pub = f.source_account_label?.trim();
+    if (pub) return pub;
+    const nm = f.name?.trim();
+    if (nm) return nm;
+    return 'YouTube';
+  }
   if (f.type === 'facebook' && f.facebook_page_id) return `Page: ${f.facebook_page_id}`;
   if (f.type === 'instagram' && f.instagram_business_account_id) {
     const page = f.facebook_page_id ? ` · Page ${f.facebook_page_id}` : '';

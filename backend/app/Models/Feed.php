@@ -10,6 +10,8 @@ class Feed extends Model
     protected $fillable = [
         'workspace_id',
         'name',
+        'source_account_label',
+        'account_avatar_url',
         'type',
         'source_url',
         'social_credential_id',

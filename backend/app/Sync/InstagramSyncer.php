@@ -3,9 +3,9 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\OAuthAppConfig;
 use App\Models\Post;
 use App\Models\SocialCredential;
+use App\Support\OAuthAppConfigResolver;
 use App\Sync\Concerns\ResolvesFacebookPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -142,6 +142,24 @@ class InstagramSyncer
             return response()->json(['message' => 'Could not access this Page. Confirm the Page is linked to the Instagram account, that you manage it, and reconnect Instagram with Page permissions granted.'], 422);
         }
 
+        $userResp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId, [
+            'fields' => 'username,profile_picture_url',
+            'access_token' => $pageToken,
+        ]);
+        if ($userResp->ok()) {
+            $uname = trim((string) ($userResp->json('username') ?? ''));
+            if ($uname !== '') {
+                $feed->source_account_label = '@'.ltrim($uname, '@');
+            }
+            $pic = trim((string) ($userResp->json('profile_picture_url') ?? ''));
+            if ($pic !== '') {
+                $feed->account_avatar_url = $pic;
+            }
+            if ($feed->isDirty()) {
+                $feed->save();
+            }
+        }
+
         $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId.'/media', [
             'fields' => 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp',
             'limit' => 25,
@@ -223,10 +241,7 @@ class InstagramSyncer
 
     private function debugTokens(int $userId, ?string $userToken, ?string $pageToken): array
     {
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $userId)
-            ->where('provider', 'facebook')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser($userId, 'facebook');
 
         if (! $oauth?->client_id || ! $oauth?->client_secret) {
             return [null, null];

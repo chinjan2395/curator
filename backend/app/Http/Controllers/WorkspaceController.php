@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Workspace;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class WorkspaceController extends Controller
@@ -26,6 +27,8 @@ class WorkspaceController extends Controller
         $workspace = $request->user()->workspaces()->create([
             'name' => $validated['name'],
         ]);
+
+        ActivityLogger::log($request->user(), 'workspace.created', "Created workspace \"{$workspace->name}\"", 'workspace', $workspace->id, $workspace->name);
 
         return response()->json($workspace, 201);
     }
@@ -51,6 +54,8 @@ class WorkspaceController extends Controller
 
         $workspace->update($validated);
 
+        ActivityLogger::log($request->user(), 'workspace.updated', "Updated workspace \"{$workspace->name}\"", 'workspace', $workspace->id, $workspace->name);
+
         return response()->json($workspace);
     }
 
@@ -59,6 +64,8 @@ class WorkspaceController extends Controller
         if ($workspace->owner_id !== $request->user()->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        ActivityLogger::log($request->user(), 'workspace.deleted', "Deleted workspace \"{$workspace->name}\"", 'workspace', $workspace->id, $workspace->name);
 
         $workspace->delete();
 

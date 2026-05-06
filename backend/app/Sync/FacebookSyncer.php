@@ -3,9 +3,9 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\OAuthAppConfig;
 use App\Models\Post;
 use App\Models\SocialCredential;
+use App\Support\OAuthAppConfigResolver;
 use App\Sync\Concerns\ResolvesFacebookPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -110,6 +110,24 @@ class FacebookSyncer
             return response()->json(['message' => 'Could not access this Page. Confirm the Page ID, that you manage the Page, and reconnect Facebook with Page permissions granted.'], 422);
         }
 
+        $pageMeta = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId, [
+            'fields' => 'name,picture.type(large){url}',
+            'access_token' => $pageToken,
+        ]);
+        if ($pageMeta->ok()) {
+            $pageName = trim((string) ($pageMeta->json('name') ?? ''));
+            if ($pageName !== '') {
+                $feed->source_account_label = $pageName;
+            }
+            $pic = trim((string) ($pageMeta->json('picture.data.url') ?? ''));
+            if ($pic !== '') {
+                $feed->account_avatar_url = $pic;
+            }
+            if ($feed->isDirty()) {
+                $feed->save();
+            }
+        }
+
         $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId.'/feed', [
             'fields' => 'id,message,story,created_time,permalink_url,full_picture,attachments{media,subattachments}',
             'limit' => 25,
@@ -197,10 +215,7 @@ class FacebookSyncer
 
     private function debugTokens(int $userId, ?string $userToken, ?string $pageToken): array
     {
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $userId)
-            ->where('provider', 'facebook')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser($userId, 'facebook');
 
         if (! $oauth?->client_id || ! $oauth?->client_secret) {
             return [null, null];

@@ -29,7 +29,7 @@
     <div class="feed-form-hero surface-card p-5 md:p-6">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         <button
-          v-for="t in socialTypes"
+          v-for="t in availableSocialTypes"
           :key="t.type"
           type="button"
           class="feed-type-card"
@@ -62,7 +62,7 @@
         </div>
       </div>
     </div>
-    <form id="feed-form" @submit.prevent="submit" class="surface-card p-5 space-y-4 max-w-3xl">
+    <form id="feed-form" @submit.prevent="submit" class="surface-card mt-4 p-5 space-y-4 max-w-3xl">
       <div>
         <label class="label-pro">Name</label>
         <input v-model="form.name" type="text" class="input-pro" placeholder="Feed name" required />
@@ -71,14 +71,7 @@
         <label class="label-pro">Type</label>
         <select v-model="form.type" class="input-pro" required>
           <option value="">Select type</option>
-          <option value="instagram">Instagram</option>
-          <option value="twitter">Twitter / X</option>
-          <option value="youtube">YouTube</option>
-          <option value="rss">RSS</option>
-          <option value="tiktok">TikTok</option>
-          <option value="threads">Threads</option>
-          <option value="facebook">Facebook</option>
-          <option value="other">Other</option>
+          <option v-for="t in availableSocialTypes" :key="`type-${t.type}`" :value="t.type">{{ t.label }}</option>
         </select>
         <p class="mt-1 text-2xs text-slate-500">{{ selectedTypeMeta.tagline }}</p>
       </div>
@@ -136,8 +129,11 @@
         </div>
 
         <div class="mt-3" v-if="form.youtube_channel_id">
-          <label class="label-pro">Selected channel ID</label>
+          <label class="label-pro">Channel ID (internal)</label>
           <input v-model="form.youtube_channel_id" type="text" class="input-pro" readonly />
+          <p class="mt-1 text-2xs text-slate-500">
+            Embeds use your channel’s public @handle or title — not this ID. It updates when you save or sync.
+          </p>
         </div>
 
         <div class="mt-3">
@@ -275,7 +271,18 @@
           <label class="label-pro">Backing Page ID</label>
           <input v-model="form.facebook_page_id" type="text" class="input-pro mb-2" readonly />
           <label class="label-pro">Instagram Business account ID</label>
-          <input v-model="form.instagram_business_account_id" type="text" class="input-pro" readonly />
+          <input v-model="form.instagram_business_account_id" type="text" class="input-pro mb-2" readonly />
+          <label class="label-pro">Instagram handle (embed label)</label>
+          <input
+            v-model="form.instagram_username"
+            type="text"
+            class="input-pro"
+            placeholder="username without @"
+            autocomplete="off"
+          />
+          <p class="mt-1 text-2xs text-slate-500">
+            Prefilled from the selected account; edit if needed. Shown on published widgets instead of the feed title.
+          </p>
         </div>
 
         <div class="mt-3">
@@ -624,6 +631,7 @@ const form = reactive({
   youtube_channel_id: '',
   facebook_page_id: '',
   instagram_business_account_id: '',
+  instagram_username: '',
   social_credential_id: '',
 });
 const saving = ref(false);
@@ -690,6 +698,14 @@ const tiktokCredentials = computed(() =>
 const threadsCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'threads'),
 );
+const credentialCounts = computed(() => ({
+  youtube: youtubeCredentials.value.length,
+  facebook: facebookCredentials.value.length,
+  instagram: instagramCredentials.value.length,
+  twitter: twitterCredentials.value.length,
+  tiktok: tiktokCredentials.value.length,
+  threads: threadsCredentials.value.length,
+}));
 
 const socialTypes = [
   { type: 'instagram', label: 'Instagram', tagline: 'Stories, reels, and posts', color: '#e1306c', softBg: 'rgba(225,48,108,0.13)' },
@@ -701,14 +717,38 @@ const socialTypes = [
   { type: 'facebook', label: 'Facebook', tagline: 'Pages and updates', color: '#1877f2', softBg: 'rgba(24,119,242,0.12)' },
   { type: 'other', label: 'Other', tagline: 'Custom source setup', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
+const accountOptionalTypes = new Set(['rss', 'other']);
+const availableSocialTypes = computed(() => socialTypes.filter((item) => (
+  accountOptionalTypes.has(item.type)
+  || (credentialCounts.value[item.type] || 0) > 0
+  || item.type === form.type
+)));
 
 const selectedTypeMeta = computed(() =>
   socialTypes.find((item) => item.type === form.type) || { tagline: 'Choose a source type to configure credentials and sync settings.' },
 );
 
 function youtubeChannelLabel(ch) {
-  const handle = ch.custom_url ? ` · ${ch.custom_url}` : '';
-  return `${ch.title || 'Channel'}${handle} (${ch.id})`;
+  const title = ch.title || 'Channel';
+  const cu = String(ch.custom_url || '').trim();
+  if (cu) {
+    const h = cu.startsWith('@') ? cu : `@${cu}`;
+    return `${title} (${h})`;
+  }
+  return `${title} (${ch.id})`;
+}
+
+/** Public handle/title for embeds — matches backend youtube_display_label. */
+function youtubePublicLabelForSubmit() {
+  if (form.type !== 'youtube' || !form.youtube_channel_id) return null;
+  const ch = youtubeChannels.value.find((x) => String(x.id) === String(form.youtube_channel_id));
+  if (!ch) return null;
+  const cu = String(ch.custom_url || '').trim();
+  if (cu) {
+    return cu.startsWith('@') ? cu : `@${cu}`;
+  }
+  const t = String(ch.title || '').trim();
+  return t || null;
 }
 
 function twitterAccountLabel(a) {
@@ -897,6 +937,7 @@ watch(
     selectedInstagramCombo.value = '';
     form.facebook_page_id = '';
     form.instagram_business_account_id = '';
+    form.instagram_username = '';
     instagramAccounts.value = [];
     if (cred) await loadInstagramAccounts();
   },
@@ -974,16 +1015,21 @@ watch(
     if (!v || typeof v !== 'string') {
       form.facebook_page_id = '';
       form.instagram_business_account_id = '';
+      form.instagram_username = '';
       return;
     }
     const i = v.indexOf('|');
     if (i <= 0) {
       form.facebook_page_id = '';
       form.instagram_business_account_id = '';
+      form.instagram_username = '';
       return;
     }
     form.facebook_page_id = String(v.slice(0, i));
     form.instagram_business_account_id = String(v.slice(i + 1));
+    const match = instagramAccounts.value.find((a) => instagramAccountValue(a) === v);
+    const uname = match?.instagram_username != null ? String(match.instagram_username).trim() : '';
+    form.instagram_username = uname.replace(/^@/, '');
   },
 );
 
@@ -1006,6 +1052,12 @@ function formatDate(v) {
 onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
   if (!credentials.list.length) await credentials.fetchAll();
+  if (!isEdit.value) {
+    const firstAvailableType = availableSocialTypes.value[0]?.type || '';
+    if (!form.type || !availableSocialTypes.value.some((item) => item.type === form.type)) {
+      form.type = firstAvailableType;
+    }
+  }
   if (isEdit.value && workspaceId.value) {
     await feeds.fetchAll(workspaceId.value);
     const f = feeds.list.find((x) => x.id === Number(feedId.value));
@@ -1031,6 +1083,9 @@ onMounted(async () => {
       form.youtube_channel_id = f.youtube_channel_id || '';
       form.facebook_page_id = f.facebook_page_id || '';
       form.instagram_business_account_id = f.instagram_business_account_id || '';
+      form.instagram_username = String(f.source_account_label || '')
+        .trim()
+        .replace(/^@/, '');
       form.social_credential_id = f.social_credential_id || '';
       if (f.type === 'facebook' && f.social_credential_id) {
         selectedFacebookPageId.value = String(f.facebook_page_id || '');
@@ -1090,6 +1145,11 @@ async function submit() {
       facebook_page_id:
         form.type === 'facebook' || form.type === 'instagram' ? form.facebook_page_id : null,
       instagram_business_account_id: form.type === 'instagram' ? form.instagram_business_account_id : null,
+      instagram_username:
+        form.type === 'instagram' && String(form.instagram_username || '').trim()
+          ? String(form.instagram_username).trim().replace(/^@/, '')
+          : null,
+      youtube_display_label: form.type === 'youtube' ? youtubePublicLabelForSubmit() : null,
       social_credential_id:
         (form.type === 'youtube' ||
           form.type === 'facebook' ||

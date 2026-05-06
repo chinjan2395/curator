@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Feed;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class FeedController extends Controller
@@ -37,8 +38,10 @@ class FeedController extends Controller
             'source_url' => ['nullable', 'string', 'max:500'],
             'social_credential_id' => ['nullable', 'integer', 'exists:social_credentials,id'],
             'youtube_channel_id' => ['nullable', 'string', 'max:255'],
+            'youtube_display_label' => ['nullable', 'string', 'max:255'],
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
             'instagram_business_account_id' => ['nullable', 'string', 'max:255'],
+            'instagram_username' => ['nullable', 'string', 'max:80'],
             'twitter_username' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -146,10 +149,26 @@ class FeedController extends Controller
             }
         }
 
+        $igUser = $validated['type'] === 'instagram'
+            ? trim((string) ($validated['instagram_username'] ?? ''))
+            : '';
+
+        $ytPublic = $validated['type'] === 'youtube'
+            ? trim((string) ($validated['youtube_display_label'] ?? ''))
+            : '';
+
+        $sourceAccountLabel = null;
+        if ($validated['type'] === 'instagram' && $igUser !== '') {
+            $sourceAccountLabel = '@'.ltrim($igUser, '@');
+        } elseif ($validated['type'] === 'youtube' && $ytPublic !== '') {
+            $sourceAccountLabel = $ytPublic;
+        }
+
         $feed = $workspace->feeds()->create([
             'name' => $validated['name'],
             'type' => $validated['type'],
             'source_url' => $validated['source_url'] ?? '',
+            'source_account_label' => $sourceAccountLabel,
             'social_credential_id' => in_array($validated['type'], self::CREDENTIAL_TYPES, true)
                 ? ($validated['social_credential_id'] ?? null)
                 : null,
@@ -163,6 +182,8 @@ class FeedController extends Controller
                 : null,
             'twitter_username' => null,
         ]);
+
+        ActivityLogger::log($request->user(), 'feed.created', "Created {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
 
         return response()->json($feed, 201);
     }
@@ -200,8 +221,10 @@ class FeedController extends Controller
             'source_url' => ['nullable', 'string', 'max:500'],
             'social_credential_id' => ['nullable', 'integer', 'exists:social_credentials,id'],
             'youtube_channel_id' => ['nullable', 'string', 'max:255'],
+            'youtube_display_label' => ['nullable', 'string', 'max:255'],
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
             'instagram_business_account_id' => ['nullable', 'string', 'max:255'],
+            'instagram_username' => ['nullable', 'string', 'max:80'],
             'twitter_username' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -311,6 +334,29 @@ class FeedController extends Controller
 
         $originalChannelId = $feed->youtube_channel_id;
 
+        $igUser = $validated['type'] === 'instagram'
+            ? trim((string) ($validated['instagram_username'] ?? ''))
+            : '';
+
+        $ytPublic = $validated['type'] === 'youtube'
+            ? trim((string) ($validated['youtube_display_label'] ?? ''))
+            : '';
+
+        $nextSourceLabel = $feed->source_account_label;
+        if ($validated['type'] === 'instagram') {
+            $nextSourceLabel = $igUser !== '' ? '@'.ltrim($igUser, '@') : $feed->source_account_label;
+        } elseif ($validated['type'] === 'youtube') {
+            $channelChanged = ($validated['youtube_channel_id'] ?? null) !== $originalChannelId;
+            if ($ytPublic !== '') {
+                $nextSourceLabel = $ytPublic;
+            } elseif ($channelChanged) {
+                // Avoid showing another channel's handle until sync fills snippet/custom URL.
+                $nextSourceLabel = null;
+            } else {
+                $nextSourceLabel = $feed->source_account_label;
+            }
+        }
+
         $updateData = [
             'name' => $validated['name'],
             'type' => $validated['type'],
@@ -326,7 +372,8 @@ class FeedController extends Controller
             'instagram_business_account_id' => $validated['type'] === 'instagram'
                 ? trim((string) ($validated['instagram_business_account_id'] ?? ''))
                 : null,
-            'twitter_username' => null,
+            'twitter_username' => $validated['type'] === 'twitter' ? $feed->twitter_username : null,
+            'source_account_label' => $nextSourceLabel,
         ];
 
         if ($validated['type'] === 'youtube' && ($validated['youtube_channel_id'] ?? null) !== $originalChannelId) {
@@ -334,6 +381,8 @@ class FeedController extends Controller
         }
 
         $feed->update($updateData);
+
+        ActivityLogger::log($request->user(), 'feed.updated', "Updated feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
 
         return response()->json($feed);
     }
@@ -353,6 +402,8 @@ class FeedController extends Controller
                 'message' => 'This feed has accepted posts and cannot be deleted. Remove or unaccept those posts first.',
             ], 422);
         }
+
+        ActivityLogger::log($request->user(), 'feed.deleted', "Deleted feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
 
         $feed->delete();
 

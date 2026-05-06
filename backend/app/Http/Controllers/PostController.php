@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Models\Workspace;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
@@ -64,6 +65,22 @@ class PostController extends Controller
             'pinned' => array_key_exists('pinned', $validated) ? (bool) $validated['pinned'] : null,
         ], fn ($v) => $v !== null));
 
+        if (array_key_exists('status', $validated) && $validated['status'] !== null) {
+            $action = match ($validated['status']) {
+                'approved' => 'post.approved',
+                'rejected' => 'post.rejected',
+                default    => 'post.updated',
+            };
+            $desc = ucfirst($validated['status']) . " post from \"{$feed->name}\"";
+            ActivityLogger::log($request->user(), $action, $desc, 'post', $post->id, $feed->name);
+        }
+
+        if (array_key_exists('pinned', $validated) && $validated['pinned'] !== null) {
+            $action = $validated['pinned'] ? 'post.pinned' : 'post.unpinned';
+            $desc = ($validated['pinned'] ? 'Pinned' : 'Unpinned') . " post from \"{$feed->name}\"";
+            ActivityLogger::log($request->user(), $action, $desc, 'post', $post->id, $feed->name);
+        }
+
         return response()->json($post);
     }
 
@@ -73,9 +90,10 @@ class PostController extends Controller
         $this->ensureFeedInWorkspace($workspace, $feed);
         $this->ensurePostInFeed($feed, $post);
 
+        ActivityLogger::log($request->user(), 'post.deleted', "Deleted post from \"{$feed->name}\"", 'post', $post->id, $feed->name);
+
         $post->delete();
 
         return response()->json(null, 204);
     }
 }
-

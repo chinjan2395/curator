@@ -70,6 +70,19 @@ class TwitterSyncer
             return $resolved;
         }
 
+        $uname = trim((string) ($resolved['username'] ?? ''));
+        if ($uname !== '') {
+            $feed->twitter_username = ltrim($uname, '@');
+            $feed->source_account_label = '@'.ltrim($uname, '@');
+        }
+        $pic = trim((string) ($resolved['profile_image_url'] ?? ''));
+        if ($pic !== '') {
+            $feed->account_avatar_url = $pic;
+        }
+        if ($feed->isDirty()) {
+            $feed->save();
+        }
+
         $resp = Http::withToken($token)->timeout(20)->get(self::X_API_BASE.'/users/'.$resolved['id'].'/tweets', [
             'max_results' => 25,
             'tweet.fields' => 'created_at,text,note_tweet,attachments',
@@ -134,7 +147,9 @@ class TwitterSyncer
 
     private function resolveMe(string $token): array|JsonResponse
     {
-        $me = Http::withToken($token)->get(self::X_API_BASE.'/users/me', ['user.fields' => 'id,username,name']);
+        $me = Http::withToken($token)->get(self::X_API_BASE.'/users/me', [
+            'user.fields' => 'id,username,name,profile_image_url',
+        ]);
 
         if (! $me->ok()) {
             return response()->json(['message' => $this->errorMessage($me, 'Could not load your X account (users/me).'), 'error' => $me->json()], min(499, max(400, $me->status())));
@@ -146,7 +161,12 @@ class TwitterSyncer
             return response()->json(['message' => 'Unexpected X API response for users/me.', 'error' => $me->json()], 422);
         }
 
-        return ['id' => (string) $id, 'username' => (string) ($data['username'] ?? ''), 'name' => (string) ($data['name'] ?? '')];
+        return [
+            'id' => (string) $id,
+            'username' => (string) ($data['username'] ?? ''),
+            'name' => (string) ($data['name'] ?? ''),
+            'profile_image_url' => (string) ($data['profile_image_url'] ?? ''),
+        ];
     }
 
     private function errorMessage($response, string $fallback): string
