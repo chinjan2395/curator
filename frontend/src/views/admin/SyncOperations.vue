@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-5">
+  <div class="space-y-4">
     <nav class="page-breadcrumb">
       <span>Admin</span>
       <span class="mx-1 text-slate-300">/</span>
@@ -64,19 +64,19 @@
     </div>
 
     <!-- Broken credentials -->
-    <div v-if="syncOps.brokenCredentials.length > 0" class="surface-card p-5 border-rose-200/60 space-y-3">
-      <h2 class="text-sm-pro font-semibold text-rose-700 border-b border-rose-100 pb-2 flex items-center gap-2">
+    <div v-if="syncOps.brokenCredentials.length > 0" class="space-y-3">
+      <h2 class="text-sm-pro font-semibold text-rose-700 flex items-center gap-2">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
         </svg>
         Broken Credentials
         <span class="ml-1 text-2xs bg-rose-100 text-rose-700 rounded-full px-2 py-0.5">{{ syncOps.brokenCredentials.length }}</span>
       </h2>
-      <div v-if="syncOps.loading.broken" class="flex items-center gap-2 text-sm-pro text-slate-500 py-1">
+      <div v-if="syncOps.loading.broken" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
         <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
         Loading…
       </div>
-      <div v-else class="table-shell">
+      <div v-else class="table-shell border border-rose-200/70">
         <table class="w-full text-left">
           <thead class="table-head">
             <tr>
@@ -123,47 +123,46 @@
       </div>
     </div>
 
-    <!-- Sync logs -->
-    <div class="surface-card p-5 space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <h2 class="text-sm-pro font-semibold text-slate-700">Sync Logs</h2>
-        <div class="flex flex-wrap items-center gap-2">
-          <select v-model="logFilters.provider" class="input-pro !w-auto text-sm-pro" @change="applyFilters">
-            <option value="">All providers</option>
-            <option value="youtube">YouTube</option>
-            <option value="facebook">Facebook</option>
-            <option value="instagram">Instagram</option>
-            <option value="twitter">Twitter / X</option>
-            <option value="tiktok">TikTok</option>
-            <option value="threads">Threads</option>
-            <option value="rss">RSS</option>
-          </select>
-          <select v-model="logFilters.status" class="input-pro !w-auto text-sm-pro" @change="applyFilters">
-            <option value="">All statuses</option>
-            <option value="success">Success</option>
-            <option value="error">Error</option>
-            <option value="disconnected">Disconnected</option>
-            <option value="skipped">Skipped</option>
-          </select>
-          <select v-model="logFilters.triggered_by" class="input-pro !w-auto text-sm-pro" @change="applyFilters">
-            <option value="">All sources</option>
-            <option value="scheduler">Scheduler</option>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-      </div>
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-2">
+      <select v-model="logFilters.provider" class="input-pro !w-auto" @change="applyFilters">
+        <option value="">All providers</option>
+        <option value="youtube">YouTube</option>
+        <option value="facebook">Facebook</option>
+        <option value="instagram">Instagram</option>
+        <option value="twitter">Twitter / X</option>
+        <option value="tiktok">TikTok</option>
+        <option value="threads">Threads</option>
+        <option value="rss">RSS</option>
+      </select>
+      <select v-model="logFilters.status" class="input-pro !w-auto" @change="applyFilters">
+        <option value="">All statuses</option>
+        <option value="success">Success</option>
+        <option value="error">Error</option>
+        <option value="disconnected">Disconnected</option>
+        <option value="skipped">Skipped</option>
+      </select>
+      <select v-model="logFilters.triggered_by" class="input-pro !w-auto" @change="applyFilters">
+        <option value="">All sources</option>
+        <option value="scheduler">Scheduler</option>
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
 
-      <div v-if="syncOps.loading.logs" class="flex items-center gap-2 text-sm-pro text-slate-500 py-2">
-        <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-        Loading logs…
-      </div>
+    <!-- Loading -->
+    <div v-if="syncOps.loading.logs" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
+      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+      Loading logs…
+    </div>
 
-      <div v-else-if="!syncOps.logs.length" class="py-6 text-center text-sm-pro text-slate-500">
-        No sync logs yet. Logs will appear here after feeds are synced.
-      </div>
+    <!-- Empty -->
+    <div v-else-if="!syncOps.logs.length" class="surface-card p-8 text-center text-sm-pro text-slate-500">
+      No sync logs yet. Logs will appear here after feeds are synced.
+    </div>
 
-      <div v-else class="table-shell">
+    <!-- Table -->
+    <div v-else class="table-shell">
         <table class="w-full text-left">
           <thead class="table-head">
             <tr>
@@ -252,8 +251,6 @@
           </button>
         </div>
       </div>
-
-    </div>
 
     <!-- Toast -->
     <div
