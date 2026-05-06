@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-5">
+  <div class="space-y-4">
     <nav class="page-breadcrumb">
       <span>Admin</span>
       <span class="mx-1 text-slate-300">/</span>
@@ -18,102 +18,100 @@
       </div>
     </div>
 
-    <!-- Logs table -->
-    <div class="surface-card p-5 space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <h2 class="text-sm-pro font-semibold text-slate-700">All Activity</h2>
-        <div class="flex flex-wrap items-center gap-2">
-          <input
-            v-model="filters.user_id"
-            type="number"
-            placeholder="User ID"
-            class="input-pro !w-28 text-sm-pro"
-            @input="onFilterChange"
-          />
-          <select v-model="filters.action" class="input-pro !w-auto text-sm-pro" @change="onFilterChange">
-            <option value="">All actions</option>
-            <option value="auth">Auth</option>
-            <option value="workspace">Workspace</option>
-            <option value="feed">Feed</option>
-            <option value="post">Post</option>
-            <option value="credential">Credential</option>
-          </select>
-        </div>
-      </div>
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-2">
+      <input
+        v-model="filters.user_id"
+        type="number"
+        placeholder="User ID"
+        class="input-pro !w-28"
+        @input="onFilterChange"
+      />
+      <select v-model="filters.action" class="input-pro !w-auto" @change="onFilterChange">
+        <option value="">All actions</option>
+        <option value="auth">Auth</option>
+        <option value="workspace">Workspace</option>
+        <option value="feed">Feed</option>
+        <option value="post">Post</option>
+        <option value="credential">Credential</option>
+      </select>
+    </div>
 
-      <div v-if="activityLog.adminLoading" class="flex items-center gap-2 text-sm-pro text-slate-500 py-2">
-        <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-        Loading logs…
-      </div>
+    <!-- Loading -->
+    <div v-if="activityLog.adminLoading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
+      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+      Loading logs…
+    </div>
 
-      <div v-else-if="!activityLog.adminLogs.length" class="py-6 text-center text-sm-pro text-slate-500">
-        No activity logs found.
-      </div>
+    <!-- Empty -->
+    <div v-else-if="!activityLog.adminLogs.length" class="surface-card p-8 text-center text-sm-pro text-slate-500">
+      No activity logs found.
+    </div>
 
-      <div v-else class="table-shell">
-        <table class="w-full text-left">
-          <thead class="table-head">
-            <tr>
-              <th class="table-th">Time</th>
-              <th class="table-th">User</th>
-              <th class="table-th">Action</th>
-              <th class="table-th">Description</th>
-              <th class="table-th">Entity</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="log in activityLog.adminLogs" :key="log.id" class="table-tr">
-              <td class="table-td text-2xs text-slate-500 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
-              <td class="table-td">
-                <div class="font-medium text-slate-800 text-sm-pro">{{ log.user?.name || '—' }}</div>
-                <div class="text-2xs text-slate-500">{{ log.user?.email || '' }}</div>
-              </td>
-              <td class="table-td">
-                <span
-                  class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs font-medium border"
-                  :class="actionBadgeClass(log.action)"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full" :class="actionDotClass(log.action)" />
-                  {{ actionLabel(log.action) }}
-                </span>
-              </td>
-              <td class="table-td text-sm-pro text-slate-700 max-w-[16rem] truncate" :title="log.description">
-                {{ log.description }}
-              </td>
-              <td class="table-td text-sm-pro text-slate-500 max-w-[10rem] truncate" :title="log.entity_name || undefined">
-                {{ log.entity_name || '—' }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- Table -->
+    <div v-else class="table-shell">
+      <table class="w-full text-left">
+        <thead class="table-head">
+          <tr>
+            <th class="table-th">Time</th>
+            <th class="table-th">User</th>
+            <th class="table-th">Action</th>
+            <th class="table-th">Description</th>
+            <th class="table-th">Entity</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-for="log in activityLog.adminLogs" :key="log.id" class="table-tr">
+            <td class="table-td text-2xs text-slate-500 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
+            <td class="table-td">
+              <div class="font-medium text-slate-800 text-sm-pro">{{ log.user?.name || '—' }}</div>
+              <div class="text-2xs text-slate-500">{{ log.user?.email || '' }}</div>
+            </td>
+            <td class="table-td">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs font-medium border"
+                :class="actionBadgeClass(log.action)"
+              >
+                <span class="w-1.5 h-1.5 rounded-full" :class="actionDotClass(log.action)" />
+                {{ actionLabel(log.action) }}
+              </span>
+            </td>
+            <td class="table-td text-sm-pro text-slate-700 max-w-[16rem] truncate" :title="log.description">
+              {{ log.description }}
+            </td>
+            <td class="table-td text-sm-pro text-slate-500 max-w-[10rem] truncate" :title="log.entity_name || undefined">
+              {{ log.entity_name || '—' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      <!-- Pagination -->
-      <div v-if="activityLog.adminMeta && activityLog.adminMeta.last_page > 1" class="flex items-center justify-between pt-1">
-        <div class="text-2xs text-slate-500">
-          Showing {{ activityLog.adminMeta.from }}–{{ activityLog.adminMeta.to }} of {{ activityLog.adminMeta.total }}
-        </div>
-        <div class="flex items-center gap-1">
-          <button
-            type="button"
-            class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="currentPage <= 1"
-            @click="goToPage(currentPage - 1)"
-          >
-            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
-            Prev
-          </button>
-          <span class="text-2xs text-slate-600 px-2">Page {{ currentPage }} of {{ activityLog.adminMeta.last_page }}</span>
-          <button
-            type="button"
-            class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="currentPage >= activityLog.adminMeta.last_page"
-            @click="goToPage(currentPage + 1)"
-          >
-            Next
-            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
-          </button>
-        </div>
+    <!-- Pagination -->
+    <div v-if="activityLog.adminMeta && activityLog.adminMeta.last_page > 1" class="flex items-center justify-between pt-1">
+      <div class="text-2xs text-slate-500">
+        Showing {{ activityLog.adminMeta.from }}–{{ activityLog.adminMeta.to }} of {{ activityLog.adminMeta.total }}
+      </div>
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="currentPage <= 1"
+          @click="goToPage(currentPage - 1)"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+          Prev
+        </button>
+        <span class="text-2xs text-slate-600 px-2">Page {{ currentPage }} of {{ activityLog.adminMeta.last_page }}</span>
+        <button
+          type="button"
+          class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="currentPage >= activityLog.adminMeta.last_page"
+          @click="goToPage(currentPage + 1)"
+        >
+          Next
+          <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+        </button>
       </div>
     </div>
 
