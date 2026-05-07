@@ -183,6 +183,32 @@
                   </AppSelect>
                 </div>
               </div>
+              <div v-if="previewIsShowcase && appearance.post.showcase_share_icon !== 'none'" class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Share icon color</label>
+                  <AppSelect v-model="appearance.post.showcase_share_icon_color_mode" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="post_icon">Post icon color</option>
+                    <option value="post_text">Post text color</option>
+                    <option value="post_button">Post button color</option>
+                    <option value="custom">Custom color</option>
+                  </AppSelect>
+                </div>
+                <div v-if="appearance.post.showcase_share_icon_color_mode === 'custom'">
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Custom share color</label>
+                  <div class="flex items-center gap-2">
+                    <AppInput
+                      v-model="appearance.post.showcase_share_icon_color"
+                      type="color"
+                      input-class="h-10 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0"
+                    />
+                    <AppInput
+                      v-model="appearance.post.showcase_share_icon_color"
+                      type="text"
+                      input-class="!py-2 !text-xs font-mono flex-1 min-w-0"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Colors Section -->
@@ -594,45 +620,82 @@
                               formatPreviewDateShowcase(row.p.posted_at)
                             }}</span>
                           </div>
-                          <a
+                          <div
                             v-if="row.p.video_url && !previewShowcaseShareHidden"
-                            class="crt-showcase-share-btn"
-                            :href="
-                              'https://twitter.com/intent/tweet?url=' +
-                              encodeURIComponent(row.p.video_url)
-                            "
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label="Share"
-                            @click.stop
+                            class="crt-showcase-share"
+                            @click.stop.prevent
+                            @mousedown.stop.prevent
                           >
-                            <svg
-                              v-if="previewShowcaseShareIsArrow"
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                            <button
+                              type="button"
+                              class="crt-showcase-share-btn"
+                              aria-label="Share"
+                              @click.stop.prevent="togglePreviewShareMenu(row.p.id)"
                             >
-                              <path d="M7 17 17 7M17 7H9M17 7v8" />
-                            </svg>
-                            <svg
-                              v-else
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
+                              <svg
+                                v-if="previewShowcaseShareIsArrow"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path d="M7 17 17 7M17 7H9M17 7v8" />
+                              </svg>
+                              <svg
+                                v-else
+                                width="18"
+                                height="15"
+                                viewBox="0 0 18 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  fill-rule="evenodd"
+                                  clip-rule="evenodd"
+                                  d="M9.65875 0.821899V13.0736L17.2182 6.94777L9.65875 0.821899Z"
+                                  fill="currentColor"
+                                ></path>
+                                <path
+                                  fill-rule="evenodd"
+                                  clip-rule="evenodd"
+                                  d="M0.138031 13.1146C0.138031 8.46583 3.7997 4.60382 10.2833 4.60382V9.39066C10.2833 9.39066 6.07325 8.10554 1.03012 13.1146C0.76259 13.1439 0.138031 13.1146 0.138031 13.1146Z"
+                                  fill="currentColor"
+                                ></path>
+                              </svg>
+                            </button>
+                            <div
+                              v-if="previewShareMenuForPostId === row.p.id"
+                              class="crt-showcase-share-tooltip"
+                              role="menu"
+                              aria-label="Choose platform"
+                              @click.stop.prevent
+                              @mousedown.stop.prevent
                             >
-                              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
-                            </svg>
-                          </a>
+                              <button
+                                type="button"
+                                class="crt-showcase-share-platform"
+                                title="Share on X"
+                                aria-label="Share on X"
+                                @click.stop.prevent="openPreviewShare('twitter', row.p.video_url)"
+                              >
+                                <SocialIcon type="twitter" class="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                class="crt-showcase-share-platform"
+                                title="Share on Facebook"
+                                aria-label="Share on Facebook"
+                                @click.stop.prevent="openPreviewShare('facebook', row.p.video_url)"
+                              >
+                                <SocialIcon type="facebook" class="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
                           <img
                             v-if="previewAccountVisible && previewAccountUsesCustom"
                             :src="appearance.branding.account_avatar.custom_url"
@@ -689,45 +752,82 @@
                               formatPreviewDateShowcase(row.p.posted_at)
                             }}</span>
                           </div>
-                          <a
+                          <div
                             v-if="row.p.video_url && !previewShowcaseShareHidden"
-                            class="crt-showcase-share-btn"
-                            :href="
-                              'https://twitter.com/intent/tweet?url=' +
-                              encodeURIComponent(row.p.video_url)
-                            "
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label="Share"
-                            @click.stop
+                            class="crt-showcase-share"
+                            @click.stop.prevent
+                            @mousedown.stop.prevent
                           >
-                            <svg
-                              v-if="previewShowcaseShareIsArrow"
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                            <button
+                              type="button"
+                              class="crt-showcase-share-btn"
+                              aria-label="Share"
+                              @click.stop.prevent="togglePreviewShareMenu(row.p.id)"
                             >
-                              <path d="M7 17 17 7M17 7H9M17 7v8" />
-                            </svg>
-                            <svg
-                              v-else
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
+                              <svg
+                                v-if="previewShowcaseShareIsArrow"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path d="M7 17 17 7M17 7H9M17 7v8" />
+                              </svg>
+                              <svg
+                                v-else
+                                width="18"
+                                height="15"
+                                viewBox="0 0 18 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  fill-rule="evenodd"
+                                  clip-rule="evenodd"
+                                  d="M9.65875 0.821899V13.0736L17.2182 6.94777L9.65875 0.821899Z"
+                                  fill="currentColor"
+                                ></path>
+                                <path
+                                  fill-rule="evenodd"
+                                  clip-rule="evenodd"
+                                  d="M0.138031 13.1146C0.138031 8.46583 3.7997 4.60382 10.2833 4.60382V9.39066C10.2833 9.39066 6.07325 8.10554 1.03012 13.1146C0.76259 13.1439 0.138031 13.1146 0.138031 13.1146Z"
+                                  fill="currentColor"
+                                ></path>
+                              </svg>
+                            </button>
+                            <div
+                              v-if="previewShareMenuForPostId === row.p.id"
+                              class="crt-showcase-share-tooltip"
+                              role="menu"
+                              aria-label="Choose platform"
+                              @click.stop.prevent
+                              @mousedown.stop.prevent
                             >
-                              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
-                            </svg>
-                          </a>
+                              <button
+                                type="button"
+                                class="crt-showcase-share-platform"
+                                title="Share on X"
+                                aria-label="Share on X"
+                                @click.stop.prevent="openPreviewShare('twitter', row.p.video_url)"
+                              >
+                                <SocialIcon type="twitter" class="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                class="crt-showcase-share-platform"
+                                title="Share on Facebook"
+                                aria-label="Share on Facebook"
+                                @click.stop.prevent="openPreviewShare('facebook', row.p.video_url)"
+                              >
+                                <SocialIcon type="facebook" class="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
                         </template>
                       </div>
                     </div>
@@ -804,26 +904,67 @@
                         <template v-if="appearance.post.show_comments">💬</template>
                       </span>
                     </div>
-                    <div v-if="appearance.post.show_share_icons && p.video_url" class="crt-share">
-                      <a
-                        :href="'https://twitter.com/intent/tweet?url=' + encodeURIComponent(p.video_url)"
-                        target="_blank"
-                        rel="noreferrer"
-                        class="crt-share-link"
+                    <div
+                      v-if="appearance.post.show_share_icons && p.video_url"
+                      class="crt-share"
+                      @click.stop.prevent
+                      @mousedown.stop.prevent
+                    >
+                      <button
+                        type="button"
+                        class="crt-share-link crt-share-link--trigger"
+                        aria-label="Share"
                         title="Share"
-                        >𝕏</a
+                        @click.stop.prevent="togglePreviewShareMenu(p.id)"
                       >
-                      <a
-                        :href="
-                          'https://www.facebook.com/sharer/sharer.php?u=' +
-                          encodeURIComponent(p.video_url)
-                        "
-                        target="_blank"
-                        rel="noreferrer"
-                        class="crt-share-link"
-                        title="Share"
-                        >f</a
+                        <svg
+                          width="18"
+                          height="15"
+                          viewBox="0 0 18 15"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M9.65875 0.821899V13.0736L17.2182 6.94777L9.65875 0.821899Z"
+                            fill="currentColor"
+                          ></path>
+                          <path
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M0.138031 13.1146C0.138031 8.46583 3.7997 4.60382 10.2833 4.60382V9.39066C10.2833 9.39066 6.07325 8.10554 1.03012 13.1146C0.76259 13.1439 0.138031 13.1146 0.138031 13.1146Z"
+                            fill="currentColor"
+                          ></path>
+                        </svg>
+                      </button>
+                      <div
+                        v-if="previewShareMenuForPostId === p.id"
+                        class="crt-share-tooltip"
+                        role="menu"
+                        aria-label="Choose platform"
+                        @click.stop.prevent
+                        @mousedown.stop.prevent
                       >
+                        <button
+                          type="button"
+                          class="crt-showcase-share-platform"
+                          title="Share on X"
+                          aria-label="Share on X"
+                          @click.stop.prevent="openPreviewShare('twitter', p.video_url)"
+                        >
+                          <SocialIcon type="twitter" class="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          class="crt-showcase-share-platform"
+                          title="Share on Facebook"
+                          aria-label="Share on Facebook"
+                          @click.stop.prevent="openPreviewShare('facebook', p.video_url)"
+                        >
+                          <SocialIcon type="facebook" class="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </a>
@@ -884,7 +1025,7 @@
           :srcdoc="embedIframeHtml"
           class="flex-1 w-full border-0"
           title="Embed preview"
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         />
       </div>
     </div>
@@ -907,7 +1048,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
@@ -961,6 +1102,8 @@ const POST_DEFAULTS = {
   source_row_alignment: 'center',
   showcase_content_alignment: 'start',
   showcase_share_icon: 'upload_share',
+  showcase_share_icon_color_mode: 'post_icon',
+  showcase_share_icon_color: '#e2e8f0',
 };
 
 function mergePublishAppearance(raw) {
@@ -983,6 +1126,8 @@ const showEmbedPreview = ref(false);
 const previewLoading = ref(false);
 const previewPosts = ref([]);
 const previewStripRef = ref(null);
+const previewShareMenuForPostId = ref(null);
+const embedPreviewVersion = ref(0);
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
@@ -1032,11 +1177,14 @@ const embedCssHref = computed(() => {
   if (!key) return '';
 
   const fromCode = publish.code?.embed_css_url;
-  if (fromCode) return toSameOriginPath(fromCode);
+  if (fromCode) {
+    const sep = fromCode.includes('?') ? '&' : '?';
+    return `${toSameOriginPath(fromCode)}${sep}pv=${embedPreviewVersion.value}`;
+  }
 
   const v = encodeURIComponent(String(publish.stats?.last_published_at || Date.now()));
 
-  return `/api/embed/${encodeURIComponent(key)}.css?v=${v}`;
+  return `/api/embed/${encodeURIComponent(key)}.css?v=${v}&pv=${embedPreviewVersion.value}`;
 });
 
 const embedJsPath = computed(() => {
@@ -1044,11 +1192,14 @@ const embedJsPath = computed(() => {
   if (!key) return '';
 
   const fromCode = publish.code?.embed_js_url;
-  if (fromCode) return toSameOriginPath(fromCode);
+  if (fromCode) {
+    const sep = fromCode.includes('?') ? '&' : '?';
+    return `${toSameOriginPath(fromCode)}${sep}pv=${embedPreviewVersion.value}`;
+  }
 
   const v = encodeURIComponent(String(publish.stats?.last_published_at || Date.now()));
 
-  return `/api/embed/${encodeURIComponent(key)}.js?v=${v}`;
+  return `/api/embed/${encodeURIComponent(key)}.js?v=${v}&pv=${embedPreviewVersion.value}`;
 });
 
 const previewUsesEmbedStylesheet = computed(() => !!embedCssHref.value);
@@ -1170,12 +1321,19 @@ const previewColorCssVars = computed(() => {
   const minW = Math.max(120, Math.min(Number(feed.post_min_width) || 260, 600));
   const b = c.post_border || {};
   const g = c.post_bg || {};
+  const post = a.post || {};
+  const shareColorMode = String(post.showcase_share_icon_color_mode || 'post_icon');
+  let shareColor = c.post_icon;
+  if (shareColorMode === 'post_text') shareColor = c.post_text;
+  else if (shareColorMode === 'post_button') shareColor = c.post_button;
+  else if (shareColorMode === 'custom') shareColor = post.showcase_share_icon_color || c.post_icon;
   return {
     '--crt-icon': c.post_icon,
     '--crt-text': c.post_text,
     '--crt-date': c.post_date,
     '--crt-link': c.post_link,
     '--crt-btn': c.post_button,
+    '--crt-showcase-share-color': shareColor || c.post_icon || '#e2e8f0',
     '--crt-post-min': `${minW}px`,
     '--crt-border': b.enabled !== false ? b.color || '#e2e8f0' : 'transparent',
     '--crt-card-bg': g.enabled !== false ? g.color || '#ffffff' : 'transparent',
@@ -1225,6 +1383,34 @@ function splitPreviewHashtags(raw) {
     return '';
   });
   return { plain: plain.replace(/\s+/g, ' ').trim(), tags };
+}
+
+function previewShareUrl(provider, url) {
+  const target = encodeURIComponent(String(url || ''));
+  if (provider === 'facebook') {
+    return `https://www.facebook.com/sharer/sharer.php?u=${target}`;
+  }
+  return `https://twitter.com/intent/tweet?url=${target}`;
+}
+
+function openPreviewShare(provider, url) {
+  const href = previewShareUrl(provider, url);
+  if (typeof window !== 'undefined') {
+    window.open(href, '_blank', 'noopener,noreferrer');
+  }
+  closePreviewShareMenu();
+}
+
+function togglePreviewShareMenu(postId) {
+  previewShareMenuForPostId.value = previewShareMenuForPostId.value === postId ? null : postId;
+}
+
+function closePreviewShareMenu() {
+  previewShareMenuForPostId.value = null;
+}
+
+function handlePreviewShareOutsideClick() {
+  closePreviewShareMenu();
 }
 
 function previewPostAccountLabel(p) {
@@ -1333,6 +1519,7 @@ watch(
 );
 
 onMounted(async () => {
+  document.addEventListener('click', handlePreviewShareOutsideClick);
   await workspaces.fetchAll();
   if (route.params.workspaceId) {
     workspaceId.value = String(route.params.workspaceId);
@@ -1344,6 +1531,10 @@ onMounted(async () => {
     await publish.fetchCode(workspaceId.value);
     await loadPreview();
   }
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handlePreviewShareOutsideClick);
 });
 
 watch(workspaceId, async (id) => {
@@ -1363,6 +1554,7 @@ async function saveAppearance() {
   if (!workspaceId.value || !appearance.value) return;
   await publish.savePublishSettings(workspaceId.value, appearance.value);
   await publish.fetchCode(workspaceId.value);
+  embedPreviewVersion.value += 1;
 }
 
 async function refresh() {
@@ -1454,6 +1646,100 @@ async function loadPreview() {
 .curator-embed-preview .crt-body.crt-body--showcase.crt-showcase--align-center .crt-showcase-meta-stack {
   align-items: center;
   text-align: center;
+}
+
+.curator-embed-preview .crt-showcase-share {
+  position: relative;
+}
+
+.curator-embed-preview .crt-showcase-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--crt-showcase-share-color, var(--crt-icon, currentColor));
+  cursor: pointer;
+  padding: 0;
+}
+
+.curator-embed-preview .crt-showcase-share-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+}
+
+.curator-embed-preview .crt-showcase-share-platform {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--crt-showcase-share-color, rgba(226, 232, 240, 0.95));
+  background: rgba(30, 41, 59, 0.9);
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.curator-embed-preview .crt-showcase-share-platform:hover {
+  background: rgba(51, 65, 85, 0.95);
+  color: #fff;
+}
+
+.curator-embed-preview .crt-showcase-share-platform :deep(svg) {
+  width: 15px;
+  height: 15px;
+}
+
+.curator-embed-preview .crt-share {
+  position: relative;
+}
+
+.curator-embed-preview .crt-share-link {
+  color: var(--crt-showcase-share-color, var(--crt-icon, currentColor));
+}
+
+.curator-embed-preview .crt-share-link--trigger {
+  border: 1px solid var(--crt-border, #e2e8f0);
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.curator-embed-preview .crt-share-tooltip {
+  position: absolute;
+  left: 34px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
 }
 
 .publish-widget {
