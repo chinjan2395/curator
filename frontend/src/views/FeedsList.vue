@@ -1,188 +1,126 @@
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-3">
-        <router-link to="/workspaces" class="text-sm-pro text-slate-500 hover:text-slate-700">← Workspaces</router-link>
-        <div>
-          <h1 class="page-title flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M3.5 4.75A1.75 1.75 0 0 1 5.25 3h9.5A1.75 1.75 0 0 1 16.5 4.75v10.5A1.75 1.75 0 0 1 14.75 17h-9.5A1.75 1.75 0 0 1 3.5 15.25V4.75Zm2 1a.75.75 0 0 0 0 1.5h4.75a.75.75 0 0 0 0-1.5H5.5Zm0 3.5a.75.75 0 0 0 0 1.5h9a.75.75 0 0 0 0-1.5h-9Zm0 3.5a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5h-6Z" />
-            </svg>
-            Feeds · {{ workspaceName }}
-          </h1>
-          <p class="page-kicker">Source channels configured for this workspace.</p>
-        </div>
-      </div>
-      <router-link :to="`/workspaces/${workspaceId}/feeds/new`" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro">
-        New feed
+  <WizardPageLayout
+    current="feed"
+    title="Feeds"
+    description="Source channels configured for this workspace."
+    :workspaceId="route.params.workspaceId"
+  >
+    <template #breadcrumb>
+      <router-link to="/workspaces">Workspaces</router-link>
+      <span aria-hidden="true">/</span>
+      <span>{{ workspaceName }}</span>
+    </template>
+
+    <template #actions>
+      <router-link :to="`/workspaces/${workspaceId}/feeds/new`" title="Add new feed">
+        <AppButton variant="secondary" size="sm" class="!w-auto !px-3 !py-1.5 text-sm-pro inline-flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+          Add Feed
+        </AppButton>
       </router-link>
-    </div>
-    <div v-if="!feeds.loading" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="surface-card p-4 analytics-card">
-        <div class="text-2xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <span class="metric-chip">FD</span> Total feeds
-        </div>
-        <div class="mt-3 flex items-center gap-3">
-          <div class="donut-ring" :style="feedRingStyle">
-            <div class="donut-inner">{{ totalFeeds }}</div>
-          </div>
-          <div>
-            <div class="text-lg-pro font-semibold text-slate-800">{{ totalFeeds }}</div>
-            <div class="text-2xs text-slate-500">Connected sources</div>
-            <div class="mt-1 text-2xs" :class="trendClass(feedsTrend)">
-              {{ trendLabel(feedsTrend, 'vs last visit') }}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="surface-card p-4 analytics-card">
-        <div class="text-2xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <span class="metric-chip">MX</span> Feed type mix
-        </div>
-        <div class="mt-1 text-2xs" :class="trendClass(typeVarietyTrend)">
-          {{ trendLabel(typeVarietyTrend, 'type variety') }}
-        </div>
-        <div class="mt-3 space-y-2 max-h-[92px] overflow-y-auto pr-1">
-          <div v-for="t in feedTypeDistribution" :key="t.type" class="space-y-1">
-            <div class="flex items-center justify-between text-2xs text-slate-600">
-              <span class="truncate">{{ feedTypeLabel(t.type) }}</span>
-              <span class="font-medium text-slate-700">{{ t.count }}</span>
-            </div>
-            <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-              <div class="h-full rounded-full bg-gradient-to-r from-indigo-300/80 to-violet-300/80" :style="{ width: `${t.width}%` }" />
-            </div>
-          </div>
-          <div v-if="!feedTypeDistribution.length" class="text-2xs text-slate-500">No feed data yet.</div>
-        </div>
-      </div>
-      <div class="surface-card p-4 analytics-card">
-        <div class="text-2xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-          <span class="metric-chip">SRC</span> Source URL coverage
-        </div>
-        <div class="mt-2 text-lg-pro font-semibold text-slate-800">{{ sourceCoverage }}%</div>
-        <div class="mt-1 text-2xs" :class="trendClass(coverageTrend)">
-          {{ trendLabel(coverageTrend, 'coverage pts') }}
-        </div>
-        <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div class="h-full rounded-full bg-gradient-to-r from-cyan-300/85 to-indigo-400/85" :style="{ width: `${sourceCoverage}%` }" />
-        </div>
-        <div class="mt-2 text-2xs text-slate-500">
-          {{ feedsWithSource }} with URL · {{ feedsWithoutSource }} without URL
-        </div>
-      </div>
-    </div>
-    <div v-if="feeds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading…
+      <router-link :to="nextCurateUrl" :aria-disabled="!feeds.list.length" title="Continue to curate posts">
+        <AppButton
+          size="sm"
+          class="!w-auto !px-3 !py-1.5 inline-flex items-center gap-2"
+          :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+          Curate
+        </AppButton>
+      </router-link>
+    </template>
+
+    <div v-if="feeds.loading" class="surface-card-soft px-4 py-3">
+      <AppLoader size="sm" label="Loading..." />
     </div>
     <div v-else-if="feeds.error" class="text-sm-pro text-red-600">{{ feeds.error }}</div>
-    <div v-else-if="!feeds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
-      No feeds yet. Create one to get started.
-    </div>
-    <div v-else class="surface-card p-4 space-y-3">
-      <div class="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div class="text-sm-pro font-medium text-slate-800 flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M5.5 3A2.5 2.5 0 0 0 3 5.5v9A2.5 2.5 0 0 0 5.5 17h9a2.5 2.5 0 0 0 2.5-2.5v-9A2.5 2.5 0 0 0 14.5 3h-9Zm1.72 3.47a.75.75 0 0 1 1.06 0L11.81 10l-3.53 3.53a.75.75 0 0 1-1.06-1.06L9.69 10 7.22 7.53a.75.75 0 0 1 0-1.06Z" />
-            </svg>
-            Live embed preview
+    <AppEmptyState
+      v-else-if="!feeds.list.length"
+      title="No feeds yet"
+      description="Create the first feed to start workspace setup."
+      icon="🧩"
+      class="surface-card"
+    >
+      <router-link :to="`/workspaces/${workspaceId}/feeds/new`">
+        <AppButton class="!w-auto !py-1.5 !px-3 text-sm-pro">Create feed</AppButton>
+      </router-link>
+    </AppEmptyState>
+    <div v-if="!feeds.loading && feeds.list.length" class="feed-table-shell">
+      <AppTable :columns="tableColumns" :rows="feeds.list" row-key="id">
+        <template #cell-name="{ row }">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="feed-name-dot" :class="`feed-name-dot--${String(row.type || 'other')}`" />
+            <span class="truncate font-medium text-slate-800">{{ row.name }}</span>
           </div>
-          <div class="text-2xs text-slate-500">Preview feed output for this workspace before publishing externally.</div>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <select v-model="previewFeedId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto min-w-[220px]">
-            <option value="">Select feed</option>
-            <option v-for="f in feeds.list" :key="f.id" :value="String(f.id)">{{ f.name }}</option>
-          </select>
-          <button
-            type="button"
-            class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro"
-            :disabled="!previewSelectedFeed?.public_key"
-            @click="loadPreviewFeed"
-          >
-            Load preview
-          </button>
-        </div>
-      </div>
-      <div v-if="!previewFeedId" class="text-sm-pro text-slate-600">
-        Select a feed to render its live embed preview.
-      </div>
-      <div v-else-if="!previewLoadedPublicKey" class="text-sm-pro text-slate-600">
-        Selected feed has no loaded preview. Click <span class="font-medium text-slate-700">Load preview</span>.
-      </div>
-      <div v-else>
-        <div
-          class="curator-embed-box"
-          :key="previewLoadedPublicKey"
-          :data-curator-feed="previewLoadedPublicKey"
-        />
-        <div v-if="previewLoadError" class="text-2xs text-red-600 mt-3">{{ previewLoadError }}</div>
-        <div v-else class="text-2xs text-slate-500 mt-3">
-          This matches how the embed is rendered on external sites.
-        </div>
-      </div>
+        </template>
+        <template #cell-type="{ row }">
+          <span class="type-pill" :class="`type-pill--${String(row.type || 'other')}`">
+            <span class="type-pill__icon">
+              <SocialIcon :type="row.type" />
+            </span>
+            {{ feedTypeLabel(row.type) }}
+          </span>
+        </template>
+        <template #cell-source_url="{ row }">
+          <span v-if="row.source_url" class="source-chip">{{ row.source_url }}</span>
+          <span v-else>—</span>
+        </template>
+        <template #cell-actions="{ row }">
+          <div class="flex items-center gap-2">
+            <router-link :to="`/workspaces/${workspaceId}/feeds/${row.id}/edit`" @click.prevent="handleEditClick(row)">
+              <AppButton
+                variant="ghost"
+                size="sm"
+                class="!w-auto inline-flex items-center gap-1.5 !px-3 !py-1.5 text-sm-pro border border-slate-200 bg-white hover:bg-slate-50"
+                :class="canEditOrDelete ? '' : 'text-slate-400 cursor-not-allowed'"
+              >
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
+                Edit
+              </AppButton>
+            </router-link>
+            <AppButton
+              variant="danger"
+              size="sm"
+              class="!w-auto inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm-pro"
+              @click="handleDeleteClick(row)"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
+              Delete
+            </AppButton>
+          </div>
+        </template>
+      </AppTable>
     </div>
-    <div v-if="feeds.list.length" class="table-shell">
-      <table class="w-full text-left">
-        <thead class="table-head">
-          <tr>
-            <th class="table-th">Name</th>
-            <th class="table-th">Type</th>
-            <th class="table-th">Source</th>
-            <th class="table-th w-32">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="f in feeds.list" :key="f.id" class="table-tr">
-            <td class="table-td font-medium text-slate-800">{{ f.name }}</td>
-            <td class="table-td">{{ feedTypeLabel(f.type) }}</td>
-            <td class="px-4 py-2.5 text-2xs text-slate-500 truncate max-w-[200px]">{{ f.source_url || '—' }}</td>
-            <td class="table-td">
-              <div class="flex items-center gap-2">
-                <router-link :to="`/workspaces/${workspaceId}/feeds/${f.id}/curate`" class="action-link">Curate</router-link>
-                <router-link
-                  :to="`/workspaces/${workspaceId}/feeds/${f.id}/publish`"
-                  class="action-link"
-                >
-                  Publish
-                </router-link>
-                <router-link
-                  :to="`/workspaces/${workspaceId}/feeds/${f.id}/edit`"
-                  class="action-link"
-                  :class="canEditOrDelete ? '' : 'text-slate-400 cursor-not-allowed'"
-                  @click.prevent="handleEditClick(f)"
-                >
-                  Edit
-                </router-link>
-                <button
-                  type="button"
-                  class="action-link"
-                  :class="canEditOrDelete ? '!text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80' : 'text-slate-400 cursor-not-allowed'"
-                  @click="handleDeleteClick(f)"
-                >
-                  Delete
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+
+    <template #footer>
+      <router-link to="/workspaces" title="Go back">
+        <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center justify-center !py-1.5 !px-3 text-sm-pro">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+          <span class="ml-1">Back</span>
+        </AppButton>
+      </router-link>
+      <router-link :to="nextCurateUrl" :aria-disabled="!feeds.list.length" title="Continue to curate posts">
+        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center gap-2 text-sm-pro" :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+          Curate
+        </AppButton>
+      </router-link>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
-import { useToastStore } from '../stores/toast';
+import SocialIcon from '../components/SocialIcon.vue';
+import WizardPageLayout from '../components/WizardPageLayout.vue';
+import { AppButton, AppEmptyState, AppLoader, AppTable } from '../components/ui';
 
 const route = useRoute();
 const feeds = useFeedsStore();
 const workspaces = useWorkspacesStore();
-const toast = useToastStore();
 
 const workspaceId = computed(() => route.params.workspaceId);
 const workspaceName = computed(() => {
@@ -191,7 +129,6 @@ const workspaceName = computed(() => {
 });
 const totalFeeds = computed(() => feeds.list.length);
 const feedsWithSource = computed(() => feeds.list.filter((f) => String(f.source_url || '').trim().length > 0).length);
-const feedsWithoutSource = computed(() => Math.max(0, totalFeeds.value - feedsWithSource.value));
 const sourceCoverage = computed(() =>
   totalFeeds.value ? Math.round((feedsWithSource.value / totalFeeds.value) * 100) : 0,
 );
@@ -202,39 +139,23 @@ const feedTypeCounts = computed(() =>
     return acc;
   }, {}),
 );
-const maxTypeCount = computed(() => Math.max(1, ...Object.values(feedTypeCounts.value).map((v) => Number(v || 0))));
-const feedTypeDistribution = computed(() =>
-  Object.entries(feedTypeCounts.value)
-    .map(([type, count]) => ({
-      type,
-      count: Number(count || 0),
-      width: Math.max(10, Math.round((Number(count || 0) / maxTypeCount.value) * 100)),
-    }))
-    .sort((a, b) => b.count - a.count),
-);
 const typeVariety = computed(() => Object.keys(feedTypeCounts.value).length);
-const feedRingStyle = computed(() => {
-  const pct = Math.min(100, Math.round((totalFeeds.value / 20) * 100));
-  return {
-    background: `conic-gradient(rgba(99,102,241,0.75) ${pct}%, rgba(224,231,255,0.9) ${pct}% 100%)`,
-  };
-});
 const feedsTrend = ref(0);
 const coverageTrend = ref(0);
 const typeVarietyTrend = ref(0);
-const previewFeedId = ref('');
-const previewLoadedPublicKey = ref('');
-const previewLoadError = ref('');
-const previewSelectedFeed = computed(() =>
-  feeds.list.find((f) => String(f.id) === String(previewFeedId.value)) || null,
-);
+const tableColumns = [
+  { key: 'name', label: 'Name' },
+  { key: 'type', label: 'Type' },
+  { key: 'source_url', label: 'Source' },
+  { key: 'actions', label: 'Actions', class: 'w-32' },
+];
+const nextCurateUrl = computed(() => {
+  return `/workspaces/${workspaceId.value}/curate`;
+});
 
 onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
   if (workspaceId.value) await feeds.fetchAll(workspaceId.value);
-  if (!previewFeedId.value && feeds.list.length) {
-    previewFeedId.value = String(feeds.list[0].id);
-  }
   loadTrendSnapshot();
 });
 
@@ -242,9 +163,6 @@ watch(workspaceId, async (id) => {
   if (id) {
     feeds.clearList();
     await feeds.fetchAll(id);
-    previewFeedId.value = feeds.list.length ? String(feeds.list[0].id) : '';
-    previewLoadedPublicKey.value = '';
-    previewLoadError.value = '';
     loadTrendSnapshot();
   }
 }, { immediate: false });
@@ -256,6 +174,7 @@ function feedTypeLabel(type) {
   if (type === 'facebook') return 'Facebook';
   if (type === 'instagram') return 'Instagram';
   if (type === 'tiktok') return 'TikTok';
+  if (type === 'threads') return 'Threads';
   if (type === 'rss') return 'RSS / Atom';
   if (type === 'twitter') return 'X / Twitter';
   return type || '—';
@@ -269,6 +188,7 @@ function handleEditClick(f) {
 
 async function handleDeleteClick(f) {
   if (!window.confirm(`Delete feed "${f.name}"?`)) return;
+
   try {
     await feeds.remove(workspaceId.value, f.id);
   } catch {
@@ -276,73 +196,9 @@ async function handleDeleteClick(f) {
   }
 }
 
-function resolveApiBaseUrl() {
-  const fromEnv = String(
-    import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '',
-  ).trim();
-  const raw = fromEnv || window.location.origin;
-  if (!raw) return '';
-  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/$/, '');
-  return `https://${raw}`.replace(/\/$/, '');
-}
-
-function ensureEmbedAssets(publicKey) {
-  const cssId = `curator-embed-css-${publicKey}`;
-  const jsId = `curator-embed-js-${publicKey}`;
-  const apiBaseUrl = resolveApiBaseUrl();
-
-  if (!document.getElementById(cssId)) {
-    const link = document.createElement('link');
-    link.id = cssId;
-    link.rel = 'stylesheet';
-    link.href = `${apiBaseUrl}/api/embed/${publicKey}.css`;
-    document.head.appendChild(link);
-  }
-
-  if (!document.getElementById(jsId)) {
-    const script = document.createElement('script');
-    script.id = jsId;
-    script.src = `${apiBaseUrl}/api/embed/${publicKey}.js`;
-    script.async = true;
-    script.onerror = () => {
-      previewLoadError.value = 'Failed to load embed assets for this feed.';
-    };
-    document.body.appendChild(script);
-  }
-}
-
-function removeEmbedScript(publicKey) {
-  if (!publicKey) return;
-  document.getElementById(`curator-embed-js-${publicKey}`)?.remove();
-}
-
-async function loadPreviewFeed() {
-  previewLoadError.value = '';
-  if (!previewSelectedFeed.value?.public_key) return;
-  removeEmbedScript(previewLoadedPublicKey.value);
-  previewLoadedPublicKey.value = previewSelectedFeed.value.public_key;
-  ensureEmbedAssets(previewLoadedPublicKey.value);
-}
-
-function trendLabel(val, suffix) {
-  if (!val) return `No change ${suffix}`;
-  const sign = val > 0 ? '+' : '';
-  return `${sign}${val} ${suffix}`;
-}
-
-function trendClass(val) {
-  if (val > 0) return 'text-emerald-600';
-  if (val < 0) return 'text-rose-600';
-  return 'text-slate-500';
-}
-
-function snapshotKey() {
-  return `feeds_analytics_snapshot_${workspaceId.value || 'global'}`;
-}
-
 function loadTrendSnapshot() {
   try {
-    const raw = localStorage.getItem(snapshotKey());
+    const raw = localStorage.getItem(`feeds_analytics_snapshot_${workspaceId.value || 'global'}`);
     const prev = raw ? JSON.parse(raw) : null;
     if (prev && typeof prev === 'object') {
       feedsTrend.value = totalFeeds.value - Number(prev.totalFeeds || 0);
@@ -368,23 +224,11 @@ function saveTrendSnapshot() {
     sourceCoverage: sourceCoverage.value,
     typeVariety: typeVariety.value,
   };
-  localStorage.setItem(snapshotKey(), JSON.stringify(snapshot));
+  localStorage.setItem(`feeds_analytics_snapshot_${workspaceId.value || 'global'}`, JSON.stringify(snapshot));
 }
 
 watch([totalFeeds, sourceCoverage, typeVariety], () => {
   saveTrendSnapshot();
-});
-
-watch(previewFeedId, async () => {
-  previewLoadedPublicKey.value = '';
-  previewLoadError.value = '';
-  if (previewFeedId.value && previewSelectedFeed.value?.public_key) {
-    await loadPreviewFeed();
-  }
-});
-
-onUnmounted(() => {
-  removeEmbedScript(previewLoadedPublicKey.value);
 });
 </script>
 
@@ -394,6 +238,25 @@ onUnmounted(() => {
   overflow: hidden;
   background: linear-gradient(150deg, #ffffff 0%, #f8fbff 100%);
   border-color: rgba(199, 210, 254, 0.7);
+}
+.feed-setup-hero {
+  background:
+    radial-gradient(860px 240px at -8% -45%, rgba(56, 189, 248, 0.1), transparent 65%),
+    radial-gradient(720px 220px at 110% -40%, rgba(99, 102, 241, 0.12), transparent 62%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+}
+.wizard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+}
+.analytics-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -26px rgba(30, 41, 59, 0.85);
 }
 .analytics-card::before {
   content: '';
@@ -426,7 +289,7 @@ onUnmounted(() => {
   border: 1px solid rgba(165, 180, 252, 0.7);
   background: rgba(238, 242, 255, 0.9);
   color: rgb(79, 70, 229);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -443,15 +306,106 @@ onUnmounted(() => {
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.95);
   color: rgb(51, 65, 85);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
   display: grid;
   place-items: center;
 }
-.curator-embed-box :deep(.crt-grid) {
-  gap: 18px;
+.feed-table-shell {
+  border-color: rgba(191, 219, 254, 0.58);
 }
-.curator-embed-box :deep(.crt-card) {
-  border-radius: 14px;
+
+.feed-table-head {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.92));
+}
+
+.feed-table-row {
+  transition: transform 0.16s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.feed-table-row:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(90deg, rgba(248, 250, 252, 0.85), rgba(241, 245, 249, 0.7));
+  box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.33);
+}
+
+.type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.15rem 0.5rem 0.15rem 0.38rem;
+  color: rgb(71 85 105);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.type-pill__icon {
+  width: 1rem;
+  height: 1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 700;
+  background: rgba(226, 232, 240, 0.82);
+  color: rgb(51 65 85);
+}
+
+.type-pill__icon :deep(svg) {
+  width: 0.78rem;
+  height: 0.78rem;
+  display: block;
+}
+
+.type-pill--youtube .type-pill__icon { background: rgba(254, 226, 226, 0.95); color: rgb(220 38 38); }
+.type-pill--facebook .type-pill__icon { background: rgba(219, 234, 254, 0.98); color: rgb(37 99 235); }
+.type-pill--instagram .type-pill__icon { background: rgba(252, 231, 243, 0.96); color: rgb(190 24 93); }
+.type-pill--tiktok .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-pill--threads .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+.type-pill--rss .type-pill__icon { background: rgba(255, 237, 213, 0.98); color: rgb(234 88 12); }
+.type-pill--twitter .type-pill__icon { background: rgba(226, 232, 240, 0.98); color: rgb(15 23 42); }
+
+.feed-name-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: rgb(148 163 184);
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
+}
+
+.feed-name-dot--youtube { background: rgb(220 38 38); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14); }
+.feed-name-dot--facebook { background: rgb(37 99 235); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14); }
+.feed-name-dot--instagram { background: rgb(190 24 93); box-shadow: 0 0 0 3px rgba(190, 24, 93, 0.14); }
+.feed-name-dot--tiktok { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
+.feed-name-dot--threads { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
+.feed-name-dot--rss { background: rgb(234 88 12); box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14); }
+.feed-name-dot--twitter { background: rgb(15 23 42); box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.14); }
+
+.source-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(248, 250, 252, 0.9);
+  color: rgb(71 85 105);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .feed-table-row:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 </style>

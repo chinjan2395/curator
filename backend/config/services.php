@@ -42,15 +42,24 @@ return [
     ],
 
     'facebook' => [
-        'client_id' => env('FACEBOOK_CLIENT_ID'),
-        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        // Meta "App ID" is numeric; tolerate spaces from copy/paste. Fallback names match common tutorials.
+        'client_id' => preg_replace('/\s+/u', '', trim((string) (env('FACEBOOK_CLIENT_ID') ?: env('FACEBOOK_APP_ID')))),
+        'client_secret' => trim((string) env('FACEBOOK_CLIENT_SECRET')),
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
+        // Optional: Meta → Facebook Login for Business → Configurations → Configuration ID (User token flows).
+        'login_config_id' => trim((string) env('FACEBOOK_LOGIN_CONFIG_ID')),
     ],
 
     'x' => [
         'client_id' => env('TWITTER_CLIENT_ID'),
         'client_secret' => env('TWITTER_CLIENT_SECRET'),
         'redirect' => env('TWITTER_REDIRECT_URI'),
+    ],
+
+    'github' => [
+        'client_id' => env('GITHUB_CLIENT_ID'),
+        'client_secret' => env('GITHUB_CLIENT_SECRET'),
+        'redirect' => env('GITHUB_REDIRECT_URI'),
     ],
 
 ];

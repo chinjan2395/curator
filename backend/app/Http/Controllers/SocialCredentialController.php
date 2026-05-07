@@ -2,77 +2,74 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LabelSocialCredentialRequest;
+use App\Http\Requests\StoreSocialCredentialRequest;
+use App\Http\Requests\UpdateSocialCredentialRequest;
+use App\Http\Resources\ApiResponse;
+use App\Http\Resources\SocialCredentialResource;
 use App\Models\SocialCredential;
+use App\Repositories\Contracts\SocialCredentialRepositoryInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SocialCredentialController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        private readonly SocialCredentialRepositoryInterface $credentialRepository,
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(
-            SocialCredential::query()
-                ->where('user_id', $request->user()->id)
-                ->orderBy('provider')
-                ->get()
+        return ApiResponse::success(
+            SocialCredentialResource::collection($this->credentialRepository->allForUser($request->user()))
         );
     }
 
-    public function store(Request $request)
+    public function store(StoreSocialCredentialRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'provider' => ['required', 'string', 'max:64'],
-            'access_token' => ['required', 'string', 'max:2048'],
-            'refresh_token' => ['nullable', 'string', 'max:2048'],
-            'expires_at' => ['nullable', 'date'],
-        ]);
+        $credential = $this->credentialRepository->create($request->user()->id, $request->validated());
 
-        $cred = SocialCredential::create([
-            'user_id' => $request->user()->id,
-            'provider' => $validated['provider'],
-            'access_token' => $validated['access_token'],
-            'refresh_token' => $validated['refresh_token'] ?? null,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ]);
-
-        return response()->json($cred, 201);
+        return ApiResponse::success(new SocialCredentialResource($credential), 'Credential saved.', 201);
     }
 
-    public function show(Request $request, SocialCredential $socialCredential)
+    public function show(Request $request, SocialCredential $socialCredential): JsonResponse
     {
-        if ($socialCredential->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeOwner($request, $socialCredential);
 
-        return response()->json($socialCredential);
+        return ApiResponse::success(new SocialCredentialResource($socialCredential));
     }
 
-    public function update(Request $request, SocialCredential $socialCredential)
+    public function update(UpdateSocialCredentialRequest $request, SocialCredential $socialCredential): JsonResponse
     {
-        if ($socialCredential->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeOwner($request, $socialCredential);
 
-        $validated = $request->validate([
-            'provider' => ['sometimes', 'string', 'max:64'],
-            'access_token' => ['sometimes', 'string', 'max:2048'],
-            'refresh_token' => ['nullable', 'string', 'max:2048'],
-            'expires_at' => ['nullable', 'date'],
-        ]);
+        $credential = $this->credentialRepository->update($socialCredential, $request->validated());
 
-        $socialCredential->update($validated);
-
-        return response()->json($socialCredential);
+        return ApiResponse::success(new SocialCredentialResource($credential), 'Credential updated.');
     }
 
-    public function destroy(Request $request, SocialCredential $socialCredential)
+    public function label(LabelSocialCredentialRequest $request, SocialCredential $socialCredential): JsonResponse
+    {
+        $this->authorizeOwner($request, $socialCredential);
+
+        $credential = $this->credentialRepository->update($socialCredential, ['account_label' => $request->validated('account_label')]);
+
+        return ApiResponse::success(new SocialCredentialResource($credential), 'Label updated.');
+    }
+
+    public function destroy(Request $request, SocialCredential $socialCredential): JsonResponse
+    {
+        $this->authorizeOwner($request, $socialCredential);
+
+        $this->credentialRepository->delete($socialCredential);
+
+        return ApiResponse::noContent();
+    }
+
+    private function authorizeOwner(Request $request, SocialCredential $socialCredential): void
     {
         if ($socialCredential->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            abort(403, 'Unauthorized');
         }
-
-        $socialCredential->delete();
-
-        return response()->json(null, 204);
     }
 }
-

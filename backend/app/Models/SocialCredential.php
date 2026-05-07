@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\OAuthAppConfig;
+use App\Support\OAuthAppConfigResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 
@@ -14,9 +15,12 @@ class SocialCredential extends Model
     protected $fillable = [
         'user_id',
         'provider',
+        'account_id',
+        'account_label',
         'access_token',
         'refresh_token',
         'expires_at',
+        'status',
     ];
 
     protected $hidden = [
@@ -43,6 +47,7 @@ class SocialCredential extends Model
             'youtube' => $this->getValidYouTubeAccessToken(),
             'twitter' => $this->getValidTwitterAccessToken(),
             'tiktok' => $this->getValidTikTokAccessToken(),
+            'threads' => $this->getValidThreadsAccessToken(),
             default => $this->access_token,
         };
     }
@@ -61,10 +66,7 @@ class SocialCredential extends Model
             return null;
         }
 
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $this->user_id)
-            ->where('provider', 'google')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'google');
 
         $clientId = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
@@ -110,10 +112,7 @@ class SocialCredential extends Model
             return null;
         }
 
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $this->user_id)
-            ->where('provider', 'twitter')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'twitter');
 
         $clientId = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
@@ -148,6 +147,48 @@ class SocialCredential extends Model
         return $this->access_token;
     }
 
+    /**
+     * Threads long-lived tokens last ~60 days and can be refreshed by calling
+     * /refresh_access_token with the existing access_token (no separate refresh_token).
+     */
+    private function getValidThreadsAccessToken(): ?string
+    {
+        $expiresAt = $this->expires_at;
+        $now = now();
+        $expired = $expiresAt && $expiresAt->copy()->subSeconds(self::EXPIRY_BUFFER_SECONDS)->isPast();
+
+        if (! $expired) {
+            return $this->access_token;
+        }
+
+        if (empty($this->access_token)) {
+            return null;
+        }
+
+        $response = Http::acceptJson()
+            ->timeout(20)
+            ->get('https://graph.threads.net/refresh_access_token', [
+                'grant_type' => 'th_refresh_token',
+                'access_token' => $this->access_token,
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $accessToken = $response->json('access_token');
+        $expiresIn = (int) $response->json('expires_in', 5184000);
+        if (! $accessToken) {
+            return null;
+        }
+
+        $this->access_token = $accessToken;
+        $this->expires_at = $now->copy()->addSeconds($expiresIn);
+        $this->save();
+
+        return $this->access_token;
+    }
+
     private function getValidTikTokAccessToken(): ?string
     {
         $expiresAt = $this->expires_at;
@@ -162,10 +203,7 @@ class SocialCredential extends Model
             return null;
         }
 
-        $oauth = OAuthAppConfig::query()
-            ->where('user_id', $this->user_id)
-            ->where('provider', 'tiktok')
-            ->first();
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'tiktok');
 
         $clientKey = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;

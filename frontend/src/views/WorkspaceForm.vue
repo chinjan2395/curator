@@ -1,66 +1,85 @@
 <template>
-  <div class="space-y-4 max-w-xl">
-    <div>
-      <h1 class="page-title">{{ isEdit ? 'Edit workspace' : 'New workspace' }}</h1>
-      <p class="page-kicker">Workspace settings for organizing feeds and publishing.</p>
-    </div>
-    <form @submit.prevent="submit" class="surface-card p-5 space-y-4">
-      <div>
-        <label class="label-pro">Name</label>
-        <input
-          v-model="name"
-          type="text"
-          class="input-pro"
-          placeholder="Workspace name"
-          required
-        />
-      </div>
-      <div v-if="workspaces.error" class="text-2xs text-red-600">{{ workspaces.error }}</div>
-      <div class="flex items-center gap-2">
-        <button type="submit" class="btn-primary !w-auto !px-4" :disabled="saving">
-          {{ saving ? 'Saving…' : (isEdit ? 'Save' : 'Create') }}
-        </button>
-        <router-link to="/workspaces" class="btn-secondary !w-auto">Cancel</router-link>
-      </div>
-    </form>
-  </div>
+  <WizardPageLayout
+    current="workspace"
+    :title="isEdit ? 'Edit workspace' : 'New workspace'"
+    description="Name the workspace, then continue through Feed → Curate → Publish."
+    :workspaceId="route.params.id"
+  >
+    <template #breadcrumb>
+      <router-link to="/workspaces">Workspaces</router-link>
+    </template>
+
+    <template #actions>
+      <router-link to="/workspaces" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md hover:bg-slate-50 transition-colors" title="Go back">←</router-link>
+      <AppButton type="submit" form="workspace-form" variant="primary" size="sm" :loading="saving">
+        {{ saving ? '' : '→' }}
+      </AppButton>
+    </template>
+
+    <AppCard padding="md" class="max-w-2xl">
+      <form id="workspace-form" @submit.prevent="submit" class="space-y-4">
+        <AppFormField label="Name" id="workspace-name" :required="true">
+          <AppInput
+            id="workspace-name"
+            v-model="name"
+            type="text"
+            placeholder="Workspace name"
+          />
+        </AppFormField>
+
+        <AppAlert v-if="workspaces.error" variant="danger">{{ workspaces.error }}</AppAlert>
+      </form>
+    </AppCard>
+
+    <template #footer>
+      <router-link to="/workspaces">
+        <AppButton variant="secondary" size="sm" class="!w-auto">Back</AppButton>
+      </router-link>
+      <AppButton type="submit" form="workspace-form" variant="primary" size="sm" :loading="saving">
+        {{ saving ? '' : 'Next' }}
+      </AppButton>
+    </template>
+  </WizardPageLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useWorkspacesStore } from '../stores/workspaces';
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useWorkspacesStore } from '../stores/workspaces'
+import WizardPageLayout from '../components/WizardPageLayout.vue'
+import { AppAlert, AppButton, AppCard, AppFormField, AppInput } from '../components/ui/index.js'
 
-const route = useRoute();
-const router = useRouter();
-const workspaces = useWorkspacesStore();
+const route = useRoute()
+const router = useRouter()
+const workspaces = useWorkspacesStore()
 
-const name = ref('');
-const saving = ref(false);
+const name = ref('')
+const saving = ref(false)
 
-const isEdit = computed(() => !!route.params.id);
+const isEdit = computed(() => !!route.params.id)
 
 onMounted(async () => {
   if (isEdit.value) {
-    await workspaces.fetchAll();
-    const w = workspaces.list.find((x) => x.id === Number(route.params.id));
-    if (w) name.value = w.name;
+    await workspaces.fetchAll()
+    const w = workspaces.list.find((x) => x.id === Number(route.params.id))
+    if (w) name.value = w.name
   }
-});
+})
 
 async function submit() {
-  saving.value = true;
+  saving.value = true
   try {
     if (isEdit.value) {
-      await workspaces.update(Number(route.params.id), name.value);
+      await workspaces.update(Number(route.params.id), name.value)
+      await router.push(`/workspaces/${route.params.id}/feeds`)
     } else {
-      await workspaces.create(name.value);
+      const created = await workspaces.create(name.value)
+      await router.push(`/workspaces/${created.id}/feeds/new`)
     }
-    router.push('/workspaces');
   } catch {
     // error set in store
   } finally {
-    saving.value = false;
+    saving.value = false
   }
 }
 </script>

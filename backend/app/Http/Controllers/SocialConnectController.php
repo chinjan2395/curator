@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\OAuthAppConfig;
 use App\Models\SocialCredential;
+use App\Models\User;
+use App\Support\ActivityLogger;
+use App\Support\OAuthAppConfigResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
@@ -27,10 +30,23 @@ class SocialConnectController extends Controller
         'https://www.googleapis.com/auth/userinfo.profile',
     ];
 
-    /** Scopes for reading managed Pages’ public feed via /me/accounts + /{page-id}/feed. */
-    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_engagement'];
+    /**
+     * Scopes for managed Pages: /me/accounts → page access token → /{page-id}/feed.
+     * pages_read_user_content is commonly required alongside pages_read_engagement (Graph dependency / review).
+     */
+    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_user_content', 'pages_read_engagement'];
 
-    private const INSTAGRAM_SCOPES = ['public_profile', 'instagram_basic', 'pages_show_list'];
+    /**
+     * Instagram Graph API (Professional account linked to a Page): list Pages via /me/accounts,
+     * then Page token for /{ig-user-id}/media. Page read scopes align with the Facebook feed flow.
+     */
+    private const INSTAGRAM_SCOPES = [
+        'public_profile',
+        'instagram_basic',
+        'pages_show_list',
+        'pages_read_user_content',
+        'pages_read_engagement',
+    ];
 
     /** X / Twitter OAuth 2: tweet.read + users.read + offline.access for refresh_token. */
     private const TWITTER_SCOPES = ['users.read', 'users.email', 'tweet.read', 'offline.access'];
@@ -41,6 +57,12 @@ class SocialConnectController extends Controller
     private const TIKTOK_OAUTH_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/';
     private const TIKTOK_OAUTH_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
     private const TIKTOK_SCOPES = ['user.info.basic', 'video.list'];
+
+    private const THREADS_OAUTH_AUTHORIZE_URL = 'https://threads.net/oauth/authorize';
+    private const THREADS_OAUTH_TOKEN_URL = 'https://graph.threads.net/oauth/access_token';
+    private const THREADS_LONG_LIVED_TOKEN_URL = 'https://graph.threads.net/access_token';
+    private const THREADS_API_BASE = 'https://graph.threads.net/v1.0';
+    private const THREADS_SCOPES = ['threads_basic'];
     private function normalizeAbsoluteUrl(string $url): string
     {
         $trimmed = trim($url);
@@ -83,6 +105,7 @@ class SocialConnectController extends Controller
             'instagram' => $this->connectInstagram($request),
             'twitter' => $this->connectTwitter($request),
             'tiktok' => $this->connectTikTok($request),
+            'threads' => $this->connectThreads($request),
             default => response()->json([
                 'provider' => $provider,
                 'auth_url' => null,
@@ -95,7 +118,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
         if (! $oauth) {
-            return response()->json(['message' => 'YouTube connect is not configured. Add Google OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'YouTube connect is not configured. Add Google OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'youtube');
@@ -128,7 +151,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
         if (! $oauth) {
-            return response()->json(['message' => 'Google connect is not configured. Add Google OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Google connect is not configured. Add Google OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'google');
@@ -160,7 +183,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
         if (! $oauth) {
-            return response()->json(['message' => 'Facebook connect is not configured. Add Facebook OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Facebook connect is not configured. Add Facebook OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'facebook');
@@ -185,7 +208,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
         if (! $oauth) {
-            return response()->json(['message' => 'Instagram connect is not configured. Add Facebook OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Instagram connect is not configured. Add Facebook OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $state = $this->encryptState($request->user()->id, 'instagram');
@@ -210,7 +233,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'twitter');
         if (! $oauth) {
-            return response()->json(['message' => 'Twitter connect is not configured. Add Twitter OAuth client ID/secret in Credentials.'], 503);
+            return response()->json(['message' => 'Twitter connect is not configured. Add Twitter OAuth client ID/secret in OAuth Apps.'], 503);
         }
 
         $redirectUrl = $this->normalizeAbsoluteUrl(
@@ -247,7 +270,7 @@ class SocialConnectController extends Controller
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'tiktok');
         if (! $oauth) {
-            return response()->json(['message' => 'TikTok connect is not configured. Add TikTok OAuth client key/secret in Credentials.'], 503);
+            return response()->json(['message' => 'TikTok connect is not configured. Add TikTok OAuth client key/secret in OAuth Apps.'], 503);
         }
 
         $redirectUrl = $this->normalizeAbsoluteUrl(
@@ -266,6 +289,32 @@ class SocialConnectController extends Controller
         return response()->json([
             'provider' => 'tiktok',
             'auth_url' => self::TIKTOK_OAUTH_AUTHORIZE_URL.'?'.$query,
+        ]);
+    }
+
+    private function connectThreads(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'threads');
+        if (! $oauth) {
+            return response()->json(['message' => 'Threads connect is not configured. Add Threads OAuth client ID/secret in OAuth Apps.'], 503);
+        }
+
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/threads')
+        );
+        $state = $this->encryptState($request->user()->id, 'threads');
+
+        $query = http_build_query([
+            'client_id' => $oauth->client_id,
+            'redirect_uri' => $redirectUrl,
+            'response_type' => 'code',
+            'scope' => implode(',', self::THREADS_SCOPES),
+            'state' => $state,
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        return response()->json([
+            'provider' => 'threads',
+            'auth_url' => self::THREADS_OAUTH_AUTHORIZE_URL.'?'.$query,
         ]);
     }
 
@@ -310,14 +359,16 @@ class SocialConnectController extends Controller
         }
     }
 
-    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null): void
+    private function saveCredential(int $userId, string $provider, $token, $refreshToken = null, $expiresIn = null, ?string $accountId = null, ?string $accountLabel = null): SocialCredential
     {
         $expiresAt = $expiresIn ? now()->addSeconds($expiresIn) : null;
+
         $cred = SocialCredential::updateOrCreate(
-            ['user_id' => $userId, 'provider' => $provider],
+            ['user_id' => $userId, 'provider' => $provider, 'account_id' => $accountId],
             [
                 'access_token' => $token,
                 'expires_at' => $expiresAt,
+                'account_label' => $accountLabel,
             ]
         );
 
@@ -326,6 +377,8 @@ class SocialConnectController extends Controller
             $cred->refresh_token = $refreshToken;
             $cred->save();
         }
+
+        return $cred;
     }
 
     public function callbackYouTube(Request $request)
@@ -356,13 +409,22 @@ class SocialConnectController extends Controller
                 )
                 ->user();
 
-            $this->saveCredential(
+            $accountId = $googleUser->id;
+            $accountLabel = $googleUser->name ?: $googleUser->email ?: null;
+
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'youtube',
                 $googleUser->token,
                 $googleUser->refreshToken ?? null,
-                $googleUser->expiresIn ?? null
+                $googleUser->expiresIn ?? null,
+                $accountId,
+                $accountLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected YouTube', 'credential', $credential->id, $credential->account_label ?? 'YouTube');
+            }
 
             return $this->redirectSuccess('youtube');
         } catch (InvalidStateException $e) {
@@ -402,13 +464,19 @@ class SocialConnectController extends Controller
                 )
                 ->user();
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'google',
                 $googleUser->token,
                 $googleUser->refreshToken ?? null,
-                $googleUser->expiresIn ?? null
+                $googleUser->expiresIn ?? null,
+                $googleUser->id,
+                $googleUser->name ?: $googleUser->email ?: null
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected Google', 'credential', $credential->id, $credential->account_label ?? 'Google');
+            }
 
             return $this->redirectSuccess('google');
         } catch (InvalidStateException $e) {
@@ -451,13 +519,20 @@ class SocialConnectController extends Controller
                 $expiresIn = $longLived['expires_in'];
             }
 
-            $this->saveCredential(
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 $provider,
                 $token,
                 $fbUser->refreshToken ?? null,
-                $expiresIn
+                $expiresIn,
+                $fbUser->id,
+                $fbUser->name ?: null
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                $providerLabel = ucfirst($provider);
+                ActivityLogger::log($user, 'credential.connected', "Connected {$providerLabel}", 'credential', $credential->id, $credential->account_label ?? $providerLabel);
+            }
 
             return $this->redirectSuccess($provider);
         } catch (InvalidStateException $e) {
@@ -526,13 +601,29 @@ class SocialConnectController extends Controller
             $expiresIn = $tokenResp->json('expires_in');
             $refreshToken = $tokenResp->json('refresh_token');
 
-            $this->saveCredential(
+            $twitterAccountId = null;
+            $twitterLabel = null;
+            $meResp = Http::withToken($accessToken)->get('https://api.x.com/2/users/me', ['user.fields' => 'name,username']);
+            if ($meResp->ok()) {
+                $twitterAccountId = $meResp->json('data.id');
+                $handle = $meResp->json('data.username');
+                $name = $meResp->json('data.name');
+                $twitterLabel = $handle ? "@{$handle}" . ($name ? " ({$name})" : '') : null;
+            }
+
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'twitter',
                 $accessToken,
                 is_string($refreshToken) ? $refreshToken : null,
-                is_numeric($expiresIn) ? (int) $expiresIn : null
+                is_numeric($expiresIn) ? (int) $expiresIn : null,
+                $twitterAccountId,
+                $twitterLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected Twitter / X', 'credential', $credential->id, $credential->account_label ?? 'Twitter');
+            }
 
             return $this->redirectSuccess('twitter');
         } catch (InvalidStateException $e) {
@@ -597,13 +688,31 @@ class SocialConnectController extends Controller
             $expiresIn = $tokenResp->json('expires_in');
             $refreshToken = $tokenResp->json('refresh_token');
 
-            $this->saveCredential(
+            $tiktokAccountId = null;
+            $tiktokLabel = null;
+            $userResp = Http::withToken($accessToken)->get('https://open.tiktokapis.com/v2/user/info/', [
+                'fields' => 'open_id,display_name,username',
+            ]);
+            if ($userResp->ok()) {
+                $tiktokAccountId = $userResp->json('data.user.open_id');
+                $username = $userResp->json('data.user.username');
+                $displayName = $userResp->json('data.user.display_name');
+                $tiktokLabel = $username ? "@{$username}" . ($displayName ? " ({$displayName})" : '') : $displayName;
+            }
+
+            $credential = $this->saveCredential(
                 (int) $payload['user_id'],
                 'tiktok',
                 $accessToken,
                 is_string($refreshToken) ? $refreshToken : null,
-                is_numeric($expiresIn) ? (int) $expiresIn : null
+                is_numeric($expiresIn) ? (int) $expiresIn : null,
+                $tiktokAccountId,
+                $tiktokLabel
             );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected TikTok', 'credential', $credential->id, $credential->account_label ?? 'TikTok');
+            }
 
             return $this->redirectSuccess('tiktok');
         } catch (\Throwable $e) {
@@ -613,30 +722,136 @@ class SocialConnectController extends Controller
         }
     }
 
+    public function callbackThreads(Request $request)
+    {
+        try {
+            if ($request->query('error')) {
+                return $this->redirectError((string) $request->query('error', 'oauth_denied'));
+            }
+
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'threads') {
+                return $this->redirectError('invalid_state');
+            }
+
+            $code = $request->query('code');
+            if (! $code || ! is_string($code)) {
+                return $this->redirectError('missing_code');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'threads');
+            if (! $oauth) {
+                return $this->redirectError('missing_threads_oauth_config');
+            }
+
+            $redirectUrl = $this->normalizeAbsoluteUrl(
+                $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/threads')
+            );
+
+            $tokenResp = Http::asForm()->acceptJson()->post(self::THREADS_OAUTH_TOKEN_URL, [
+                'client_id' => $oauth->client_id,
+                'client_secret' => $oauth->client_secret,
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $redirectUrl,
+            ]);
+
+            if (! $tokenResp->ok()) {
+                Log::warning('Threads token exchange failed', [
+                    'status' => $tokenResp->status(),
+                    'body' => $tokenResp->body(),
+                ]);
+
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $shortLivedToken = $tokenResp->json('access_token');
+            if (! $shortLivedToken || ! is_string($shortLivedToken)) {
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            // Exchange for long-lived (~60 day) token immediately.
+            $accessToken = $shortLivedToken;
+            $expiresIn = null;
+            $longLived = Http::acceptJson()->get(self::THREADS_LONG_LIVED_TOKEN_URL, [
+                'grant_type' => 'th_exchange_token',
+                'client_secret' => $oauth->client_secret,
+                'access_token' => $shortLivedToken,
+            ]);
+            if ($longLived->ok()) {
+                $llToken = $longLived->json('access_token');
+                $llExpires = $longLived->json('expires_in');
+                if (is_string($llToken) && $llToken !== '') {
+                    $accessToken = $llToken;
+                    $expiresIn = is_numeric($llExpires) ? (int) $llExpires : null;
+                }
+            } else {
+                Log::warning('Threads long-lived token exchange failed', [
+                    'status' => $longLived->status(),
+                    'body' => $longLived->body(),
+                ]);
+            }
+
+            $threadsAccountId = null;
+            $threadsLabel = null;
+            $meResp = Http::withToken($accessToken)->get(self::THREADS_API_BASE.'/me', [
+                'fields' => 'id,username,name',
+            ]);
+            if ($meResp->ok()) {
+                $threadsAccountId = $meResp->json('id');
+                $username = $meResp->json('username');
+                $name = $meResp->json('name');
+                $threadsLabel = $username ? "@{$username}" . ($name ? " ({$name})" : '') : ($name ?: null);
+            }
+
+            $credential = $this->saveCredential(
+                (int) $payload['user_id'],
+                'threads',
+                $accessToken,
+                null,
+                $expiresIn,
+                $threadsAccountId,
+                $threadsLabel
+            );
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected Threads', 'credential', $credential->id, $credential->account_label ?? 'Threads');
+            }
+
+            return $this->redirectSuccess('threads');
+        } catch (\Throwable $e) {
+            Log::error('Threads OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
     public function disconnect(Request $request)
     {
         $validated = $request->validate([
-            'provider' => ['required', 'string', 'max:64'],
+            'id' => ['required', 'integer'],
         ]);
 
-        $deleted = $request->user()
+        $credential = $request->user()
             ->socialCredentials()
-            ->where('provider', $validated['provider'])
-            ->delete();
+            ->where('id', $validated['id'])
+            ->first();
 
-        return response()->json([
-            'provider' => $validated['provider'],
-            'deleted' => $deleted,
-            'message' => 'Disconnected',
-        ]);
+        if ($credential) {
+            $providerLabel = ucfirst($credential->provider);
+            ActivityLogger::log($request->user(), 'credential.disconnected', "Disconnected {$providerLabel}", 'credential', $credential->id, $credential->account_label ?? $providerLabel);
+            $credential->delete();
+            $deleted = 1;
+        } else {
+            $deleted = 0;
+        }
+
+        return response()->json(['deleted' => $deleted, 'message' => 'Disconnected']);
     }
 
     private function oauthConfigForUser(int $userId, string $provider): ?OAuthAppConfig
     {
-        return OAuthAppConfig::query()
-            ->where('user_id', $userId)
-            ->where('provider', $provider)
-            ->first();
+        return OAuthAppConfigResolver::resolveForUser($userId, $provider);
     }
 
     private function setFacebookConfig(OAuthAppConfig $oauth, string $redirectUrl): void

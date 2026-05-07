@@ -9,6 +9,14 @@ class Workspace extends Model
     protected $fillable = [
         'name',
         'owner_id',
+        'public_key',
+        'publish_settings',
+        'last_published_at',
+    ];
+
+    protected $casts = [
+        'publish_settings' => 'array',
+        'last_published_at' => 'datetime',
     ];
 
     public function owner()

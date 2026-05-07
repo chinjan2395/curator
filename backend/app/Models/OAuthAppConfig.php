@@ -7,10 +7,14 @@ use Illuminate\Support\Facades\Crypt;
 
 class OAuthAppConfig extends Model
 {
+    public const SCOPE_USER = 'user';
+    public const SCOPE_SHARED = 'shared';
+
     protected $table = 'oauth_app_configs';
 
     protected $fillable = [
         'user_id',
+        'scope',
         'provider',
         'client_id',
         'redirect_uri',
@@ -21,6 +25,10 @@ class OAuthAppConfig extends Model
 
     protected $hidden = [
         'client_secret_encrypted',
+    ];
+
+    protected $attributes = [
+        'scope' => self::SCOPE_USER,
     ];
 
     public function setClientSecretAttribute(string $secret): void

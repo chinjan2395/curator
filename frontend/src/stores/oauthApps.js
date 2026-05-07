@@ -4,10 +4,12 @@ import { useToastStore } from './toast';
 
 export const useOAuthAppsStore = defineStore('oauthApps', {
   state: () => ({
-    list: [],
+    items: [],
+    isAdmin: false,
     loading: false,
     error: null,
     saving: false,
+    promoting: false,
   }),
   actions: {
     async fetchAll() {
@@ -15,7 +17,8 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
       this.error = null;
       try {
         const { data } = await axios.get('/api/oauth-app-configs');
-        this.list = data;
+        this.items = data.items || [];
+        this.isAdmin = Boolean(data.is_admin);
         return data;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load OAuth app settings';
@@ -25,22 +28,36 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
         this.loading = false;
       }
     },
-    configFor(provider) {
-      return this.list.find((x) => x.provider === provider) || null;
+    entryFor(provider) {
+      return this.items.find((x) => x.provider === provider) || null;
     },
-    async save({ provider, client_id, client_secret, redirect_uri }) {
+    configFor(provider) {
+      return this.effectiveConfigFor(provider);
+    },
+    effectiveConfigFor(provider) {
+      return this.entryFor(provider)?.effective || null;
+    },
+    userConfigFor(provider) {
+      return this.entryFor(provider)?.user || null;
+    },
+    sharedConfigFor(provider) {
+      return this.entryFor(provider)?.shared || null;
+    },
+    effectiveScopeFor(provider) {
+      return this.entryFor(provider)?.effective_scope || null;
+    },
+    async save({ provider, scope, client_id, client_secret, redirect_uri }) {
       this.saving = true;
       this.error = null;
       try {
         const { data } = await axios.post('/api/oauth-app-configs', {
+          scope,
           provider,
           client_id,
           client_secret,
           redirect_uri,
         });
-        const idx = this.list.findIndex((x) => x.provider === provider);
-        if (idx === -1) this.list.push(data);
-        else this.list[idx] = data;
+        await this.fetchAll();
         useToastStore().success('OAuth app settings saved');
         return data;
       } catch (err) {
@@ -51,15 +68,31 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
         this.saving = false;
       }
     },
-    async remove(provider) {
+    async remove(provider, scope = 'user') {
       try {
-        await axios.delete(`/api/oauth-app-configs/${provider}`);
-        this.list = this.list.filter((x) => x.provider !== provider);
+        await axios.delete(`/api/oauth-app-configs/${provider}`, { params: { scope } });
+        await this.fetchAll();
         useToastStore().success('OAuth app settings removed');
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to remove OAuth app settings';
         useToastStore().error(msg);
         throw err;
+      }
+    },
+    async promoteMyUserConfigsToShared({ overwrite = false } = {}) {
+      this.promoting = true;
+      this.error = null;
+      try {
+        const { data } = await axios.post('/api/oauth-app-configs/promote-my-user-configs-to-shared', { overwrite });
+        await this.fetchAll();
+        useToastStore().success(`Promoted configs (created: ${data.created}, updated: ${data.updated}, skipped: ${data.skipped})`);
+        return data;
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Failed to promote user configs to shared defaults';
+        useToastStore().error(msg);
+        throw err;
+      } finally {
+        this.promoting = false;
       }
     },
   },

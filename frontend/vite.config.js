@@ -5,8 +5,9 @@ import vue from '@vitejs/plugin-vue';
 // (it only resolves inside Docker Compose). Default to localhost; override in Docker via env.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // Default to local Laravel so /api (including /api/auth/social/providers) hits your .env, not a remote deploy.
   const apiProxyTarget =
-    env.VITE_API_PROXY_TARGET || process.env.VITE_API_PROXY_TARGET || 'powerful-rejoicing-copy-production.up.railway.app';
+    env.VITE_API_PROXY_TARGET || process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000';
 
   return {
     plugins: [vue()],

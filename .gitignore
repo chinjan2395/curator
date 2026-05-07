@@ -35,3 +35,4 @@ pnpm-debug.log*
 # Archives
 *.zip
 frontend/package-lock.json
+backend/mysql-data

@@ -16,8 +16,8 @@ export const useFeedsStore = defineStore('feeds', {
       this.error = null;
       try {
         const { data } = await axios.get(`/api/workspaces/${workspaceId}/feeds`);
-        this.list = data;
-        return data;
+        this.list = Array.isArray(data) ? data : data.data;
+        return this.list;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load feeds';
         useToastStore().error(this.error);
@@ -74,7 +74,7 @@ export const useFeedsStore = defineStore('feeds', {
         throw err;
       }
     },
-    async sync(workspaceId, feedId, { count = 8 } = {}) {
+    async sync(workspaceId, feedId, { count = 8, silent = false } = {}) {
       this.error = null;
       this.syncing = true;
       try {
@@ -83,7 +83,7 @@ export const useFeedsStore = defineStore('feeds', {
         if (i !== -1) {
           this.list[i] = { ...this.list[i], last_synced_at: data.last_synced_at };
         }
-        useToastStore().success(`Synced feed (${data.created} posts)`);
+        if (!silent) useToastStore().success(`Synced feed (${data.created} posts)`);
         return data;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to sync feed';

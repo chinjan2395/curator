@@ -13,14 +13,15 @@ export const usePublishStore = defineStore('publish', {
     code: null,
   }),
   actions: {
-    async fetchStats(workspaceId, feedId) {
+    async fetchStats(workspaceId) {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await axios.get(`/api/workspaces/${workspaceId}/feeds/${feedId}/publish/stats`);
-        this.stats = data;
-        this.publishSettings = data.publish_settings ?? null;
-        return data;
+        const { data } = await axios.get(`/api/workspaces/${workspaceId}/publish/stats`);
+        const stats = Array.isArray(data) ? data : data.data ?? data;
+        this.stats = stats;
+        this.publishSettings = stats.publish_settings ?? null;
+        return stats;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to load publish stats';
         this.error = msg;
@@ -30,14 +31,15 @@ export const usePublishStore = defineStore('publish', {
         this.loading = false;
       }
     },
-    async publish(workspaceId, feedId) {
+    async publish(workspaceId) {
       this.publishing = true;
       this.error = null;
       try {
-        const { data } = await axios.post(`/api/workspaces/${workspaceId}/feeds/${feedId}/publish`);
-        useToastStore().success(`Published ${data.published} posts`);
-        await this.fetchStats(workspaceId, feedId);
-        return data;
+        const { data } = await axios.post(`/api/workspaces/${workspaceId}/publish`);
+        const result = Array.isArray(data) ? data : data.data ?? data;
+        useToastStore().success(`Published ${result.published} posts`);
+        await this.fetchStats(workspaceId);
+        return result;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to publish';
         this.error = msg;
@@ -47,17 +49,18 @@ export const usePublishStore = defineStore('publish', {
         this.publishing = false;
       }
     },
-    async savePublishSettings(workspaceId, feedId, publishSettings) {
+    async savePublishSettings(workspaceId, publishSettings) {
       this.savingSettings = true;
       this.error = null;
       try {
         const { data } = await axios.put(
-          `/api/workspaces/${workspaceId}/feeds/${feedId}/publish/settings`,
+          `/api/workspaces/${workspaceId}/publish/settings`,
           { publish_settings: publishSettings },
         );
-        this.publishSettings = data.publish_settings;
+        const result = Array.isArray(data) ? data : data.data ?? data;
+        this.publishSettings = result.publish_settings;
         useToastStore().success('Feed appearance saved');
-        return data.publish_settings;
+        return result.publish_settings;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to save settings';
         this.error = msg;
@@ -67,13 +70,14 @@ export const usePublishStore = defineStore('publish', {
         this.savingSettings = false;
       }
     },
-    async fetchCode(workspaceId, feedId) {
+    async fetchCode(workspaceId) {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await axios.get(`/api/workspaces/${workspaceId}/feeds/${feedId}/publish/code`);
-        this.code = data;
-        return data;
+        const { data } = await axios.get(`/api/workspaces/${workspaceId}/publish/code`);
+        const code = Array.isArray(data) ? data : data.data ?? data;
+        this.code = code;
+        return code;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to load embed code';
         this.error = msg;
