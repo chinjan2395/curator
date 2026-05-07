@@ -6,9 +6,7 @@
       icon="folder"
     >
       <template #actions>
-        <router-link to="/workspaces/new">
-          <AppButton size="sm" class="!w-auto !py-1.5 !px-3 text-sm-pro">+ New workspace</AppButton>
-        </router-link>
+        <AppButton to="/workspaces/new" size="sm">+ New workspace</AppButton>
       </template>
     </AppPageHeader>
 
@@ -22,9 +20,7 @@
       title="Welcome to Curator"
       description="Get your first feed live in 4 steps."
     >
-      <router-link to="/workspaces/new">
-        <AppButton size="sm" class="!w-auto !py-2 !px-5 text-sm-pro inline-flex">Create your first workspace →</AppButton>
-      </router-link>
+      <AppButton to="/workspaces/new" size="lg">Create your first workspace →</AppButton>
     </AppEmptyState>
 
     <AppTable
@@ -38,15 +34,9 @@
 
       <template #cell-actions="{ row }">
         <AppStack direction="horizontal" spacing="xs" align="center">
-          <router-link :to="`/workspaces/${row.id}/feeds`">
-            <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center gap-1.5 text-sm-pro">Feeds</AppButton>
-          </router-link>
-          <router-link :to="`/workspaces/${row.id}/edit`">
-            <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center gap-1.5 text-sm-pro">Edit</AppButton>
-          </router-link>
-          <AppButton variant="danger" size="sm" @click="confirmDelete(row)">
-            Delete
-          </AppButton>
+          <AppButton :to="`/workspaces/${row.id}/feeds`" variant="ghost" size="sm">Feeds</AppButton>
+          <AppButton :to="`/workspaces/${row.id}/edit`" variant="ghost" size="sm">Edit</AppButton>
+          <AppButton variant="ghost" tone="destructive" size="sm" @click="confirmDelete(row)">Delete</AppButton>
         </AppStack>
       </template>
     </AppTable>

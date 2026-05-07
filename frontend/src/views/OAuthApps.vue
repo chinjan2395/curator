@@ -12,10 +12,10 @@
         <p class="text-2xs text-slate-500">Copy all your user overrides into shared defaults in one click.</p>
       </div>
       <div class="flex items-center gap-1.5">
-        <AppButton variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.promoting" @click="promoteToShared(false)">
+        <AppButton variant="secondary" size="sm" :disabled="oauthApps.promoting" @click="promoteToShared(false)">
           {{ oauthApps.promoting ? 'Promoting…' : 'Promote (skip existing)' }}
         </AppButton>
-        <AppButton variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.promoting" @click="promoteToShared(true)">
+        <AppButton variant="secondary" size="sm" :disabled="oauthApps.promoting" @click="promoteToShared(true)">
           Promote (overwrite shared)
         </AppButton>
       </div>
@@ -79,10 +79,10 @@
             Shared defaults are managed by admin. You can optionally save your own override for this provider.
           </p>
           <div v-if="oauthApps.isAdmin" class="flex items-center gap-1.5">
-            <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" :class="oauthScope === 'shared' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'shared'">
+            <AppButton variant="secondary" size="sm" :class="oauthScope === 'shared' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'shared'">
               Edit shared default
             </AppButton>
-            <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" :class="oauthScope === 'user' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'user'">
+            <AppButton variant="secondary" size="sm" :class="oauthScope === 'user' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'user'">
               Edit my override
             </AppButton>
           </div>
@@ -112,10 +112,10 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <AppButton variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.saving || !oauthForm.client_id" @click="saveOauth">
+          <AppButton variant="secondary" size="sm" :disabled="oauthApps.saving || !oauthForm.client_id" @click="saveOauth">
             {{ oauthApps.saving ? 'Saving…' : saveButtonLabel }}
           </AppButton>
-          <AppButton v-if="activeScopeConfig" variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" @click="removeOauth">
+          <AppButton v-if="activeScopeConfig" variant="secondary" size="sm" @click="removeOauth">
             {{ oauthScope === 'shared' ? 'Remove shared default' : 'Remove my override' }}
           </AppButton>
           <div v-if="oauthApps.error" class="text-2xs text-red-600">{{ oauthApps.error }}</div>

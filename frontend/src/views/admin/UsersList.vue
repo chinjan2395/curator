@@ -106,11 +106,11 @@
         </template>
         <template #cell-actions="{ row: user }">
           <div class="flex items-center gap-1.5 flex-wrap">
-            <router-link :to="`/admin/users/${user.id}`" title="View details"><AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center gap-1">View</AppButton></router-link>
-            <AppButton variant="ghost" size="sm" class="inline-flex items-center gap-1" title="Send password reset email" @click="doResetPassword(user)" :disabled="actionLoading[user.id]">Reset pwd</AppButton>
-            <AppButton v-if="!user.deactivated_at" variant="ghost" size="sm" class="inline-flex items-center gap-1 !text-amber-700 hover:!bg-amber-50/75 hover:!border-amber-200/80" @click="doDeactivate(user)" :disabled="actionLoading[user.id]">Deactivate</AppButton>
-            <AppButton v-else variant="ghost" size="sm" class="inline-flex items-center gap-1 !text-emerald-700 hover:!bg-emerald-50/75 hover:!border-emerald-200/80" @click="doActivate(user)" :disabled="actionLoading[user.id]">Activate</AppButton>
-            <AppButton variant="ghost" size="sm" class="inline-flex items-center gap-1 !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80" @click="doDelete(user)" :disabled="actionLoading[user.id]">Delete</AppButton>
+            <AppButton :to="`/admin/users/${user.id}`" variant="ghost" size="sm" title="View details">View</AppButton>
+            <AppButton variant="ghost" size="sm" title="Send password reset email" @click="doResetPassword(user)" :disabled="actionLoading[user.id]">Reset pwd</AppButton>
+            <AppButton v-if="!user.deactivated_at" variant="ghost" tone="warning" size="sm" @click="doDeactivate(user)" :disabled="actionLoading[user.id]">Deactivate</AppButton>
+            <AppButton v-else variant="ghost" tone="success" size="sm" @click="doActivate(user)" :disabled="actionLoading[user.id]">Activate</AppButton>
+            <AppButton variant="ghost" tone="destructive" size="sm" @click="doDelete(user)" :disabled="actionLoading[user.id]">Delete</AppButton>
           </div>
         </template>
       </AppTable>
@@ -122,22 +122,12 @@
         Showing {{ users.pagination.from }}–{{ users.pagination.to }} of {{ users.pagination.total }}
       </div>
       <div class="flex items-center gap-1">
-        <AppButton
-          variant="ghost"
-          class="inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-          :disabled="currentPage === 1"
-          @click="goToPage(currentPage - 1)"
-        >
+        <AppButton variant="ghost" size="sm" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
           <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
           Prev
         </AppButton>
         <span class="text-2xs text-slate-600 px-2">Page {{ currentPage }} of {{ users.pagination.last_page }}</span>
-        <AppButton
-          variant="ghost"
-          class="inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-          :disabled="currentPage === users.pagination.last_page"
-          @click="goToPage(currentPage + 1)"
-        >
+        <AppButton variant="ghost" size="sm" :disabled="currentPage === users.pagination.last_page" @click="goToPage(currentPage + 1)">
           Next
           <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
         </AppButton>

@@ -67,11 +67,8 @@
           </div>
         </div>
         <div class="flex items-center gap-3 pt-1">
-          <AppButton class="!w-auto !py-1.5 !px-4 text-sm-pro" @click="saveProfile" :disabled="saving">
-            <span v-if="saving" class="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin mr-1.5" />
-            Save changes
-          </AppButton>
-          <AppButton variant="ghost" size="sm" class="text-sm-pro" @click="resetForm">Reset</AppButton>
+          <AppButton size="sm" :loading="saving" @click="saveProfile" :disabled="saving">Save changes</AppButton>
+          <AppButton variant="ghost" size="sm" @click="resetForm">Reset</AppButton>
         </div>
       </div>
 
@@ -93,7 +90,8 @@
           <AppButton
             v-if="!users.currentUser.deactivated_at"
             variant="ghost"
-            class="!text-amber-700 hover:!bg-amber-50/75 hover:!border-amber-200/80 inline-flex items-center gap-1.5 text-sm-pro"
+            tone="warning"
+            size="sm"
             @click="doDeactivate"
             :disabled="actionLoading"
           >
@@ -103,7 +101,8 @@
           <AppButton
             v-else
             variant="ghost"
-            class="!text-emerald-700 hover:!bg-emerald-50/75 hover:!border-emerald-200/80 inline-flex items-center gap-1.5 text-sm-pro"
+            tone="success"
+            size="sm"
             @click="doActivate"
             :disabled="actionLoading"
           >
@@ -172,7 +171,7 @@
           <AppButton
             variant="ghost"
             size="sm"
-            class="inline-flex items-center gap-1.5 text-sm-pro shrink-0"
+            class="shrink-0"
             @click="doResetPassword"
             :disabled="actionLoading"
           >
@@ -187,8 +186,9 @@
           </div>
           <AppButton
             variant="ghost"
+            tone="destructive"
             size="sm"
-            class="inline-flex items-center gap-1.5 text-sm-pro !text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80 shrink-0"
+            class="shrink-0"
             @click="doDelete"
             :disabled="actionLoading"
           >

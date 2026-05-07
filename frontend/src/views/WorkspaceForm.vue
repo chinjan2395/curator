@@ -10,7 +10,7 @@
     </template>
 
     <template #actions>
-      <router-link to="/workspaces" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md hover:bg-slate-50 transition-colors" title="Go back">←</router-link>
+      <AppButton to="/workspaces" variant="secondary" size="sm" title="Go back">←</AppButton>
       <AppButton type="submit" form="workspace-form" variant="primary" size="sm" :loading="saving">
         {{ saving ? '' : '→' }}
       </AppButton>
@@ -32,9 +32,7 @@
     </AppCard>
 
     <template #footer>
-      <router-link to="/workspaces">
-        <AppButton variant="secondary" size="sm" class="!w-auto">Back</AppButton>
-      </router-link>
+      <AppButton to="/workspaces" variant="secondary" size="sm">Back</AppButton>
       <AppButton type="submit" form="workspace-form" variant="primary" size="sm" :loading="saving">
         {{ saving ? '' : 'Next' }}
       </AppButton>

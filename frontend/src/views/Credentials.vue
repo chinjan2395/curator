@@ -92,8 +92,8 @@
                       @keyup.enter="saveRename(c.id)"
                       @keyup.escape="cancelRename"
                     />
-                    <AppButton class="!w-auto !py-1 !px-2 text-xs-pro" @click="saveRename(c.id)">Save</AppButton>
-                    <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</AppButton>
+                    <AppButton size="sm" @click="saveRename(c.id)">Save</AppButton>
+                    <AppButton variant="secondary" size="sm" @click="cancelRename">✕</AppButton>
                   </div>
               </div>
               <div class="flex items-center gap-1.5 shrink-0">

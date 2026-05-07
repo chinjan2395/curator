@@ -34,7 +34,7 @@
   @apply block text-2xs font-medium text-slate-600 uppercase tracking-wider mb-1.5;
 }
 .btn-primary {
-  @apply w-full font-medium text-white rounded-md;
+  @apply font-medium text-white rounded-md;
   @apply bg-gradient-to-r from-indigo-600 to-violet-600 shadow-[0_10px_24px_-14px_rgba(79,70,229,0.8)];
   @apply hover:from-indigo-500 hover:to-violet-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 transition;
   transform: translateY(0);

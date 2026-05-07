@@ -14,11 +14,12 @@
     </template>
 
     <template #actions>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md hover:bg-slate-50 transition-colors" title="Go back">←</router-link>
+      <AppButton :to="`/workspaces/${workspaceId}/feeds`" variant="secondary" size="sm" title="Go back">←</AppButton>
       <AppButton
         type="submit"
         form="feed-form"
         variant="primary"
+        size="sm"
         :disabled="saving"
         title="Save and continue"
       >

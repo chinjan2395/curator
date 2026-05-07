@@ -12,22 +12,14 @@
     </template>
 
     <template #actions>
-      <router-link :to="`/workspaces/${workspaceId}/feeds/new`" title="Add new feed">
-        <AppButton variant="secondary" size="sm" class="!w-auto !px-3 !py-1.5 text-sm-pro inline-flex items-center gap-2">
-          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
-          Add Feed
-        </AppButton>
-      </router-link>
-      <router-link :to="nextCurateUrl" :aria-disabled="!feeds.list.length" title="Continue to curate posts">
-        <AppButton
-          size="sm"
-          class="!w-auto !px-3 !py-1.5 inline-flex items-center gap-2"
-          :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-          Curate
-        </AppButton>
-      </router-link>
+      <AppButton :to="`/workspaces/${workspaceId}/feeds/new`" variant="secondary" size="sm" title="Add new feed">
+        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+        Add Feed
+      </AppButton>
+      <AppButton :to="nextCurateUrl" size="sm" :disabled="!feeds.list.length" title="Continue to curate posts">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        Curate
+      </AppButton>
     </template>
 
     <div v-if="feeds.loading" class="surface-card-soft px-4 py-3">
@@ -41,9 +33,7 @@
       icon="🧩"
       class="surface-card"
     >
-      <router-link :to="`/workspaces/${workspaceId}/feeds/new`">
-        <AppButton class="!w-auto !py-1.5 !px-3 text-sm-pro">Create feed</AppButton>
-      </router-link>
+      <AppButton :to="`/workspaces/${workspaceId}/feeds/new`" size="sm">Create feed</AppButton>
     </AppEmptyState>
     <div v-if="!feeds.loading && feeds.list.length" class="feed-table-shell">
       <AppTable :columns="tableColumns" :rows="feeds.list" row-key="id">
@@ -67,23 +57,11 @@
         </template>
         <template #cell-actions="{ row }">
           <div class="flex items-center gap-2">
-            <router-link :to="`/workspaces/${workspaceId}/feeds/${row.id}/edit`" @click.prevent="handleEditClick(row)">
-              <AppButton
-                variant="ghost"
-                size="sm"
-                class="!w-auto inline-flex items-center gap-1.5 !px-3 !py-1.5 text-sm-pro border border-slate-200 bg-white hover:bg-slate-50"
-                :class="canEditOrDelete ? '' : 'text-slate-400 cursor-not-allowed'"
-              >
-                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
-                Edit
-              </AppButton>
-            </router-link>
-            <AppButton
-              variant="danger"
-              size="sm"
-              class="!w-auto inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm-pro"
-              @click="handleDeleteClick(row)"
-            >
+            <AppButton variant="secondary" size="sm" @click="handleEditClick(row)">
+              <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
+              Edit
+            </AppButton>
+            <AppButton variant="ghost" tone="destructive" size="sm" @click="handleDeleteClick(row)">
               <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
               Delete
             </AppButton>
@@ -93,18 +71,14 @@
     </div>
 
     <template #footer>
-      <router-link to="/workspaces" title="Go back">
-        <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center justify-center !py-1.5 !px-3 text-sm-pro">
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
-          <span class="ml-1">Back</span>
-        </AppButton>
-      </router-link>
-      <router-link :to="nextCurateUrl" :aria-disabled="!feeds.list.length" title="Continue to curate posts">
-        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center gap-2 text-sm-pro" :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'">
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-          Curate
-        </AppButton>
-      </router-link>
+      <AppButton to="/workspaces" variant="secondary" size="sm" title="Go back">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+        Back
+      </AppButton>
+      <AppButton :to="nextCurateUrl" size="sm" :disabled="!feeds.list.length" title="Continue to curate posts">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        Curate
+      </AppButton>
     </template>
   </WizardPageLayout>
 </template>
@@ -166,8 +140,6 @@ watch(workspaceId, async (id) => {
     loadTrendSnapshot();
   }
 }, { immediate: false });
-
-const canEditOrDelete = computed(() => true); // backend ultimately enforces accepted-post rule
 
 function feedTypeLabel(type) {
   if (type === 'youtube') return 'YouTube';

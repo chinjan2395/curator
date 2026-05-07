@@ -27,9 +27,9 @@
     <div v-if="publishedCount !== null" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-300 bg-emerald-50 text-sm-pro text-emerald-800 mb-2">
       <span>✓ <strong>{{ publishedCount }} post{{ publishedCount !== 1 ? 's' : '' }}</strong> published and live in your embed.</span>
       <div class="flex items-center gap-2">
-        <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</AppButton>
-        <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</AppButton>
-        <AppButton variant="ghost" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</AppButton>
+        <AppButton variant="secondary" size="sm" class="border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</AppButton>
+        <AppButton variant="secondary" size="sm" class="border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</AppButton>
+        <AppButton variant="ghost" size="sm" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</AppButton>
       </div>
     </div>
 
@@ -59,7 +59,6 @@
               </div>
               <AppButton
                 size="sm"
-                class="!w-auto !py-1.5 !px-4 text-sm"
                 :disabled="publish.savingSettings"
                 @click="saveAppearance"
               >
@@ -998,7 +997,7 @@
       <div class="w-full max-w-2xl surface-card overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div class="text-sm-pro font-medium text-slate-800">Embed code</div>
-          <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" @click="showCode = false">Close</AppButton>
+          <AppButton variant="secondary" size="sm" @click="showCode = false">Close</AppButton>
         </div>
         <div class="p-4 space-y-3">
           <div class="text-2xs text-slate-500">
@@ -1006,7 +1005,7 @@
           </div>
           <AppInput type="textarea" input-class="font-mono text-2xs !h-40" readonly :model-value="publish.code?.embed_html || ''" />
           <div class="flex items-center gap-2">
-            <AppButton class="!w-auto !py-1.5 !px-3 text-sm-pro" @click="copyCode">Copy</AppButton>
+            <AppButton size="sm" @click="copyCode">Copy</AppButton>
             <div v-if="copied" class="text-2xs text-slate-500">Copied</div>
           </div>
         </div>
@@ -1018,7 +1017,7 @@
       <div class="w-full max-w-3xl surface-card overflow-hidden flex flex-col h-[80vh]">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div class="text-sm-pro font-medium text-slate-800">Live embed preview</div>
-          <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" @click="showEmbedPreview = false">Close</AppButton>
+          <AppButton variant="secondary" size="sm" @click="showEmbedPreview = false">Close</AppButton>
         </div>
         <iframe
           v-if="embedPublicKey"
@@ -1031,12 +1030,9 @@
     </div>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/curate`" title="Go back">
-        <AppButton variant="secondary" size="sm" class="!w-auto">←</AppButton>
-      </router-link>
+      <AppButton :to="`/workspaces/${workspaceId}/curate`" variant="secondary" size="sm" title="Go back">←</AppButton>
       <AppButton
         size="sm"
-        class="!w-auto !px-3 !py-1.5"
         :disabled="publish.publishing"
         @click="publishNow"
         title="Publish and finish"

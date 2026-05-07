@@ -12,12 +12,10 @@
     </template>
 
     <template #actions>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" title="Continue to publish">
-        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center justify-center">
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-          <span class="sr-only">Continue to publish</span>
-        </AppButton>
-      </router-link>
+      <AppButton :to="`/workspaces/${workspaceId}/publish`" size="sm" title="Continue to publish">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Continue to publish</span>
+      </AppButton>
     </template>
 
     <div class="flex items-center gap-1.5 flex-wrap mb-3">
@@ -48,11 +46,11 @@
         {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
       </AppButton>
       <div class="h-4 w-px bg-slate-200 hidden sm:block" />
-      <AppButton variant="secondary" class="!py-1 !px-2.5 text-xs-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-1.5" @click="approveAllPending" title="Approve all pending posts">
+      <AppButton variant="secondary" size="sm" class="text-emerald-700 border-emerald-200 hover:bg-emerald-50" @click="approveAllPending" title="Approve all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
         Approve All
       </AppButton>
-      <AppButton variant="secondary" class="!py-1 !px-2.5 text-xs-pro text-rose-700 border-rose-200 hover:bg-rose-50 inline-flex items-center gap-1.5" @click="rejectAllPending" title="Reject all pending posts">
+      <AppButton variant="secondary" size="sm" class="text-rose-700 border-rose-200 hover:bg-rose-50" @click="rejectAllPending" title="Reject all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
         Reject All
       </AppButton>
@@ -86,7 +84,7 @@
           </div>
           <AppButton
             variant="ghost"
-            class="text-2xs font-medium px-1 py-0.5 rounded shrink-0 inline-flex items-center justify-center ml-auto"
+            class="text-2xs font-medium px-1 py-0.5 rounded shrink-0 ml-auto"
             :class="p.pinned ? 'text-amber-700' : 'text-slate-400 hover:text-slate-600'"
             @click="togglePin(p)"
             :title="p.pinned ? 'Unpin this post' : 'Pin this post'"
@@ -163,18 +161,14 @@
     </div>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" title="Go back">
-        <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center justify-center">
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
-          <span class="sr-only">Go back</span>
-        </AppButton>
-      </router-link>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" title="Continue to publish">
-        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center justify-center">
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-          <span class="sr-only">Continue to publish</span>
-        </AppButton>
-      </router-link>
+      <AppButton :to="`/workspaces/${workspaceId}/feeds`" variant="secondary" size="sm" title="Go back">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Go back</span>
+      </AppButton>
+      <AppButton :to="`/workspaces/${workspaceId}/publish`" size="sm" title="Continue to publish">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <span class="sr-only">Continue to publish</span>
+      </AppButton>
     </template>
 
     <!-- Post preview modal -->
@@ -185,7 +179,7 @@
             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
             :class="statusBadgeClass(previewPost.status)"
           >{{ previewPost.status }}</span>
-          <AppButton variant="secondary" class="!w-auto !py-1 !px-2 inline-flex items-center justify-center" @click="previewPost = null" aria-label="Close preview">
+          <AppButton variant="secondary" size="sm" @click="previewPost = null" aria-label="Close preview">
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
           </AppButton>
         </div>
