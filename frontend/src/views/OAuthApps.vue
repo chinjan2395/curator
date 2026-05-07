@@ -1,14 +1,10 @@
 <template>
   <div class="space-y-4">
-    <div>
-      <h1 class="page-title flex items-center gap-2">
-        <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path d="M11.49 2.17a1.75 1.75 0 0 0-2.98 0l-.62 1.08a1.75 1.75 0 0 1-1.25.85l-1.22.22a1.75 1.75 0 0 0-.92 2.95l.84.86a1.75 1.75 0 0 1 .48 1.48l-.14 1.3a1.75 1.75 0 0 0 2.4 1.83l1.13-.48a1.75 1.75 0 0 1 1.38 0l1.13.48a1.75 1.75 0 0 0 2.4-1.83l-.14-1.3a1.75 1.75 0 0 1 .48-1.48l.84-.86a1.75 1.75 0 0 0-.92-2.95l-1.22-.22a1.75 1.75 0 0 1-1.25-.85l-.62-1.08ZM10 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-        </svg>
-        OAuth app settings
-      </h1>
-      <p class="page-kicker">Manage shared defaults and optional per-user overrides.</p>
-    </div>
+    <AppPageHeader
+      title="OAuth app settings"
+      subtitle="Manage shared defaults and optional per-user overrides."
+      icon="cog"
+    />
 
     <div v-if="oauthApps.isAdmin" class="surface-card p-3.5 flex flex-wrap items-center justify-between gap-2">
       <div>
@@ -16,12 +12,12 @@
         <p class="text-2xs text-slate-500">Copy all your user overrides into shared defaults in one click.</p>
       </div>
       <div class="flex items-center gap-1.5">
-        <button type="button" class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.promoting" @click="promoteToShared(false)">
+        <AppButton variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.promoting" @click="promoteToShared(false)">
           {{ oauthApps.promoting ? 'Promoting…' : 'Promote (skip existing)' }}
-        </button>
-        <button type="button" class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.promoting" @click="promoteToShared(true)">
+        </AppButton>
+        <AppButton variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.promoting" @click="promoteToShared(true)">
           Promote (overwrite shared)
-        </button>
+        </AppButton>
       </div>
     </div>
 
@@ -31,10 +27,10 @@
         <p class="text-2xs text-slate-500">Choose a provider to configure app credentials</p>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        <button
+        <AppButton
           v-for="item in socialProviders"
           :key="item.type"
-          type="button"
+          variant="ghost"
           class="credentials-provider-card"
           :class="provider === item.type ? 'credentials-provider-card--active' : ''"
           @click="provider = item.type"
@@ -52,7 +48,7 @@
           >
             {{ connectedCountFor(item.type) > 0 ? `${connectedCountFor(item.type)} connected` : 'Not connected' }}
           </span>
-        </button>
+        </AppButton>
       </div>
     </div>
 
@@ -83,28 +79,28 @@
             Shared defaults are managed by admin. You can optionally save your own override for this provider.
           </p>
           <div v-if="oauthApps.isAdmin" class="flex items-center gap-1.5">
-            <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" :class="oauthScope === 'shared' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'shared'">
+            <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" :class="oauthScope === 'shared' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'shared'">
               Edit shared default
-            </button>
-            <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" :class="oauthScope === 'user' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'user'">
+            </AppButton>
+            <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" :class="oauthScope === 'user' ? '!bg-indigo-50 !border-indigo-300 !text-indigo-700' : ''" @click="oauthScope = 'user'">
               Edit my override
-            </button>
+            </AppButton>
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="oauth-field-card sm:col-span-1">
             <label class="label-pro">Client ID</label>
-            <input v-model="oauthForm.client_id" type="text" class="input-pro" placeholder="OAuth Client ID" />
+            <AppInput v-model="oauthForm.client_id" type="text" placeholder="OAuth Client ID" />
           </div>
           <div class="oauth-field-card sm:col-span-1">
             <label class="label-pro">Client secret</label>
-            <input v-model="oauthForm.client_secret" type="password" class="input-pro" placeholder="OAuth Client Secret" />
+            <AppInput v-model="oauthForm.client_secret" type="password" placeholder="OAuth Client Secret" />
             <p class="mt-1 text-2xs text-slate-500">Saved encrypted. Leave blank to keep the existing secret.</p>
           </div>
           <div class="oauth-field-card sm:col-span-2">
             <label class="label-pro">Redirect URI</label>
-            <input v-model="oauthForm.redirect_uri" type="url" class="input-pro" placeholder="https://your-backend-domain.com/api/social/callback/youtube" />
+            <AppInput v-model="oauthForm.redirect_uri" type="url" placeholder="https://your-backend-domain.com/api/social/callback/youtube" />
             <p class="mt-1 text-2xs text-slate-500">
               Register this with the provider for <span class="font-medium text-slate-600">connect / sync</span> only.
               Suggested path: <span class="font-medium text-slate-700">{{ selectedCallbackPath }}</span>
@@ -116,12 +112,12 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.saving || !oauthForm.client_id" @click="saveOauth">
+          <AppButton variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" :disabled="oauthApps.saving || !oauthForm.client_id" @click="saveOauth">
             {{ oauthApps.saving ? 'Saving…' : saveButtonLabel }}
-          </button>
-          <button v-if="activeScopeConfig" type="button" class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro" @click="removeOauth">
+          </AppButton>
+          <AppButton v-if="activeScopeConfig" variant="secondary" class="!w-auto !py-1.5 !px-3 text-sm-pro" @click="removeOauth">
             {{ oauthScope === 'shared' ? 'Remove shared default' : 'Remove my override' }}
-          </button>
+          </AppButton>
           <div v-if="oauthApps.error" class="text-2xs text-red-600">{{ oauthApps.error }}</div>
         </div>
       </div>
@@ -134,6 +130,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useCredentialsStore } from '../stores/credentials';
 import SocialIcon from '../components/SocialIcon.vue';
+import { AppPageHeader } from '../components/layout/index.js';
+import { AppButton, AppInput } from '../components/ui';
 
 const oauthApps = useOAuthAppsStore();
 const creds = useCredentialsStore();

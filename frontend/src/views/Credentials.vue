@@ -1,14 +1,10 @@
 <template>
   <div class="space-y-4">
-    <div>
-      <h1 class="page-title flex items-center gap-2">
-        <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path d="M10 2.5a4.5 4.5 0 0 0-4.5 4.5v1H5A2 2 0 0 0 3 10v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-.5V7A4.5 4.5 0 0 0 10 2.5Zm3 5.5V7a3 3 0 1 0-6 0v1h6Z" />
-        </svg>
-        Credentials
-      </h1>
-      <p class="page-kicker">Connected social accounts (including configured providers without accounts yet).</p>
-    </div>
+    <AppPageHeader
+      title="Credentials"
+      subtitle="Connected social accounts (including configured providers without accounts yet)."
+      icon="lock"
+    />
 
     <div
       v-if="auth.brokenCredentials?.length"
@@ -31,9 +27,8 @@
       </div>
     </div>
 
-    <div v-if="creds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading…
+    <div v-if="creds.loading" class="surface-card-soft px-4 py-3">
+      <AppLoader size="sm" label="Loading..." />
     </div>
     <div v-else-if="creds.error" class="text-sm-pro text-red-600">{{ creds.error }}</div>
     <div v-else-if="!providerCards.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
@@ -62,15 +57,15 @@
               </div>
               <span class="connected-provider-count">{{ card.credentials.length }} account{{ card.credentials.length > 1 ? 's' : '' }}</span>
             </div>
-            <button
-              type="button"
-              class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro"
+            <AppButton
+              variant="secondary"
+              class="!w-auto !py-1 !px-2 text-xs-pro"
               :disabled="creds.connecting"
               @click="startConnect(card.type)"
               title="Add another account"
             >
               + Add
-            </button>
+            </AppButton>
           </div>
           <div v-if="!card.credentials.length" class="p-2">
             <div class="connected-account-empty text-2xs text-slate-500">
@@ -82,31 +77,31 @@
               <div class="min-w-0">
                   <div v-if="renamingId !== c.id" class="flex items-center gap-2">
                     <span class="font-medium text-slate-800 truncate">{{ c.account_label || c.account_id || '—' }}</span>
-                    <button
-                      type="button"
+                    <AppButton
+                      variant="ghost"
                       class="text-2xs text-slate-400 hover:text-slate-600 underline"
                       @click="startRename(c)"
-                    >edit</button>
+                    >edit</AppButton>
                   </div>
                   <div v-else class="flex items-center gap-1.5">
-                    <input
+                    <AppInput
                       v-model="renameValue"
                       type="text"
-                      class="input-pro !py-1 !text-sm-pro flex-1"
+                      input-class="!py-1 !text-sm-pro flex-1"
                       placeholder="Account label"
                       @keyup.enter="saveRename(c.id)"
                       @keyup.escape="cancelRename"
                     />
-                    <button type="button" class="btn-primary !w-auto !py-1 !px-2 text-xs-pro" @click="saveRename(c.id)">Save</button>
-                    <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</button>
+                    <AppButton class="!w-auto !py-1 !px-2 text-xs-pro" @click="saveRename(c.id)">Save</AppButton>
+                    <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" @click="cancelRename">✕</AppButton>
                   </div>
               </div>
               <div class="flex items-center gap-1.5 shrink-0">
                   <p class="compact-expiry text-2xs text-slate-500">
                     <span class="font-medium text-slate-600">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</span>
                   </p>
-                  <button
-                    type="button"
+                  <AppButton
+                    variant="ghost"
                     class="compact-disconnect-btn"
                     @click="disconnect(c)"
                     title="Disconnect account"
@@ -115,7 +110,7 @@
                       <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
                     </svg>
                     <span class="hidden sm:inline">Disconnect</span>
-                  </button>
+                  </AppButton>
               </div>
             </div>
           </div>
@@ -133,6 +128,10 @@ import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useToastStore } from '../stores/toast';
 import { useAuthStore } from '../stores/auth';
 import SocialIcon from '../components/SocialIcon.vue';
+import { AppPageHeader } from '../components/layout/index.js';
+import { AppButton, AppInput, AppLoader } from '../components/ui';
+
+defineOptions({ name: 'CredentialsView' });
 
 const route = useRoute();
 const creds = useCredentialsStore();

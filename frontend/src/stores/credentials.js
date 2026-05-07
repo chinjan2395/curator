@@ -25,8 +25,8 @@ export const useCredentialsStore = defineStore('credentials', {
       this.error = null;
       try {
         const { data } = await axios.get('/api/social-credentials');
-        this.list = data;
-        return data;
+        this.list = Array.isArray(data) ? data : data.data;
+        return this.list;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load credentials';
         useToastStore().error(this.error);

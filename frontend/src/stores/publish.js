@@ -18,9 +18,10 @@ export const usePublishStore = defineStore('publish', {
       this.error = null;
       try {
         const { data } = await axios.get(`/api/workspaces/${workspaceId}/publish/stats`);
-        this.stats = data;
-        this.publishSettings = data.publish_settings ?? null;
-        return data;
+        const stats = Array.isArray(data) ? data : data.data ?? data;
+        this.stats = stats;
+        this.publishSettings = stats.publish_settings ?? null;
+        return stats;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to load publish stats';
         this.error = msg;
@@ -35,9 +36,10 @@ export const usePublishStore = defineStore('publish', {
       this.error = null;
       try {
         const { data } = await axios.post(`/api/workspaces/${workspaceId}/publish`);
-        useToastStore().success(`Published ${data.published} posts`);
+        const result = Array.isArray(data) ? data : data.data ?? data;
+        useToastStore().success(`Published ${result.published} posts`);
         await this.fetchStats(workspaceId);
-        return data;
+        return result;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to publish';
         this.error = msg;
@@ -55,9 +57,10 @@ export const usePublishStore = defineStore('publish', {
           `/api/workspaces/${workspaceId}/publish/settings`,
           { publish_settings: publishSettings },
         );
-        this.publishSettings = data.publish_settings;
+        const result = Array.isArray(data) ? data : data.data ?? data;
+        this.publishSettings = result.publish_settings;
         useToastStore().success('Feed appearance saved');
-        return data.publish_settings;
+        return result.publish_settings;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to save settings';
         this.error = msg;
@@ -72,8 +75,9 @@ export const usePublishStore = defineStore('publish', {
       this.error = null;
       try {
         const { data } = await axios.get(`/api/workspaces/${workspaceId}/publish/code`);
-        this.code = data;
-        return data;
+        const code = Array.isArray(data) ? data : data.data ?? data;
+        this.code = code;
+        return code;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to load embed code';
         this.error = msg;

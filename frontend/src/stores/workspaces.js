@@ -14,8 +14,8 @@ export const useWorkspacesStore = defineStore('workspaces', {
       this.error = null;
       try {
         const { data } = await axios.get('/api/workspaces');
-        this.list = data;
-        return data;
+        this.list = data.data;
+        return data.data;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load workspaces';
         useToastStore().error(this.error);

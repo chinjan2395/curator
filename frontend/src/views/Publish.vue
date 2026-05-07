@@ -12,24 +12,24 @@
     </template>
 
     <template #actions>
-      <button
-        type="button"
-        class="btn-primary !w-auto !px-3 !py-2"
+      <AppButton
+        size="sm"
+        class="!w-auto !px-3 !py-1.5"
         :disabled="publish.publishing"
         @click="publishNow"
         title="Publish and finish"
       >
         {{ publish.publishing ? '⏳' : '✓' }}
-      </button>
+      </AppButton>
     </template>
 
     <!-- Publish success banner -->
     <div v-if="publishedCount !== null" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-300 bg-emerald-50 text-sm-pro text-emerald-800 mb-2">
       <span>✓ <strong>{{ publishedCount }} post{{ publishedCount !== 1 ? 's' : '' }}</strong> published and live in your embed.</span>
       <div class="flex items-center gap-2">
-        <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</button>
-        <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</button>
-        <button type="button" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</button>
+        <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</AppButton>
+        <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</AppButton>
+        <AppButton variant="ghost" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</AppButton>
       </div>
     </div>
 
@@ -40,306 +40,331 @@
 
     <div v-else-if="!workspaceId" class="surface-card p-6 text-sm-pro text-slate-600">
       <div class="flex items-center gap-2 mb-3">
-        <select v-model="workspaceId" class="input-pro !py-1.5 !px-2.5 !text-sm-pro flex-1">
+        <AppSelect v-model="workspaceId" select-class="!py-1.5 !px-2.5 !text-sm-pro flex-1" :show-placeholder="false">
           <option value="">Select workspace</option>
           <option v-for="w in workspaces.list" :key="w.id" :value="String(w.id)">{{ w.name }}</option>
-        </select>
+        </AppSelect>
       </div>
       Pick a workspace to manage publishing.
     </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 items-start">
-        <div class="space-y-6">
-          <div v-if="appearance" class="surface-card p-4 space-y-6">
-            <div class="flex items-center justify-between gap-2">
-              <h2 class="text-sm-pro font-semibold text-slate-800">Feed appearance (embed)</h2>
-              <button
-                type="button"
-                class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro"
+    <div v-else class="grid grid-cols-1 lg:grid-cols-[minmax(0,550px)_minmax(0,1fr)] gap-6 items-start">
+        <div class="space-y-4">
+          <div v-if="appearance" class="surface-card p-6 space-y-6">
+            <!-- Header -->
+            <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-200">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Feed appearance</h2>
+                <p class="text-xs text-slate-500 mt-1">Customize how your posts look in the embed</p>
+              </div>
+              <AppButton
+                size="sm"
+                class="!w-auto !py-1.5 !px-4 text-sm"
                 :disabled="publish.savingSettings"
                 @click="saveAppearance"
               >
-                {{ publish.savingSettings ? 'Saving…' : 'Save appearance' }}
-              </button>
+                {{ publish.savingSettings ? 'Saving…' : 'Save' }}
+              </AppButton>
             </div>
 
-            <div class="space-y-4">
-              <h3 class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Feed style</h3>
-              <select v-model="appearance.feed_style" class="input-pro !py-2 !text-sm-pro max-w-md">
-                <option v-for="opt in feedStyleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-              </select>
-              <p class="text-2xs text-slate-500 max-w-2xl">
-                The preview below updates immediately. Click <strong class="font-medium text-slate-600">Save appearance</strong> so exported embed code and external sites use the new layout.
-              </p>
+            <!-- Feed Style Section -->
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Feed Layout</label>
+                <AppSelect v-model="appearance.feed_style" select-class="w-full" :show-placeholder="false">
+                  <option v-for="opt in feedStyleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </AppSelect>
+                <p class="text-xs text-slate-500 mt-2">
+                  Changes appear in the preview immediately. Save to update your embed on external sites.
+                </p>
+              </div>
             </div>
 
-        <div class="space-y-3 border-t border-slate-100 pt-4">
-          <h3 class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Feed</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.feed.lazy_load" type="checkbox" class="rounded border-slate-300" />
-              Lazy load
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.feed.show_load_more" type="checkbox" class="rounded border-slate-300" />
-              Show load more button
-            </label>
-            <div>
-              <div class="text-2xs text-slate-500 mb-1">Posts per page</div>
-              <input v-model.number="appearance.feed.posts_per_page" type="number" min="1" max="100" class="input-pro !py-1.5 !text-sm-pro w-full" />
+            <!-- Feed Options Section -->
+            <div class="space-y-4 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-900">Feed Options</h3>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.feed.lazy_load" />
+                  <div>
+                    <div class="font-medium text-slate-900">Lazy load</div>
+                    <div class="text-xs text-slate-500">Auto-fetch posts as visitors scroll</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.feed.show_load_more" />
+                  <div>
+                    <div class="font-medium text-slate-900">Load more button</div>
+                    <div class="text-xs text-slate-500">Let visitors click to load additional posts</div>
+                  </div>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 pt-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Posts per page</label>
+                  <AppInput v-model.number="appearance.feed.posts_per_page" type="number" min="1" max="100" input-class="w-full py-2" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Min width (px)</label>
+                  <AppInput v-model.number="appearance.feed.post_min_width" type="number" min="120" max="600" input-class="w-full py-2" />
+                </div>
+              </div>
             </div>
-            <div>
-              <div class="text-2xs text-slate-500 mb-1">Post min width (px)</div>
-              <input v-model.number="appearance.feed.post_min_width" type="number" min="120" max="600" class="input-pro !py-1.5 !text-sm-pro w-full" />
+
+            <!-- Post Display Section -->
+            <div class="space-y-4 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-900">Post Display</h3>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.show_titles" />
+                  <div class="font-medium text-slate-900">Show titles</div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.show_platform_icon" />
+                  <div class="font-medium text-slate-900">Show platform icon</div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.show_feed_name" />
+                  <div class="font-medium text-slate-900">Show feed / account name</div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.show_share_icons" />
+                  <div class="font-medium text-slate-900">Show share icons</div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.show_likes" />
+                  <div class="font-medium text-slate-900">Show likes</div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.show_comments" />
+                  <div class="font-medium text-slate-900">Show comments</div>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                  <AppCheckbox v-model="appearance.post.autoplay_videos" />
+                  <div class="font-medium text-slate-900">Autoplay videos</div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Post Layout Section -->
+            <div class="space-y-4 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-900">Layout</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Source layout</label>
+                  <AppSelect v-model="appearance.post.source_row_layout" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="stacked">Stacked</option>
+                    <option value="inline">Inline (compact)</option>
+                  </AppSelect>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Alignment</label>
+                  <AppSelect v-model="appearance.post.source_row_alignment" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="center">Center</option>
+                    <option value="start">Start (left)</option>
+                  </AppSelect>
+                </div>
+              </div>
+              <div v-if="previewIsShowcase" class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Showcase alignment</label>
+                  <AppSelect v-model="appearance.post.showcase_content_alignment" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="start">Start (left)</option>
+                    <option value="center">Center</option>
+                  </AppSelect>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Share icon</label>
+                  <AppSelect v-model="appearance.post.showcase_share_icon" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="upload_share">Upload / share</option>
+                    <option value="arrow">Arrow only</option>
+                    <option value="none">Hidden</option>
+                  </AppSelect>
+                </div>
+              </div>
+            </div>
+
+            <!-- Colors Section -->
+            <div class="space-y-4 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-900">Colors</h3>
+              <div class="space-y-3">
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <span class="text-xs font-semibold text-slate-700 w-20 shrink-0">Icon</span>
+                  <AppInput v-model="appearance.colors.post_icon" type="color" input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0" />
+                  <AppInput v-model="appearance.colors.post_icon" type="text" input-class="!py-1 !text-xs font-mono flex-1 min-w-0" />
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <span class="text-xs font-semibold text-slate-700 w-20 shrink-0">Text</span>
+                  <AppInput v-model="appearance.colors.post_text" type="color" input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0" />
+                  <AppInput v-model="appearance.colors.post_text" type="text" input-class="!py-1 !text-xs font-mono flex-1 min-w-0" />
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <span class="text-xs font-semibold text-slate-700 w-20 shrink-0">Date</span>
+                  <AppInput v-model="appearance.colors.post_date" type="color" input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0" />
+                  <AppInput v-model="appearance.colors.post_date" type="text" input-class="!py-1 !text-xs font-mono flex-1 min-w-0" />
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <span class="text-xs font-semibold text-slate-700 w-20 shrink-0">Link</span>
+                  <AppInput v-model="appearance.colors.post_link" type="color" input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0" />
+                  <AppInput v-model="appearance.colors.post_link" type="text" input-class="!py-1 !text-xs font-mono flex-1 min-w-0" />
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <span class="text-xs font-semibold text-slate-700 w-20 shrink-0">Button</span>
+                  <AppInput v-model="appearance.colors.post_button" type="color" input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0" />
+                  <AppInput v-model="appearance.colors.post_button" type="text" input-class="!py-1 !text-xs font-mono flex-1 min-w-0" />
+                </div>
+              </div>
+
+              <!-- Optional Colors -->
+              <div class="space-y-3 pt-3 border-t border-slate-200">
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <AppCheckbox v-model="appearance.colors.post_border.enabled" />
+                  <span class="text-xs font-semibold text-slate-700 flex-1">Post border</span>
+                  <AppInput
+                    v-model="appearance.colors.post_border.color"
+                    type="color"
+                    input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0"
+                    :disabled="!appearance.colors.post_border.enabled"
+                  />
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
+                  <AppCheckbox v-model="appearance.colors.post_bg.enabled" />
+                  <span class="text-xs font-semibold text-slate-700 flex-1">Post background</span>
+                  <AppInput
+                    v-model="appearance.colors.post_bg.color"
+                    type="color"
+                    input-class="h-8 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0"
+                    :disabled="!appearance.colors.post_bg.enabled"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Branding Section -->
+            <div v-if="appearance?.branding" class="space-y-4 pt-4 border-t border-slate-200">
+              <div>
+                <h3 class="text-sm font-semibold text-slate-900">Showcase branding</h3>
+                <p class="text-xs text-slate-500 mt-2">Customize icons and avatars on the Showcase carousel. Use HTTPS URLs for custom images (square PNG or JPG).</p>
+              </div>
+
+              <!-- Thumbnail Badge -->
+              <div class="bg-slate-50 rounded-lg p-4 space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <AppCheckbox v-model="appearance.branding.media_badge.show" />
+                  <div>
+                    <div class="text-sm font-semibold text-slate-900">Media badge</div>
+                    <div class="text-xs text-slate-500">Show badge on thumbnail images</div>
+                  </div>
+                </label>
+                <div v-if="appearance.branding.media_badge.show" class="space-y-3 pl-7">
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-2">Image</label>
+                      <AppSelect v-model="appearance.branding.media_badge.image_source" select-class="w-full py-2" :show-placeholder="false">
+                        <option value="platform">Platform icon</option>
+                        <option value="custom">Custom URL</option>
+                        <option value="none">Hidden</option>
+                      </AppSelect>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-2">Position</label>
+                      <AppSelect v-model="appearance.branding.media_badge.position" select-class="w-full py-2" :show-placeholder="false">
+                        <option value="center">Center</option>
+                        <option value="top_left">Top left</option>
+                        <option value="top_right">Top right</option>
+                        <option value="bottom_left">Bottom left</option>
+                        <option value="bottom_right">Bottom right</option>
+                      </AppSelect>
+                    </div>
+                  </div>
+                  <AppInput
+                    v-if="appearance.branding.media_badge.image_source === 'custom'"
+                    v-model="appearance.branding.media_badge.custom_url"
+                    type="url"
+                    placeholder="https://example.com/badge.png"
+                    input-class="w-full py-2 font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              <!-- Source Icon -->
+              <div class="bg-slate-50 rounded-lg p-4 space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <AppCheckbox v-model="appearance.branding.source_icon.show" />
+                  <div>
+                    <div class="text-sm font-semibold text-slate-900">Feed icon</div>
+                    <div class="text-xs text-slate-500">Show icon next to feed name</div>
+                  </div>
+                </label>
+                <div v-if="appearance.branding.source_icon.show" class="space-y-3 pl-7">
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-2">Image</label>
+                      <AppSelect v-model="appearance.branding.source_icon.image_source" select-class="w-full py-2" :show-placeholder="false">
+                        <option value="platform">Platform icon</option>
+                        <option value="custom">Custom URL</option>
+                        <option value="none">Hidden</option>
+                      </AppSelect>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-2">Position</label>
+                      <AppSelect v-model="appearance.branding.source_icon.position" select-class="w-full py-2" :show-placeholder="false">
+                        <option value="before_name">Before name</option>
+                        <option value="after_name">After name</option>
+                      </AppSelect>
+                    </div>
+                  </div>
+                  <AppInput
+                    v-if="appearance.branding.source_icon.image_source === 'custom'"
+                    v-model="appearance.branding.source_icon.custom_url"
+                    type="url"
+                    placeholder="https://example.com/icon.png"
+                    input-class="w-full py-2 font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              <!-- Footer Avatar -->
+              <div class="bg-slate-50 rounded-lg p-4 space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <AppCheckbox v-model="appearance.branding.account_avatar.show" />
+                  <div>
+                    <div class="text-sm font-semibold text-slate-900">Footer avatar</div>
+                    <div class="text-xs text-slate-500">Show avatar in carousel footer</div>
+                  </div>
+                </label>
+                <div v-if="appearance.branding.account_avatar.show" class="space-y-3 pl-7">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-2">Image source</label>
+                        <AppSelect v-model="appearance.branding.account_avatar.image_source" select-class="w-full py-2" :show-placeholder="false">
+                          <option value="connected">Account photo</option>
+                          <option value="initial">Feed name letter</option>
+                          <option value="custom">Custom URL</option>
+                          <option value="none">Hidden</option>
+                        </AppSelect>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-2">Position</label>
+                        <AppSelect v-model="appearance.branding.account_avatar.position" select-class="w-full py-2" :show-placeholder="false">
+                          <option value="footer_start">Left side</option>
+                          <option value="footer_end">Right side</option>
+                        </AppSelect>
+                      </div>
+                    </div>
+                    <AppInput
+                      v-if="appearance.branding.account_avatar.image_source === 'custom'"
+                      v-model="appearance.branding.account_avatar.custom_url"
+                      type="url"
+                      placeholder="https://example.com/avatar.jpg"
+                      input-class="w-full py-2 font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <p class="text-2xs text-slate-500 max-w-2xl">
-            Lazy load auto-fetches when visitors scroll. If both lazy load and load more are off, only the first page of posts is shown.
-          </p>
-        </div>
-
-        <div class="space-y-3 border-t border-slate-100 pt-4">
-          <h3 class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Post</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl">
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.post.show_titles" type="checkbox" class="rounded border-slate-300" />
-              Show titles
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.post.show_share_icons" type="checkbox" class="rounded border-slate-300" />
-              Show share icons
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.post.show_comments" type="checkbox" class="rounded border-slate-300" />
-              Show comments
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.post.show_likes" type="checkbox" class="rounded border-slate-300" />
-              Show likes
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700 sm:col-span-2">
-              <input v-model="appearance.post.autoplay_videos" type="checkbox" class="rounded border-slate-300" />
-              Autoplay videos (YouTube embed, muted)
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.post.show_platform_icon" type="checkbox" class="rounded border-slate-300" />
-              Show platform icon
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.post.show_feed_name" type="checkbox" class="rounded border-slate-300" />
-              Show feed / account name
-            </label>
-            <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Icon &amp; name layout</div>
-                <select v-model="appearance.post.source_row_layout" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="stacked">Stacked (like Curator.io)</option>
-                  <option value="inline">Inline (compact)</option>
-                </select>
-              </div>
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Alignment</div>
-                <select v-model="appearance.post.source_row_alignment" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="center">Center</option>
-                  <option value="start">Start (left)</option>
-                </select>
-              </div>
-            </div>
-            <div v-if="previewIsShowcase" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Showcase: title &amp; body alignment</div>
-                <select v-model="appearance.post.showcase_content_alignment" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="start">Start (left)</option>
-                  <option value="center">Center</option>
-                </select>
-              </div>
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Showcase: share button icon</div>
-                <select v-model="appearance.post.showcase_share_icon" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="upload_share">Upload / share (classic)</option>
-                  <option value="arrow">Arrow only</option>
-                  <option value="none">Hidden</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <p class="text-2xs text-slate-500 max-w-2xl">
-            Platform icon and name come from each post’s feed (type + feed name). Like/comment rows are visual hints;
-            live counts require a future social integration.
-          </p>
-        </div>
-
-        <div class="space-y-3 border-t border-slate-100 pt-4">
-          <h3 class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Colors</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-full">
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <span class="w-28 shrink-0 text-2xs text-slate-500">Post icon</span>
-              <input v-model="appearance.colors.post_icon" type="color" class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0" />
-              <input v-model="appearance.colors.post_icon" type="text" class="input-pro !py-1 !text-xs font-mono flex-1 min-w-0" />
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <span class="w-28 shrink-0 text-2xs text-slate-500">Post text</span>
-              <input v-model="appearance.colors.post_text" type="color" class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0" />
-              <input v-model="appearance.colors.post_text" type="text" class="input-pro !py-1 !text-xs font-mono flex-1 min-w-0" />
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <span class="w-28 shrink-0 text-2xs text-slate-500">Post date</span>
-              <input v-model="appearance.colors.post_date" type="color" class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0" />
-              <input v-model="appearance.colors.post_date" type="text" class="input-pro !py-1 !text-xs font-mono flex-1 min-w-0" />
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <span class="w-28 shrink-0 text-2xs text-slate-500">Post link</span>
-              <input v-model="appearance.colors.post_link" type="color" class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0" />
-              <input v-model="appearance.colors.post_link" type="text" class="input-pro !py-1 !text-xs font-mono flex-1 min-w-0" />
-            </label>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <span class="w-28 shrink-0 text-2xs text-slate-500">Post button</span>
-              <input v-model="appearance.colors.post_button" type="color" class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0" />
-              <input v-model="appearance.colors.post_button" type="text" class="input-pro !py-1 !text-xs font-mono flex-1 min-w-0" />
-            </label>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl pt-2">
-            <div class="flex flex-wrap items-center gap-2">
-              <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-                <input v-model="appearance.colors.post_border.enabled" type="checkbox" class="rounded border-slate-300" />
-                Post border
-              </label>
-              <input
-                v-model="appearance.colors.post_border.color"
-                type="color"
-                class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0"
-                :disabled="!appearance.colors.post_border.enabled"
-              />
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-                <input v-model="appearance.colors.post_bg.enabled" type="checkbox" class="rounded border-slate-300" />
-                Post background
-              </label>
-              <input
-                v-model="appearance.colors.post_bg.color"
-                type="color"
-                class="h-9 w-14 rounded border border-slate-200 cursor-pointer bg-white p-0"
-                :disabled="!appearance.colors.post_bg.enabled"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div v-if="appearance?.branding" class="space-y-5 border-t border-slate-100 pt-4">
-          <div>
-            <h3 class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">
-              Showcase branding
-            </h3>
-            <p class="text-2xs text-slate-500 mt-1 max-w-2xl">
-              Controls icons on the <strong class="font-medium text-slate-600">Showcase carousel</strong> embed.
-              Use HTTPS URLs for custom images (square PNG or JPG works best).
-            </p>
-          </div>
-
-          <div class="space-y-2 max-w-2xl">
-            <div class="text-xs-pro font-medium text-slate-700">Thumbnail badge</div>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.branding.media_badge.show" type="checkbox" class="rounded border-slate-300" />
-              Show badge on media
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Image</div>
-                <select v-model="appearance.branding.media_badge.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="platform">Platform icon</option>
-                  <option value="custom">Custom URL</option>
-                  <option value="none">Hidden</option>
-                </select>
-              </div>
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Position on thumbnail</div>
-                <select v-model="appearance.branding.media_badge.position" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="center">Center</option>
-                  <option value="top_left">Top left</option>
-                  <option value="top_right">Top right</option>
-                  <option value="bottom_left">Bottom left</option>
-                  <option value="bottom_right">Bottom right</option>
-                </select>
-              </div>
-            </div>
-            <input
-              v-if="appearance.branding.media_badge.image_source === 'custom'"
-              v-model="appearance.branding.media_badge.custom_url"
-              type="url"
-              placeholder="https://example.com/badge.png"
-              class="input-pro !py-1.5 !text-sm-pro w-full font-mono text-xs"
-            />
-          </div>
-
-          <div class="space-y-2 max-w-2xl">
-            <div class="text-xs-pro font-medium text-slate-700">Account row icon</div>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.branding.source_icon.show" type="checkbox" class="rounded border-slate-300" />
-              Show icon next to feed name
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Image</div>
-                <select v-model="appearance.branding.source_icon.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="platform">Platform icon</option>
-                  <option value="custom">Custom URL</option>
-                  <option value="none">Hidden</option>
-                </select>
-              </div>
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Position</div>
-                <select v-model="appearance.branding.source_icon.position" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="before_name">Before feed name</option>
-                  <option value="after_name">After feed name</option>
-                </select>
-              </div>
-            </div>
-            <input
-              v-if="appearance.branding.source_icon.image_source === 'custom'"
-              v-model="appearance.branding.source_icon.custom_url"
-              type="url"
-              placeholder="https://example.com/icon.png"
-              class="input-pro !py-1.5 !text-sm-pro w-full font-mono text-xs"
-            />
-          </div>
-
-          <div class="space-y-2 max-w-2xl">
-            <div class="text-xs-pro font-medium text-slate-700">Footer avatar</div>
-            <label class="flex items-center gap-2 text-sm-pro text-slate-700">
-              <input v-model="appearance.branding.account_avatar.show" type="checkbox" class="rounded border-slate-300" />
-              Show avatar in footer
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Image</div>
-                <select v-model="appearance.branding.account_avatar.image_source" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="connected">Connected account photo</option>
-                  <option value="initial">Letter from feed name</option>
-                  <option value="custom">Custom URL</option>
-                  <option value="none">Hidden</option>
-                </select>
-              </div>
-              <div>
-                <div class="text-2xs text-slate-500 mb-1">Position in footer</div>
-                <select v-model="appearance.branding.account_avatar.position" class="input-pro !py-1.5 !text-sm-pro w-full">
-                  <option value="footer_start">Left (before handle)</option>
-                  <option value="footer_end">Right (after share)</option>
-                </select>
-              </div>
-            </div>
-            <input
-              v-if="appearance.branding.account_avatar.image_source === 'custom'"
-              v-model="appearance.branding.account_avatar.custom_url"
-              type="url"
-              placeholder="https://example.com/avatar.jpg"
-              class="input-pro !py-1.5 !text-sm-pro w-full font-mono text-xs"
-            />
-          </div>
-        </div>
-      </div>
-
-        </div>
 
         <div class="lg:sticky lg:top-5 self-start max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
           <div class="surface-card p-4">
@@ -348,37 +373,40 @@
                 Publishing will make all <span class="font-medium">approved</span> posts live in the public feed.
               </div>
               <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-                <button
-                  type="button"
-                  class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  class="!w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
                   @click="refresh"
                 >
                   Refresh
-                </button>
-                <button
-                  type="button"
-                  class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
+                </AppButton>
+                <AppButton
+                  size="sm"
+                  class="!w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
                   :disabled="publish.publishing"
                   @click="publishNow"
                 >
                   {{ publish.publishing ? 'Publishing…' : 'Publish changes' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  class="!w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
                   @click="openCode"
                 >
                   Get code
-                </button>
-                <button
-                  type="button"
-                  class="btn-secondary !w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
+                </AppButton>
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  class="!w-auto !py-1.5 !px-3 text-sm-pro whitespace-nowrap"
                   @click="showEmbedPreview = true"
                   :disabled="!embedPublicKey"
                   title="Test embed in iframe"
                 >
                   Test embed
-                </button>
+                </AppButton>
               </div>
             </div>
         <div class="flex items-center justify-between mb-3">
@@ -429,8 +457,8 @@
           >
             <template v-if="previewIsShowcase">
               <div class="crt-showcase-viewport">
-                <button
-                  type="button"
+                <AppButton
+                  variant="ghost"
                   class="crt-showcase-nav crt-showcase-nav--prev"
                   aria-label="Previous posts"
                   @click="showcasePreviewScroll(-1)"
@@ -449,7 +477,7 @@
                   >
                     <path d="M15 18 9 12l6-6" />
                   </svg>
-                </button>
+                </AppButton>
                 <div
                   ref="previewStripRef"
                   :class="['crt-inner', previewLayoutClass]"
@@ -705,8 +733,8 @@
                     </div>
                   </a>
                 </div>
-                <button
-                  type="button"
+                <AppButton
+                  variant="ghost"
                   class="crt-showcase-nav crt-showcase-nav--next"
                   aria-label="Next posts"
                   @click="showcasePreviewScroll(1)"
@@ -725,7 +753,7 @@
                   >
                     <path d="M9 18l6-6-6-6" />
                   </svg>
-                </button>
+                </AppButton>
               </div>
             </template>
             <template v-else>
@@ -803,43 +831,41 @@
             </template>
           </div>
         </div>
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <a
-            v-for="p in previewPosts"
-            :key="p.id"
-            :href="p.video_url || '#'"
-            target="_blank"
-            rel="noreferrer"
-            class="block bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-card transition overflow-hidden"
-          >
-            <div v-if="p.thumbnail_url" class="aspect-video bg-slate-100 overflow-hidden">
-              <img :src="p.thumbnail_url" class="w-full h-full object-cover" :alt="p.title || 'Post'" />
-            </div>
-            <div class="p-3">
-              <div class="text-sm-pro font-medium text-slate-800 line-clamp-2">{{ p.title || 'Untitled' }}</div>
-              <div class="text-2xs text-slate-500 mt-1 line-clamp-3">{{ p.content }}</div>
-            </div>
-          </a>
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <a
+              v-for="p in previewPosts"
+              :key="p.id"
+              :href="p.video_url || '#'"
+              target="_blank"
+              rel="noreferrer"
+              class="block bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-card transition overflow-hidden"
+            >
+              <div v-if="p.thumbnail_url" class="aspect-video bg-slate-100 overflow-hidden">
+                <img :src="p.thumbnail_url" class="w-full h-full object-cover" :alt="p.title || 'Post'" />
+              </div>
+              <div class="p-3">
+                <div class="text-sm-pro font-medium text-slate-800 line-clamp-2">{{ p.title || 'Untitled' }}</div>
+                <div class="text-2xs text-slate-500 mt-1 line-clamp-3">{{ p.content }}</div>
+              </div>
+            </a>
+          </div>
         </div>
-      </div>
-    </div>
+        </div>
     </div>
 
     <div v-if="showCode" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
       <div class="w-full max-w-2xl surface-card overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div class="text-sm-pro font-medium text-slate-800">Embed code</div>
-          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="showCode = false">Close</button>
+          <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" @click="showCode = false">Close</AppButton>
         </div>
         <div class="p-4 space-y-3">
           <div class="text-2xs text-slate-500">
             Paste this into your website where you want the feed to appear.
           </div>
-          <textarea class="input-pro font-mono text-2xs !h-40" readonly :value="publish.code?.embed_html || ''" />
+          <AppInput type="textarea" input-class="font-mono text-2xs !h-40" readonly :model-value="publish.code?.embed_html || ''" />
           <div class="flex items-center gap-2">
-            <button type="button" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro" @click="copyCode">
-              Copy
-            </button>
+            <AppButton class="!w-auto !py-1.5 !px-3 text-sm-pro" @click="copyCode">Copy</AppButton>
             <div v-if="copied" class="text-2xs text-slate-500">Copied</div>
           </div>
         </div>
@@ -848,10 +874,10 @@
 
     <!-- Embed iframe preview modal -->
     <div v-if="showEmbedPreview" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div class="w-full max-w-3xl surface-card overflow-hidden flex flex-col" style="height: 80vh">
+      <div class="w-full max-w-3xl surface-card overflow-hidden flex flex-col h-[80vh]">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div class="text-sm-pro font-medium text-slate-800">Live embed preview</div>
-          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 text-xs-pro" @click="showEmbedPreview = false">Close</button>
+          <AppButton variant="secondary" class="!w-auto !py-1 !px-2 text-xs-pro" @click="showEmbedPreview = false">Close</AppButton>
         </div>
         <iframe
           v-if="embedPublicKey"
@@ -864,29 +890,34 @@
     </div>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/curate`" class="btn-secondary !w-auto" title="Go back">←</router-link>
-      <button
-        type="button"
-        class="btn-primary !w-auto !px-3 !py-2"
+      <router-link :to="`/workspaces/${workspaceId}/curate`" title="Go back">
+        <AppButton variant="secondary" size="sm" class="!w-auto">←</AppButton>
+      </router-link>
+      <AppButton
+        size="sm"
+        class="!w-auto !px-3 !py-1.5"
         :disabled="publish.publishing"
         @click="publishNow"
         title="Publish and finish"
       >
         {{ publish.publishing ? '⏳' : '✓' }}
-      </button>
+      </AppButton>
     </template>
   </WizardPageLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
+import { AppButton, AppCheckbox, AppInput, AppSelect } from '../components/ui';
+import { fetchPreviewPosts } from '../composables/usePublishApi';
+
+defineOptions({ name: 'PublishView' });
 
 const toast = useToastStore();
 const route = useRoute();
@@ -974,23 +1005,10 @@ const feedStyleOptions = [
   { value: 'layers', label: 'Layers' },
 ];
 
-const selectedFeedType = computed(() => '');
-
 const workspaceName = computed(() => {
   const w = workspaces.list.find((x) => x.id === Number(workspaceId.value));
   return w ? w.name : '…';
 });
-
-function feedTypeLabel(type) {
-  if (type === 'rss') return 'RSS / Atom';
-  if (type === 'twitter') return 'X / Twitter';
-  if (type === 'tiktok') return 'TikTok';
-  if (type === 'threads') return 'Threads';
-  if (type === 'youtube') return 'YouTube';
-  if (type === 'facebook') return 'Facebook';
-  if (type === 'instagram') return 'Instagram';
-  return type || '—';
-}
 
 /** Workspace public key from embed code response or publish stats (either may load first). */
 const embedPublicKey = computed(
@@ -1056,7 +1074,7 @@ const embedIframeHtml = computed(() => {
   const cssPath = embedCssHref.value;
   const jsPath = embedJsPath.value;
   const css = cssPath ? `<link rel="stylesheet" href="${origin}${cssPath}">` : '';
-  const js = jsPath ? `<script src="${origin}${jsPath}"><\/script>` : '';
+  const js = jsPath ? `<script src="${origin}${jsPath}"></scr` + 'ipt>' : '';
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body style="margin:0;padding:16px;background:#f8fafc">${markup}${js}</body></html>`;
 });
@@ -1386,7 +1404,7 @@ async function loadPreview() {
   const url = `/api/public/feeds/${encodeURIComponent(key)}/posts`;
   previewLoading.value = true;
   try {
-    const { data } = await axios.get(url, { params: { limit: 9 } });
+    const data = await fetchPreviewPosts(url, 9);
     previewPosts.value = data.posts || [];
   } catch {
     previewPosts.value = [];
@@ -1395,13 +1413,6 @@ async function loadPreview() {
   }
 }
 
-function formatDate(v) {
-  try {
-    return new Date(v).toLocaleString();
-  } catch {
-    return String(v);
-  }
-}
 </script>
 
 <style scoped>

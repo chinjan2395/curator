@@ -1,15 +1,17 @@
 <template>
   <div class="wizard-page">
-    <nav class="page-breadcrumb">
-      <slot name="breadcrumb" />
-    </nav>
-    <div class="wizard-page__header">
-      <div>
-        <h1 class="page-title">{{ title }}</h1>
-        <p class="page-kicker">{{ description }}</p>
-      </div>
-      <div class="wizard-page__header-actions">
-        <slot name="actions" />
+    <div class="space-y-3 mb-5">
+      <nav v-if="$slots.breadcrumb" class="page-breadcrumb flex items-center gap-1 text-sm text-slate-600">
+        <slot name="breadcrumb" />
+      </nav>
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1">
+          <h1 class="text-lg font-bold text-slate-900">{{ title }}</h1>
+          <p class="text-sm text-slate-600 mt-1">{{ description }}</p>
+        </div>
+        <div v-if="$slots.actions" class="flex items-center gap-2 flex-shrink-0">
+          <slot name="actions" />
+        </div>
       </div>
     </div>
     <WorkspaceWizardStepper :current="current" :workspaceId="workspaceId" class="mt-1" />
@@ -49,20 +51,6 @@ defineProps({
   gap: 1rem;
 }
 
-.wizard-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.wizard-page__header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
 
 .wizard-page__body {
   margin-top: 1rem;

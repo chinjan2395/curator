@@ -14,24 +14,24 @@
     </template>
 
     <template #actions>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto" title="Go back">←</router-link>
-      <button
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md hover:bg-slate-50 transition-colors" title="Go back">←</router-link>
+      <AppButton
         type="submit"
         form="feed-form"
-        class="btn-primary !w-auto !px-3 !py-2"
+        variant="primary"
         :disabled="saving"
         title="Save and continue"
       >
         {{ saving ? '⏳' : '→' }}
-      </button>
+      </AppButton>
     </template>
 
     <div class="feed-form-hero surface-card p-5 md:p-6">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-        <button
+        <AppButton
           v-for="t in availableSocialTypes"
           :key="t.type"
-          type="button"
+          variant="ghost"
           class="feed-type-card"
           :class="form.type === t.type ? 'feed-type-card--active' : ''"
           @click="form.type = t.type"
@@ -43,7 +43,7 @@
             <div class="text-xs-pro font-medium text-slate-700 truncate">{{ t.label }}</div>
             <div class="text-2xs text-slate-500 truncate">{{ t.tagline }}</div>
           </div>
-        </button>
+        </AppButton>
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-2.5">
         <div class="setup-step" :class="form.type ? 'setup-step--active' : ''">
@@ -65,29 +65,28 @@
     <form id="feed-form" @submit.prevent="submit" class="surface-card mt-4 p-5 space-y-4 max-w-3xl">
       <div>
         <label class="label-pro">Name</label>
-        <input v-model="form.name" type="text" class="input-pro" placeholder="Feed name" required />
+        <AppInput v-model="form.name" type="text" placeholder="Feed name" required />
       </div>
       <div>
         <label class="label-pro">Type</label>
-        <select v-model="form.type" class="input-pro" required>
+        <AppSelect v-model="form.type" required>
           <option value="">Select type</option>
           <option v-for="t in availableSocialTypes" :key="`type-${t.type}`" :value="t.type">{{ t.label }}</option>
-        </select>
+        </AppSelect>
         <p class="mt-1 text-2xs text-slate-500">{{ selectedTypeMeta.tagline }}</p>
       </div>
       <transition name="fade-slide" mode="out-in">
       <div v-if="form.type === 'youtube'" key="youtube">
         <label class="label-pro">YouTube credential</label>
-        <select
+        <AppSelect
           v-model="form.social_credential_id"
-          class="input-pro"
           :required="!!youtubeCredentials.length"
         >
           <option value="">Select credential</option>
           <option v-for="c in youtubeCredentials" :key="c.id" :value="c.id">
             {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
-        </select>
+        </AppSelect>
         <p v-if="!youtubeCredentials.length" class="mt-1 text-2xs text-red-600">
           No YouTube credentials found. Go to Credentials to connect YouTube first.
         </p>
@@ -95,9 +94,8 @@
         <div class="mt-3">
           <label class="label-pro">Channel</label>
           <div class="flex items-center gap-2">
-            <select
+            <AppSelect
               v-model="selectedYoutubeChannelId"
-              class="input-pro"
               :disabled="loadingYoutubeChannels || !form.social_credential_id"
               :required="!!youtubeCredentials.length"
             >
@@ -113,15 +111,15 @@
               <option v-for="ch in youtubeChannels" :key="ch.id" :value="ch.id">
                 {{ youtubeChannelLabel(ch) }}
               </option>
-            </select>
-            <button
-              type="button"
-              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+            </AppSelect>
+            <AppButton
+              variant="secondary"
+              size="sm"
               :disabled="loadingYoutubeChannels || !form.social_credential_id"
               @click="loadYoutubeChannels"
             >
               {{ loadingYoutubeChannels ? 'Loading…' : 'Refresh' }}
-            </button>
+            </AppButton>
           </div>
           <p class="mt-1 text-2xs text-slate-500">
             Only channels managed by this Google account are listed (YouTube <span class="font-medium">channels.list?mine=true</span>).
@@ -130,35 +128,34 @@
 
         <div class="mt-3" v-if="form.youtube_channel_id">
           <label class="label-pro">Channel ID (internal)</label>
-          <input v-model="form.youtube_channel_id" type="text" class="input-pro" readonly />
+          <AppInput v-model="form.youtube_channel_id" type="text" readonly />
           <p class="mt-1 text-2xs text-slate-500">
             Embeds use your channel’s public @handle or title — not this ID. It updates when you save or sync.
           </p>
         </div>
 
         <div class="mt-3">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="testingConnection || !form.youtube_channel_id || !form.social_credential_id"
             @click="testConnection"
           >
             {{ testingConnection ? 'Testing…' : 'Test connection' }}
-          </button>
+          </AppButton>
         </div>
       </div>
       <div v-else-if="form.type === 'facebook'" key="facebook">
         <label class="label-pro">Facebook credential</label>
-        <select
+        <AppSelect
           v-model="form.social_credential_id"
-          class="input-pro"
           :required="!!facebookCredentials.length"
         >
           <option value="">Select credential</option>
           <option v-for="c in facebookCredentials" :key="c.id" :value="c.id">
             {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
-        </select>
+        </AppSelect>
         <p v-if="!facebookCredentials.length" class="mt-1 text-2xs text-red-600">
           No Facebook credentials found. Go to Credentials to connect Facebook first.
         </p>
@@ -166,9 +163,8 @@
         <div class="mt-3">
           <label class="label-pro">Facebook Page</label>
           <div class="flex items-center gap-2">
-            <select
+            <AppSelect
               v-model="selectedFacebookPageId"
-              class="input-pro"
               :disabled="loadingFacebookPages || !form.social_credential_id"
               required
             >
@@ -178,15 +174,15 @@
               <option v-for="p in facebookPages" :key="p.id" :value="p.id">
                 {{ p.name || p.id }} ({{ p.id }})
               </option>
-            </select>
-            <button
-              type="button"
-              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+            </AppSelect>
+            <AppButton
+              variant="secondary"
+              size="sm"
               :disabled="loadingFacebookPages || !form.social_credential_id"
               @click="loadFacebookPages"
             >
               {{ loadingFacebookPages ? 'Loading…' : 'Refresh' }}
-            </button>
+            </AppButton>
           </div>
           <p class="mt-1 text-2xs text-slate-500">
             We’ll list Pages from your Facebook account via <span class="font-medium">/me/accounts</span>. If your Page doesn’t appear, disconnect/reconnect Facebook and ensure Page permissions are granted.
@@ -195,32 +191,31 @@
 
         <div class="mt-3" v-if="form.facebook_page_id">
           <label class="label-pro">Selected Page ID</label>
-          <input v-model="form.facebook_page_id" type="text" class="input-pro" readonly />
+          <AppInput v-model="form.facebook_page_id" type="text" readonly />
         </div>
 
         <div class="mt-3">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="testingFacebook || !form.facebook_page_id || !form.social_credential_id"
             @click="testFacebookConnection"
           >
             {{ testingFacebook ? 'Testing…' : 'Test connection' }}
-          </button>
+          </AppButton>
         </div>
       </div>
       <div v-else-if="form.type === 'instagram'" key="instagram">
         <label class="label-pro">Instagram credential</label>
-        <select
+        <AppSelect
           v-model="form.social_credential_id"
-          class="input-pro"
           :required="!!instagramCredentials.length"
         >
           <option value="">Select credential</option>
           <option v-for="c in instagramCredentials" :key="c.id" :value="c.id">
             {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
-        </select>
+        </AppSelect>
         <p v-if="!instagramCredentials.length" class="mt-1 text-2xs text-red-600">
           No Instagram credentials found. Go to Credentials to connect Instagram first.
         </p>
@@ -228,9 +223,8 @@
         <div class="mt-3">
           <label class="label-pro">Linked Page &amp; Instagram account</label>
           <div class="flex items-center gap-2">
-            <select
+            <AppSelect
               v-model="selectedInstagramCombo"
-              class="input-pro"
               :disabled="loadingInstagramAccounts || !form.social_credential_id"
               required
             >
@@ -246,15 +240,15 @@
               <option v-for="a in instagramAccounts" :key="instagramAccountValue(a)" :value="instagramAccountValue(a)">
                 @{{ a.instagram_username || '…' }} · {{ a.facebook_page_name || 'Page' }} (IG {{ a.instagram_business_account_id }})
               </option>
-            </select>
-            <button
-              type="button"
-              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+            </AppSelect>
+            <AppButton
+              variant="secondary"
+              size="sm"
               :disabled="loadingInstagramAccounts || !form.social_credential_id"
               @click="loadInstagramAccounts"
             >
               {{ loadingInstagramAccounts ? 'Loading…' : 'Refresh' }}
-            </button>
+            </AppButton>
           </div>
           <p class="mt-1 text-2xs text-slate-500">
             Only Facebook Pages with a linked Instagram Professional account appear here (<span class="font-medium">/me/accounts</span> + <span class="font-medium">instagram_business_account</span>).
@@ -269,14 +263,13 @@
 
         <div class="mt-3" v-if="form.facebook_page_id && form.instagram_business_account_id">
           <label class="label-pro">Backing Page ID</label>
-          <input v-model="form.facebook_page_id" type="text" class="input-pro mb-2" readonly />
+          <AppInput v-model="form.facebook_page_id" type="text" input-class="mb-2" readonly />
           <label class="label-pro">Instagram Business account ID</label>
-          <input v-model="form.instagram_business_account_id" type="text" class="input-pro mb-2" readonly />
+          <AppInput v-model="form.instagram_business_account_id" type="text" input-class="mb-2" readonly />
           <label class="label-pro">Instagram handle (embed label)</label>
-          <input
+          <AppInput
             v-model="form.instagram_username"
             type="text"
-            class="input-pro"
             placeholder="username without @"
             autocomplete="off"
           />
@@ -286,30 +279,29 @@
         </div>
 
         <div class="mt-3">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="
               testingInstagram || !form.facebook_page_id || !form.instagram_business_account_id || !form.social_credential_id
             "
             @click="testInstagramConnection"
           >
             {{ testingInstagram ? 'Testing…' : 'Test connection' }}
-          </button>
+          </AppButton>
         </div>
       </div>
       <div v-else-if="form.type === 'twitter'" key="twitter">
         <label class="label-pro">X / Twitter credential</label>
-        <select
+        <AppSelect
           v-model="form.social_credential_id"
-          class="input-pro"
           :required="!!twitterCredentials.length"
         >
           <option value="">Select credential</option>
           <option v-for="c in twitterCredentials" :key="c.id" :value="c.id">
             {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
-        </select>
+        </AppSelect>
         <p v-if="!twitterCredentials.length" class="mt-1 text-2xs text-red-600">
           No Twitter / X credentials found. Go to Credentials to connect first.
         </p>
@@ -317,9 +309,8 @@
         <div class="mt-3">
           <label class="label-pro">X account</label>
           <div class="flex items-center gap-2">
-            <select
+            <AppSelect
               v-model="selectedTwitterUserId"
-              class="input-pro"
               :disabled="loadingTwitterAccount || !form.social_credential_id"
               :required="!!twitterCredentials.length"
             >
@@ -335,15 +326,15 @@
               <option v-for="a in twitterAccounts" :key="a.id" :value="a.id">
                 {{ twitterAccountLabel(a) }}
               </option>
-            </select>
-            <button
-              type="button"
-              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+            </AppSelect>
+            <AppButton
+              variant="secondary"
+              size="sm"
               :disabled="loadingTwitterAccount || !form.social_credential_id"
               @click="loadTwitterAccount"
             >
               {{ loadingTwitterAccount ? 'Loading…' : 'Refresh' }}
-            </button>
+            </AppButton>
           </div>
           <p class="mt-1 text-2xs text-slate-500">
             From X <span class="font-medium">users/me</span> for this credential—only that account’s posts are synced. Reconnect X if this fails; offline access is required for token refresh.
@@ -352,32 +343,31 @@
 
         <div class="mt-3" v-if="selectedTwitterUserId">
           <label class="label-pro">User ID</label>
-          <input v-model="selectedTwitterUserId" type="text" class="input-pro" readonly />
+          <AppInput v-model="selectedTwitterUserId" type="text" readonly />
         </div>
 
         <div class="mt-3">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="testingTwitter || !form.social_credential_id || !selectedTwitterUserId"
             @click="testTwitterConnection"
           >
             {{ testingTwitter ? 'Testing…' : 'Test connection' }}
-          </button>
+          </AppButton>
         </div>
       </div>
       <div v-else-if="form.type === 'tiktok'" key="tiktok">
         <label class="label-pro">TikTok credential</label>
-        <select
+        <AppSelect
           v-model="form.social_credential_id"
-          class="input-pro"
           :required="!!tiktokCredentials.length"
         >
           <option value="">Select credential</option>
           <option v-for="c in tiktokCredentials" :key="c.id" :value="c.id">
             {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
-        </select>
+        </AppSelect>
         <p v-if="!tiktokCredentials.length" class="mt-1 text-2xs text-red-600">
           No TikTok credentials found. Go to Credentials to connect first.
         </p>
@@ -385,9 +375,8 @@
         <div class="mt-3">
           <label class="label-pro">TikTok account</label>
           <div class="flex items-center gap-2">
-            <select
+            <AppSelect
               v-model="selectedTikTokOpenId"
-              class="input-pro"
               :disabled="loadingTikTokAccount || !form.social_credential_id"
               :required="!!tiktokCredentials.length"
             >
@@ -403,15 +392,15 @@
               <option v-for="a in tiktokAccounts" :key="a.open_id" :value="a.open_id">
                 {{ tikTokAccountLabel(a) }}
               </option>
-            </select>
-            <button
-              type="button"
-              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+            </AppSelect>
+            <AppButton
+              variant="secondary"
+              size="sm"
               :disabled="loadingTikTokAccount || !form.social_credential_id"
               @click="loadTikTokAccount"
             >
               {{ loadingTikTokAccount ? 'Loading…' : 'Refresh' }}
-            </button>
+            </AppButton>
           </div>
           <p class="mt-1 text-2xs text-slate-500">
             From TikTok account info for this credential. Only that connected account’s videos are synced.
@@ -426,32 +415,31 @@
 
         <div class="mt-3" v-if="selectedTikTokOpenId">
           <label class="label-pro">Open ID</label>
-          <input v-model="selectedTikTokOpenId" type="text" class="input-pro" readonly />
+          <AppInput v-model="selectedTikTokOpenId" type="text" readonly />
         </div>
 
         <div class="mt-3">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="testingTikTok || !form.social_credential_id || !selectedTikTokOpenId"
             @click="testTikTokConnection"
           >
             {{ testingTikTok ? 'Testing…' : 'Test connection' }}
-          </button>
+          </AppButton>
         </div>
       </div>
       <div v-else-if="form.type === 'threads'" key="threads">
         <label class="label-pro">Threads credential</label>
-        <select
+        <AppSelect
           v-model="form.social_credential_id"
-          class="input-pro"
           :required="!!threadsCredentials.length"
         >
           <option value="">Select credential</option>
           <option v-for="c in threadsCredentials" :key="c.id" :value="c.id">
             {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
           </option>
-        </select>
+        </AppSelect>
         <p v-if="!threadsCredentials.length" class="mt-1 text-2xs text-red-600">
           No Threads credentials found. Go to Credentials to connect first.
         </p>
@@ -459,9 +447,8 @@
         <div class="mt-3">
           <label class="label-pro">Threads account</label>
           <div class="flex items-center gap-2">
-            <select
+            <AppSelect
               v-model="selectedThreadsUserId"
-              class="input-pro"
               :disabled="loadingThreadsAccount || !form.social_credential_id"
               :required="!!threadsCredentials.length"
             >
@@ -477,15 +464,15 @@
               <option v-for="a in threadsAccounts" :key="a.id" :value="a.id">
                 {{ threadsAccountLabel(a) }}
               </option>
-            </select>
-            <button
-              type="button"
-              class="btn-secondary !py-1.5 !px-3 text-xs-pro whitespace-nowrap"
+            </AppSelect>
+            <AppButton
+              variant="secondary"
+              size="sm"
               :disabled="loadingThreadsAccount || !form.social_credential_id"
               @click="loadThreadsAccount"
             >
               {{ loadingThreadsAccount ? 'Loading…' : 'Refresh' }}
-            </button>
+            </AppButton>
           </div>
           <p class="mt-1 text-2xs text-slate-500">
             From Threads <span class="font-medium">/me</span> for this credential—only that account’s posts are synced.
@@ -500,26 +487,25 @@
 
         <div class="mt-3" v-if="selectedThreadsUserId">
           <label class="label-pro">Threads user ID</label>
-          <input v-model="selectedThreadsUserId" type="text" class="input-pro" readonly />
+          <AppInput v-model="selectedThreadsUserId" type="text" readonly />
         </div>
 
         <div class="mt-3">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="testingThreads || !form.social_credential_id || !selectedThreadsUserId"
             @click="testThreadsConnection"
           >
             {{ testingThreads ? 'Testing…' : 'Test connection' }}
-          </button>
+          </AppButton>
         </div>
       </div>
       <div v-else-if="form.type === 'rss'" key="rss">
         <label class="label-pro">RSS or Atom feed URL</label>
-        <input
+        <AppInput
           v-model="form.source_url"
           type="url"
-          class="input-pro"
           placeholder="https://example.com/feed.xml"
           required
         />
@@ -527,14 +513,14 @@
           Supports RSS 2.0 and Atom. The server fetches this URL on sync (no OAuth). Use a stable public URL.
         </p>
         <div class="mt-3 flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            class="btn-secondary !py-1.5 !px-3 text-xs-pro"
+          <AppButton
+            variant="secondary"
+            size="sm"
             :disabled="testingRss || !form.source_url?.trim()"
             @click="testRss"
           >
             {{ testingRss ? 'Testing…' : 'Test feed' }}
-          </button>
+          </AppButton>
         </div>
         <div
           v-if="rssTestSummary"
@@ -556,7 +542,7 @@
       </div>
       <div v-else key="other">
         <label class="label-pro">Source URL <span class="text-slate-400 font-normal">(optional)</span></label>
-        <input v-model="form.source_url" type="url" class="input-pro" placeholder="https://…" />
+        <AppInput v-model="form.source_url" type="url" placeholder="https://…" />
         <p class="mt-1 text-2xs text-slate-500">
           Optional reference URL for this feed type.
         </p>
@@ -577,11 +563,11 @@
     </form>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto">Back</router-link>
-      <button
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md hover:bg-slate-50 transition-colors">Back</router-link>
+      <AppButton
         type="submit"
         form="feed-form"
-        class="btn-primary !w-auto !px-4"
+        variant="primary"
         :disabled="
           saving ||
           (form.type === 'twitter' && (!form.social_credential_id || !selectedTwitterUserId)) ||
@@ -593,7 +579,7 @@
         "
       >
         {{ saving ? 'Saving…' : 'Next' }}
-      </button>
+      </AppButton>
     </template>
   </WizardPageLayout>
 </template>
@@ -601,13 +587,28 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
+import { AppButton, AppInput, AppSelect } from '../components/ui/index.js';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
+import {
+  fetchFacebookPages,
+  fetchInstagramAccounts,
+  fetchThreadsAccount,
+  fetchTikTokAccount,
+  fetchTwitterAccount,
+  fetchYoutubeChannels,
+  testFacebook,
+  testInstagram,
+  testRssFeed,
+  testThreads,
+  testTikTok,
+  testTwitter,
+  testYoutube,
+} from '../composables/useFeedSourcesApi';
 
 const route = useRoute();
 const router = useRouter();
@@ -777,10 +778,7 @@ async function loadInstagramAccounts() {
   if (form.type !== 'instagram' || !form.social_credential_id) return;
   loadingInstagramAccounts.value = true;
   try {
-    const { data } = await axios.get(
-      `/api/workspaces/${workspaceId.value}/feeds/instagram/accounts`,
-      { params: { social_credential_id: Number(form.social_credential_id) } },
-    );
+    const data = await fetchInstagramAccounts(workspaceId.value, Number(form.social_credential_id));
     instagramAccounts.value = data.accounts || [];
     if (form.facebook_page_id && form.instagram_business_account_id && !selectedInstagramCombo.value) {
       selectedInstagramCombo.value = instagramAccountValue({
@@ -807,9 +805,7 @@ async function loadThreadsAccount() {
   if (form.type !== 'threads' || !form.social_credential_id) return;
   loadingThreadsAccount.value = true;
   try {
-    const { data } = await axios.get(`/api/workspaces/${workspaceId.value}/feeds/threads/account`, {
-      params: { social_credential_id: Number(form.social_credential_id) },
-    });
+    const data = await fetchThreadsAccount(workspaceId.value, Number(form.social_credential_id));
     threadsAccounts.value = data.accounts || [];
     if (!selectedThreadsUserId.value && threadsAccounts.value.length === 1) {
       selectedThreadsUserId.value = String(threadsAccounts.value[0].id);
@@ -828,9 +824,7 @@ async function loadTikTokAccount() {
   if (form.type !== 'tiktok' || !form.social_credential_id) return;
   loadingTikTokAccount.value = true;
   try {
-    const { data } = await axios.get(`/api/workspaces/${workspaceId.value}/feeds/tiktok/account`, {
-      params: { social_credential_id: Number(form.social_credential_id) },
-    });
+    const data = await fetchTikTokAccount(workspaceId.value, Number(form.social_credential_id));
     tiktokAccounts.value = data.accounts || [];
     if (!selectedTikTokOpenId.value && tiktokAccounts.value.length === 1) {
       selectedTikTokOpenId.value = String(tiktokAccounts.value[0].open_id);
@@ -849,9 +843,7 @@ async function loadTwitterAccount() {
   if (form.type !== 'twitter' || !form.social_credential_id) return;
   loadingTwitterAccount.value = true;
   try {
-    const { data } = await axios.get(`/api/workspaces/${workspaceId.value}/feeds/twitter/account`, {
-      params: { social_credential_id: Number(form.social_credential_id) },
-    });
+    const data = await fetchTwitterAccount(workspaceId.value, Number(form.social_credential_id));
     twitterAccounts.value = data.accounts || [];
     if (!selectedTwitterUserId.value && twitterAccounts.value.length === 1) {
       selectedTwitterUserId.value = String(twitterAccounts.value[0].id);
@@ -870,9 +862,7 @@ async function loadYoutubeChannels() {
   if (form.type !== 'youtube' || !form.social_credential_id) return;
   loadingYoutubeChannels.value = true;
   try {
-    const { data } = await axios.get(`/api/workspaces/${workspaceId.value}/feeds/youtube/channels`, {
-      params: { social_credential_id: Number(form.social_credential_id) },
-    });
+    const data = await fetchYoutubeChannels(workspaceId.value, Number(form.social_credential_id));
     youtubeChannels.value = data.channels || [];
     if (form.youtube_channel_id && !selectedYoutubeChannelId.value) {
       selectedYoutubeChannelId.value = String(form.youtube_channel_id);
@@ -893,10 +883,7 @@ async function loadFacebookPages() {
   if (form.type !== 'facebook' || !form.social_credential_id) return;
   loadingFacebookPages.value = true;
   try {
-    const { data } = await axios.get(
-      `/api/workspaces/${workspaceId.value}/feeds/facebook/pages`,
-      { params: { social_credential_id: Number(form.social_credential_id) } },
-    );
+    const data = await fetchFacebookPages(workspaceId.value, Number(form.social_credential_id));
     facebookPages.value = data.pages || [];
     // If editing an existing feed, auto-select its saved page.
     if (form.facebook_page_id && !selectedFacebookPageId.value) {
@@ -1180,7 +1167,7 @@ async function submit() {
 async function testConnection() {
   testingConnection.value = true;
   try {
-    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-youtube`, {
+    await testYoutube(workspaceId.value, {
       social_credential_id:
         form.type === 'youtube' && form.social_credential_id
           ? Number(form.social_credential_id)
@@ -1203,7 +1190,7 @@ async function testConnection() {
 async function testFacebookConnection() {
   testingFacebook.value = true;
   try {
-    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-facebook`, {
+    await testFacebook(workspaceId.value, {
       social_credential_id:
         form.type === 'facebook' && form.social_credential_id
           ? Number(form.social_credential_id)
@@ -1226,7 +1213,7 @@ async function testFacebookConnection() {
 async function testInstagramConnection() {
   testingInstagram.value = true;
   try {
-    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-instagram`, {
+    await testInstagram(workspaceId.value, {
       social_credential_id:
         form.type === 'instagram' && form.social_credential_id
           ? Number(form.social_credential_id)
@@ -1251,7 +1238,7 @@ async function testInstagramConnection() {
 async function testTwitterConnection() {
   testingTwitter.value = true;
   try {
-    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-twitter`, {
+    await testTwitter(workspaceId.value, {
       social_credential_id:
         form.type === 'twitter' && form.social_credential_id
           ? Number(form.social_credential_id)
@@ -1273,7 +1260,7 @@ async function testTwitterConnection() {
 async function testThreadsConnection() {
   testingThreads.value = true;
   try {
-    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-threads`, {
+    await testThreads(workspaceId.value, {
       social_credential_id:
         form.type === 'threads' && form.social_credential_id
           ? Number(form.social_credential_id)
@@ -1295,7 +1282,7 @@ async function testThreadsConnection() {
 async function testTikTokConnection() {
   testingTikTok.value = true;
   try {
-    await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-tiktok`, {
+    await testTikTok(workspaceId.value, {
       social_credential_id:
         form.type === 'tiktok' && form.social_credential_id
           ? Number(form.social_credential_id)
@@ -1318,9 +1305,7 @@ async function testRss() {
   testingRss.value = true;
   rssTestSummary.value = null;
   try {
-    const { data } = await axios.post(`/api/workspaces/${workspaceId.value}/feeds/test-rss`, {
-      source_url: form.source_url,
-    });
+    const data = await testRssFeed(workspaceId.value, form.source_url);
     rssTestSummary.value = {
       feed_title: data.feed_title || null,
       item_count: data.item_count ?? null,
