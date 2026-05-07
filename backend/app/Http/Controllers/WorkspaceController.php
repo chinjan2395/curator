@@ -2,73 +2,70 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\WorkspaceData;
+use App\Http\Requests\StoreWorkspaceRequest;
+use App\Http\Requests\UpdateWorkspaceRequest;
+use App\Http\Resources\ApiResponse;
+use App\Http\Resources\WorkspaceResource;
 use App\Models\Workspace;
+use App\Services\WorkspaceService;
 use App\Support\ActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WorkspaceController extends Controller
 {
-    public function index(Request $request)
-    {
-        $workspaces = $request->user()
-            ->workspaces()
-            ->orderBy('name')
-            ->get();
+    public function __construct(private readonly WorkspaceService $workspaceService) {}
 
-        return response()->json($workspaces);
+    public function index(Request $request): JsonResponse
+    {
+        $workspaces = $this->workspaceService->listForUser($request->user());
+
+        return ApiResponse::success(WorkspaceResource::collection($workspaces));
     }
 
-    public function store(Request $request)
+    public function store(StoreWorkspaceRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $workspace = $request->user()->workspaces()->create([
-            'name' => $validated['name'],
-        ]);
+        $workspace = $this->workspaceService->createWorkspace($request->user(), WorkspaceData::fromArray($request->validated()));
 
         ActivityLogger::log($request->user(), 'workspace.created', "Created workspace \"{$workspace->name}\"", 'workspace', $workspace->id, $workspace->name);
 
-        return response()->json($workspace, 201);
+        return ApiResponse::success(new WorkspaceResource($workspace), 'Workspace created.', 201);
     }
 
-    public function show(Request $request, Workspace $workspace)
+    public function show(Request $request, Workspace $workspace): JsonResponse
     {
-        if ($workspace->owner_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeOwner($request, $workspace);
 
-        return response()->json($workspace);
+        return ApiResponse::success(new WorkspaceResource($workspace));
     }
 
-    public function update(Request $request, Workspace $workspace)
+    public function update(UpdateWorkspaceRequest $request, Workspace $workspace): JsonResponse
     {
-        if ($workspace->owner_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeOwner($request, $workspace);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $workspace->update($validated);
+        $workspace = $this->workspaceService->updateWorkspace($workspace, WorkspaceData::fromArray($request->validated()));
 
         ActivityLogger::log($request->user(), 'workspace.updated', "Updated workspace \"{$workspace->name}\"", 'workspace', $workspace->id, $workspace->name);
 
-        return response()->json($workspace);
+        return ApiResponse::success(new WorkspaceResource($workspace), 'Workspace updated.');
     }
 
-    public function destroy(Request $request, Workspace $workspace)
+    public function destroy(Request $request, Workspace $workspace): JsonResponse
     {
-        if ($workspace->owner_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeOwner($request, $workspace);
 
         ActivityLogger::log($request->user(), 'workspace.deleted', "Deleted workspace \"{$workspace->name}\"", 'workspace', $workspace->id, $workspace->name);
 
-        $workspace->delete();
+        $this->workspaceService->deleteWorkspace($workspace);
 
-        return response()->json(null, 204);
+        return ApiResponse::noContent();
+    }
+
+    private function authorizeOwner(Request $request, Workspace $workspace): void
+    {
+        if ($workspace->owner_id !== $request->user()->id) {
+            abort(403, 'Unauthorized');
+        }
     }
 }

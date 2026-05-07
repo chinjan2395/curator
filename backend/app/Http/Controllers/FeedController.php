@@ -2,420 +2,93 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\FeedData;
+use App\Http\Requests\StoreFeedRequest;
+use App\Http\Requests\UpdateFeedRequest;
+use App\Http\Resources\ApiResponse;
+use App\Http\Resources\FeedResource;
 use App\Models\Feed;
-use App\Models\SocialCredential;
 use App\Models\Workspace;
+use App\Services\FeedService;
 use App\Support\ActivityLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FeedController extends Controller
 {
-    private const CREDENTIAL_TYPES = ['youtube', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'];
+    public function __construct(private readonly FeedService $feedService) {}
 
-    private function authorizeWorkspace(Request $request, Workspace $workspace): void
+    public function index(Request $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+
+        return ApiResponse::success(
+            FeedResource::collection($this->feedService->listForWorkspace($workspace))
+        );
+    }
+
+    public function store(StoreFeedRequest $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+
+        $feed = $this->feedService->createFeed($workspace, FeedData::fromArray($request->validated()), $request->user());
+
+        ActivityLogger::log($request->user(), 'feed.created', "Created {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
+
+        return ApiResponse::success(new FeedResource($feed), 'Feed created.', 201);
+    }
+
+    public function show(Request $request, Workspace $workspace, Feed $feed): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+        $this->ensureFeedBelongsToWorkspace($workspace, $feed);
+
+        return ApiResponse::success(new FeedResource($feed));
+    }
+
+    public function update(UpdateFeedRequest $request, Workspace $workspace, Feed $feed): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+        $this->ensureFeedBelongsToWorkspace($workspace, $feed);
+
+        if ($feed->posts()->where('status', 'approved')->exists()) {
+            return ApiResponse::error('This feed has accepted posts and cannot be edited. Remove or unaccept those posts first.');
+        }
+
+        $feed = $this->feedService->updateFeed($feed, FeedData::fromArray($request->validated()), $request->user());
+
+        ActivityLogger::log($request->user(), 'feed.updated', "Updated feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
+
+        return ApiResponse::success(new FeedResource($feed), 'Feed updated.');
+    }
+
+    public function destroy(Request $request, Workspace $workspace, Feed $feed): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+        $this->ensureFeedBelongsToWorkspace($workspace, $feed);
+
+        if ($feed->posts()->where('status', 'approved')->exists()) {
+            return ApiResponse::error('This feed has accepted posts and cannot be deleted. Remove or unaccept those posts first.');
+        }
+
+        ActivityLogger::log($request->user(), 'feed.deleted', "Deleted feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
+
+        $this->feedService->deleteFeed($feed);
+
+        return ApiResponse::noContent();
+    }
+
+    private function authorizeOwner(Request $request, Workspace $workspace): void
     {
         if ($workspace->owner_id !== $request->user()->id) {
             abort(403, 'Unauthorized');
         }
     }
 
-    public function index(Request $request, Workspace $workspace)
+    private function ensureFeedBelongsToWorkspace(Workspace $workspace, Feed $feed): void
     {
-        $this->authorizeWorkspace($request, $workspace);
-
-        $feeds = $workspace->feeds()->orderBy('name')->get();
-
-        return response()->json($feeds);
-    }
-
-    public function store(Request $request, Workspace $workspace)
-    {
-        $this->authorizeWorkspace($request, $workspace);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'max:64'],
-            'source_url' => ['nullable', 'string', 'max:500'],
-            'social_credential_id' => ['nullable', 'integer', 'exists:social_credentials,id'],
-            'youtube_channel_id' => ['nullable', 'string', 'max:255'],
-            'youtube_display_label' => ['nullable', 'string', 'max:255'],
-            'facebook_page_id' => ['nullable', 'string', 'max:255'],
-            'instagram_business_account_id' => ['nullable', 'string', 'max:255'],
-            'instagram_username' => ['nullable', 'string', 'max:80'],
-            'twitter_username' => ['nullable', 'string', 'max:32'],
-        ]);
-
-        if ($validated['type'] === 'youtube') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a YouTube credential for this feed.',
-                ], 422);
-            }
-            if (empty($validated['youtube_channel_id'])) {
-                return response()->json([
-                    'message' => 'Enter a YouTube channel ID or handle.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'youtube')) {
-                return response()->json([
-                    'message' => 'Select a valid YouTube credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'facebook') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a Facebook credential for this feed.',
-                ], 422);
-            }
-            $pageId = trim((string) ($validated['facebook_page_id'] ?? ''));
-            if ($pageId === '') {
-                return response()->json([
-                    'message' => 'Enter your Facebook Page ID.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'facebook')) {
-                return response()->json([
-                    'message' => 'Select a valid Facebook credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'instagram') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select an Instagram credential for this feed.',
-                ], 422);
-            }
-            $pageId = trim((string) ($validated['facebook_page_id'] ?? ''));
-            if ($pageId === '') {
-                return response()->json([
-                    'message' => 'Select the Facebook Page linked to your Instagram account.',
-                ], 422);
-            }
-            $igId = trim((string) ($validated['instagram_business_account_id'] ?? ''));
-            if ($igId === '') {
-                return response()->json([
-                    'message' => 'Select an Instagram Business account.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'instagram')) {
-                return response()->json([
-                    'message' => 'Select a valid Instagram credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'twitter') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a Twitter / X credential for this feed.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'twitter')) {
-                return response()->json([
-                    'message' => 'Select a valid Twitter / X credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'tiktok') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a TikTok credential for this feed.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'tiktok')) {
-                return response()->json([
-                    'message' => 'Select a valid TikTok credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'threads') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a Threads credential for this feed.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'threads')) {
-                return response()->json([
-                    'message' => 'Select a valid Threads credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'rss') {
-            $url = trim((string) ($validated['source_url'] ?? ''));
-            if ($url === '' || ! filter_var($url, FILTER_VALIDATE_URL)) {
-                return response()->json([
-                    'message' => 'Enter a valid RSS URL.',
-                ], 422);
-            }
-        }
-
-        $igUser = $validated['type'] === 'instagram'
-            ? trim((string) ($validated['instagram_username'] ?? ''))
-            : '';
-
-        $ytPublic = $validated['type'] === 'youtube'
-            ? trim((string) ($validated['youtube_display_label'] ?? ''))
-            : '';
-
-        $sourceAccountLabel = null;
-        if ($validated['type'] === 'instagram' && $igUser !== '') {
-            $sourceAccountLabel = '@'.ltrim($igUser, '@');
-        } elseif ($validated['type'] === 'youtube' && $ytPublic !== '') {
-            $sourceAccountLabel = $ytPublic;
-        }
-
-        $feed = $workspace->feeds()->create([
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'source_url' => $validated['source_url'] ?? '',
-            'source_account_label' => $sourceAccountLabel,
-            'social_credential_id' => in_array($validated['type'], self::CREDENTIAL_TYPES, true)
-                ? ($validated['social_credential_id'] ?? null)
-                : null,
-            'youtube_channel_id' => $validated['type'] === 'youtube' ? ($validated['youtube_channel_id'] ?? null) : null,
-            'facebook_page_id' => match ($validated['type']) {
-                'facebook', 'instagram' => trim((string) ($validated['facebook_page_id'] ?? '')),
-                default => null,
-            },
-            'instagram_business_account_id' => $validated['type'] === 'instagram'
-                ? trim((string) ($validated['instagram_business_account_id'] ?? ''))
-                : null,
-            'twitter_username' => null,
-        ]);
-
-        ActivityLogger::log($request->user(), 'feed.created', "Created {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
-
-        return response()->json($feed, 201);
-    }
-
-    public function show(Request $request, Workspace $workspace, Feed $feed)
-    {
-        $this->authorizeWorkspace($request, $workspace);
-
         if ($feed->workspace_id !== $workspace->id) {
             abort(404);
         }
-
-        return response()->json($feed);
-    }
-
-    public function update(Request $request, Workspace $workspace, Feed $feed)
-    {
-        $this->authorizeWorkspace($request, $workspace);
-
-        if ($feed->workspace_id !== $workspace->id) {
-            abort(404);
-        }
-
-        // Prevent editing a feed that already has approved posts.
-        $hasAccepted = $feed->posts()->where('status', 'approved')->exists();
-        if ($hasAccepted) {
-            return response()->json([
-                'message' => 'This feed has accepted posts and cannot be edited. Remove or unaccept those posts first.',
-            ], 422);
-        }
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'max:64'],
-            'source_url' => ['nullable', 'string', 'max:500'],
-            'social_credential_id' => ['nullable', 'integer', 'exists:social_credentials,id'],
-            'youtube_channel_id' => ['nullable', 'string', 'max:255'],
-            'youtube_display_label' => ['nullable', 'string', 'max:255'],
-            'facebook_page_id' => ['nullable', 'string', 'max:255'],
-            'instagram_business_account_id' => ['nullable', 'string', 'max:255'],
-            'instagram_username' => ['nullable', 'string', 'max:80'],
-            'twitter_username' => ['nullable', 'string', 'max:32'],
-        ]);
-
-        if ($validated['type'] === 'youtube') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a YouTube credential for this feed.',
-                ], 422);
-            }
-            if (empty($validated['youtube_channel_id'])) {
-                return response()->json([
-                    'message' => 'Enter a YouTube channel ID or handle.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'youtube')) {
-                return response()->json([
-                    'message' => 'Select a valid YouTube credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'facebook') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a Facebook credential for this feed.',
-                ], 422);
-            }
-            $pageId = trim((string) ($validated['facebook_page_id'] ?? ''));
-            if ($pageId === '') {
-                return response()->json([
-                    'message' => 'Enter your Facebook Page ID.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'facebook')) {
-                return response()->json([
-                    'message' => 'Select a valid Facebook credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'instagram') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select an Instagram credential for this feed.',
-                ], 422);
-            }
-            $pageId = trim((string) ($validated['facebook_page_id'] ?? ''));
-            if ($pageId === '') {
-                return response()->json([
-                    'message' => 'Select the Facebook Page linked to your Instagram account.',
-                ], 422);
-            }
-            $igId = trim((string) ($validated['instagram_business_account_id'] ?? ''));
-            if ($igId === '') {
-                return response()->json([
-                    'message' => 'Select an Instagram Business account.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'instagram')) {
-                return response()->json([
-                    'message' => 'Select a valid Instagram credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'twitter') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a Twitter / X credential for this feed.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'twitter')) {
-                return response()->json([
-                    'message' => 'Select a valid Twitter / X credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'tiktok') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a TikTok credential for this feed.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'tiktok')) {
-                return response()->json([
-                    'message' => 'Select a valid TikTok credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'threads') {
-            if (empty($validated['social_credential_id'])) {
-                return response()->json([
-                    'message' => 'Select a Threads credential for this feed.',
-                ], 422);
-            }
-            if (! $this->hasProviderCredential($request, (int) $validated['social_credential_id'], 'threads')) {
-                return response()->json([
-                    'message' => 'Select a valid Threads credential.',
-                ], 422);
-            }
-        }
-        if ($validated['type'] === 'rss') {
-            $url = trim((string) ($validated['source_url'] ?? ''));
-            if ($url === '' || ! filter_var($url, FILTER_VALIDATE_URL)) {
-                return response()->json([
-                    'message' => 'Enter a valid RSS URL.',
-                ], 422);
-            }
-        }
-
-        $originalChannelId = $feed->youtube_channel_id;
-
-        $igUser = $validated['type'] === 'instagram'
-            ? trim((string) ($validated['instagram_username'] ?? ''))
-            : '';
-
-        $ytPublic = $validated['type'] === 'youtube'
-            ? trim((string) ($validated['youtube_display_label'] ?? ''))
-            : '';
-
-        $nextSourceLabel = $feed->source_account_label;
-        if ($validated['type'] === 'instagram') {
-            $nextSourceLabel = $igUser !== '' ? '@'.ltrim($igUser, '@') : $feed->source_account_label;
-        } elseif ($validated['type'] === 'youtube') {
-            $channelChanged = ($validated['youtube_channel_id'] ?? null) !== $originalChannelId;
-            if ($ytPublic !== '') {
-                $nextSourceLabel = $ytPublic;
-            } elseif ($channelChanged) {
-                // Avoid showing another channel's handle until sync fills snippet/custom URL.
-                $nextSourceLabel = null;
-            } else {
-                $nextSourceLabel = $feed->source_account_label;
-            }
-        }
-
-        $updateData = [
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'source_url' => $validated['source_url'] ?? '',
-            'social_credential_id' => in_array($validated['type'], self::CREDENTIAL_TYPES, true)
-                ? ($validated['social_credential_id'] ?? null)
-                : null,
-            'youtube_channel_id' => $validated['type'] === 'youtube' ? ($validated['youtube_channel_id'] ?? null) : null,
-            'facebook_page_id' => match ($validated['type']) {
-                'facebook', 'instagram' => trim((string) ($validated['facebook_page_id'] ?? '')),
-                default => null,
-            },
-            'instagram_business_account_id' => $validated['type'] === 'instagram'
-                ? trim((string) ($validated['instagram_business_account_id'] ?? ''))
-                : null,
-            'twitter_username' => $validated['type'] === 'twitter' ? $feed->twitter_username : null,
-            'source_account_label' => $nextSourceLabel,
-        ];
-
-        if ($validated['type'] === 'youtube' && ($validated['youtube_channel_id'] ?? null) !== $originalChannelId) {
-            $updateData['youtube_uploads_playlist_id'] = null;
-        }
-
-        $feed->update($updateData);
-
-        ActivityLogger::log($request->user(), 'feed.updated', "Updated feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
-
-        return response()->json($feed);
-    }
-
-    public function destroy(Request $request, Workspace $workspace, Feed $feed)
-    {
-        $this->authorizeWorkspace($request, $workspace);
-
-        if ($feed->workspace_id !== $workspace->id) {
-            abort(404);
-        }
-
-        // Prevent deleting a feed that already has approved posts.
-        $hasAccepted = $feed->posts()->where('status', 'approved')->exists();
-        if ($hasAccepted) {
-            return response()->json([
-                'message' => 'This feed has accepted posts and cannot be deleted. Remove or unaccept those posts first.',
-            ], 422);
-        }
-
-        ActivityLogger::log($request->user(), 'feed.deleted', "Deleted feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
-
-        $feed->delete();
-
-        return response()->json(null, 204);
-    }
-
-    private function hasProviderCredential(Request $request, int $credentialId, string $provider): bool
-    {
-        return SocialCredential::query()
-            ->where('id', $credentialId)
-            ->where('user_id', $request->user()->id)
-            ->where('provider', $provider)
-            ->exists();
     }
 }

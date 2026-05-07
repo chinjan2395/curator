@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+
+    level: 6
+
+    ignoreErrors:
+        # Laravel magic methods resolved via IDE helpers
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder#'
+        - '#Access to an undefined property App\\Models#'
+
+    excludePaths:
+        - app/Http/Controllers/Auth/SocialAuthController.php
+
+    checkMissingIterableValueType: false
