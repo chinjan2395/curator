@@ -1,40 +1,28 @@
 <template>
   <div class="space-y-4">
-    <nav class="page-breadcrumb">
-      <span>Admin</span>
-      <span class="mx-1 text-slate-300">/</span>
-      <span>Activity Logs</span>
-    </nav>
-
-    <div class="flex items-start justify-between">
-      <div>
-        <h1 class="page-title flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
-          </svg>
-          Activity Logs
-        </h1>
-        <p class="page-kicker">Full audit trail of every user action across the platform.</p>
-      </div>
-    </div>
+    <AppPageHeader
+      title="Activity Logs"
+      subtitle="Full audit trail of every user action across the platform."
+      :breadcrumb="['Admin', 'Activity Logs']"
+    />
 
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-2">
-      <input
+      <AppInput
         v-model="filters.user_id"
         type="number"
         placeholder="User ID"
-        class="input-pro !w-28"
+        input-class="!w-28"
         @input="onFilterChange"
       />
-      <select v-model="filters.action" class="input-pro !w-auto" @change="onFilterChange">
+      <AppSelect v-model="filters.action" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
         <option value="">All actions</option>
         <option value="auth">Auth</option>
         <option value="workspace">Workspace</option>
         <option value="feed">Feed</option>
         <option value="post">Post</option>
         <option value="credential">Credential</option>
-      </select>
+      </AppSelect>
     </div>
 
     <!-- Loading -->
@@ -50,41 +38,27 @@
 
     <!-- Table -->
     <div v-else class="table-shell">
-      <table class="w-full text-left">
-        <thead class="table-head">
-          <tr>
-            <th class="table-th">Time</th>
-            <th class="table-th">User</th>
-            <th class="table-th">Action</th>
-            <th class="table-th">Description</th>
-            <th class="table-th">Entity</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="log in activityLog.adminLogs" :key="log.id" class="table-tr">
-            <td class="table-td text-2xs text-slate-500 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
-            <td class="table-td">
-              <div class="font-medium text-slate-800 text-sm-pro">{{ log.user?.name || '—' }}</div>
-              <div class="text-2xs text-slate-500">{{ log.user?.email || '' }}</div>
-            </td>
-            <td class="table-td">
-              <span
-                class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs font-medium border"
-                :class="actionBadgeClass(log.action)"
-              >
-                <span class="w-1.5 h-1.5 rounded-full" :class="actionDotClass(log.action)" />
-                {{ actionLabel(log.action) }}
-              </span>
-            </td>
-            <td class="table-td text-sm-pro text-slate-700 max-w-[16rem] truncate" :title="log.description">
-              {{ log.description }}
-            </td>
-            <td class="table-td text-sm-pro text-slate-500 max-w-[10rem] truncate" :title="log.entity_name || undefined">
-              {{ log.entity_name || '—' }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <AppTable :columns="columns" :rows="activityLog.adminLogs" row-key="id">
+        <template #cell-created_at="{ row }">
+          <span class="text-2xs text-slate-500 whitespace-nowrap">{{ formatDate(row.created_at) }}</span>
+        </template>
+        <template #cell-user="{ row }">
+          <div class="font-medium text-slate-800 text-sm-pro">{{ row.user?.name || '—' }}</div>
+          <div class="text-2xs text-slate-500">{{ row.user?.email || '' }}</div>
+        </template>
+        <template #cell-action="{ row }">
+          <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs font-medium border" :class="actionBadgeClass(row.action)">
+            <span class="w-1.5 h-1.5 rounded-full" :class="actionDotClass(row.action)" />
+            {{ actionLabel(row.action) }}
+          </span>
+        </template>
+        <template #cell-description="{ row }">
+          <span class="text-sm-pro text-slate-700 max-w-[16rem] truncate" :title="row.description">{{ row.description }}</span>
+        </template>
+        <template #cell-entity_name="{ row }">
+          <span class="text-sm-pro text-slate-500 max-w-[10rem] truncate" :title="row.entity_name || undefined">{{ row.entity_name || '—' }}</span>
+        </template>
+      </AppTable>
     </div>
 
     <!-- Pagination -->
@@ -93,25 +67,25 @@
         Showing {{ activityLog.adminMeta.from }}–{{ activityLog.adminMeta.to }} of {{ activityLog.adminMeta.total }}
       </div>
       <div class="flex items-center gap-1">
-        <button
-          type="button"
-          class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+        <AppButton
+          variant="ghost"
+          class="inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
           :disabled="currentPage <= 1"
           @click="goToPage(currentPage - 1)"
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
           Prev
-        </button>
+        </AppButton>
         <span class="text-2xs text-slate-600 px-2">Page {{ currentPage }} of {{ activityLog.adminMeta.last_page }}</span>
-        <button
-          type="button"
-          class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+        <AppButton
+          variant="ghost"
+          class="inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
           :disabled="currentPage >= activityLog.adminMeta.last_page"
           @click="goToPage(currentPage + 1)"
         >
           Next
           <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
-        </button>
+        </AppButton>
       </div>
     </div>
 
@@ -121,10 +95,19 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useActivityLogStore } from '../../stores/activityLog'
+import { AppButton, AppInput, AppSelect, AppTable } from '../../components/ui'
+import { AppPageHeader } from '../../components/layout/index.js'
 
 const activityLog = useActivityLogStore()
 const filters = reactive({ user_id: '', action: '' })
 const currentPage = ref(1)
+const columns = [
+  { key: 'created_at', label: 'Time' },
+  { key: 'user', label: 'User' },
+  { key: 'action', label: 'Action' },
+  { key: 'description', label: 'Description' },
+  { key: 'entity_name', label: 'Entity' },
+]
 
 function buildParams() {
   return {
@@ -198,9 +181,3 @@ function actionDotClass(action) {
 onMounted(load)
 </script>
 
-<style scoped>
-.action-link--premium {
-  border-color: rgba(203, 213, 225, 0.95);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-}
-</style>

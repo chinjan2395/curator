@@ -1,22 +1,10 @@
 <template>
   <div class="space-y-4">
-    <nav class="page-breadcrumb">
-      <span>Admin</span>
-      <span class="mx-1 text-slate-300">/</span>
-      <span>Sync Operations</span>
-    </nav>
-
-    <div class="flex items-start justify-between">
-      <div>
-        <h1 class="page-title flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
-          </svg>
-          Sync Operations
-        </h1>
-        <p class="page-kicker">Monitor the background scheduler, view sync history, and manage broken credentials.</p>
-      </div>
-    </div>
+    <AppPageHeader
+      title="Sync Operations"
+      subtitle="Monitor the background scheduler, view sync history, and manage broken credentials."
+      :breadcrumb="['Admin', 'Sync Operations']"
+    />
 
     <!-- Scheduler status card -->
     <div class="surface-card p-5">
@@ -51,15 +39,15 @@
             <div class="text-sm-pro font-medium text-rose-600">{{ syncOps.status.broken_count }}</div>
           </div>
         </div>
-        <button
-          type="button"
-          class="btn-primary !w-auto !py-1.5 !px-4 text-sm-pro inline-flex items-center gap-2"
+        <AppButton
+          size="sm"
+          class="!w-auto !py-1.5 !px-4 text-sm-pro inline-flex items-center gap-2"
           :disabled="syncOps.loading.runAll"
           @click="doRunAll"
         >
           <span v-if="syncOps.loading.runAll" class="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           {{ syncOps.loading.runAll ? 'Starting…' : 'Run All Feeds Now' }}
-        </button>
+        </AppButton>
       </div>
     </div>
 
@@ -77,55 +65,20 @@
         Loading…
       </div>
       <div v-else class="table-shell border border-rose-200/70">
-        <table class="w-full text-left">
-          <thead class="table-head">
-            <tr>
-              <th class="table-th">User</th>
-              <th class="table-th">Provider</th>
-              <th class="table-th">Account</th>
-              <th class="table-th">Status</th>
-              <th class="table-th">Last updated</th>
-              <th class="table-th">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="cred in syncOps.brokenCredentials" :key="cred.id" class="table-tr">
-              <td class="table-td">
-                <div class="font-medium text-slate-800 text-sm-pro">{{ cred.user?.name || '—' }}</div>
-                <div class="text-2xs text-slate-500">{{ cred.user?.email || '' }}</div>
-              </td>
-              <td class="table-td text-sm-pro text-slate-700 capitalize">{{ cred.provider }}</td>
-              <td class="table-td text-sm-pro text-slate-600">{{ cred.account_label || cred.account_id || '—' }}</td>
-              <td class="table-td">
-                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                  <span class="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                  {{ cred.status }}
-                </span>
-              </td>
-              <td class="table-td text-sm-pro text-slate-500">{{ formatDate(cred.updated_at) }}</td>
-              <td class="table-td">
-                <button
-                  type="button"
-                  class="action-link action-link--premium inline-flex items-center gap-1"
-                  :disabled="syncOps.actionLoading[cred.id]"
-                  @click="doResync(cred)"
-                >
-                  <span v-if="syncOps.actionLoading[cred.id]" class="inline-block w-3 h-3 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
-                  <svg v-else class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Z" clip-rule="evenodd" />
-                  </svg>
-                  Resync
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <AppTable :columns="brokenColumns" :rows="syncOps.brokenCredentials" row-key="id">
+          <template #cell-user="{ row: cred }"><div class="font-medium text-slate-800 text-sm-pro">{{ cred.user?.name || '—' }}</div><div class="text-2xs text-slate-500">{{ cred.user?.email || '' }}</div></template>
+          <template #cell-provider="{ row: cred }"><span class="text-sm-pro text-slate-700 capitalize">{{ cred.provider }}</span></template>
+          <template #cell-account="{ row: cred }"><span class="text-sm-pro text-slate-600">{{ cred.account_label || cred.account_id || '—' }}</span></template>
+          <template #cell-status="{ row: cred }"><span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-1.5 h-1.5 rounded-full bg-rose-400" />{{ cred.status }}</span></template>
+          <template #cell-updated_at="{ row: cred }"><span class="text-sm-pro text-slate-500">{{ formatDate(cred.updated_at) }}</span></template>
+          <template #cell-actions="{ row: cred }"><AppButton variant="ghost" class="inline-flex items-center gap-1" :disabled="syncOps.actionLoading[cred.id]" @click="doResync(cred)">Resync</AppButton></template>
+        </AppTable>
       </div>
     </div>
 
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-2">
-      <select v-model="logFilters.provider" class="input-pro !w-auto" @change="applyFilters">
+      <AppSelect v-model="logFilters.provider" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
         <option value="">All providers</option>
         <option value="youtube">YouTube</option>
         <option value="facebook">Facebook</option>
@@ -134,20 +87,20 @@
         <option value="tiktok">TikTok</option>
         <option value="threads">Threads</option>
         <option value="rss">RSS</option>
-      </select>
-      <select v-model="logFilters.status" class="input-pro !w-auto" @change="applyFilters">
+      </AppSelect>
+      <AppSelect v-model="logFilters.status" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
         <option value="">All statuses</option>
         <option value="success">Success</option>
         <option value="error">Error</option>
         <option value="disconnected">Disconnected</option>
         <option value="skipped">Skipped</option>
-      </select>
-      <select v-model="logFilters.triggered_by" class="input-pro !w-auto" @change="applyFilters">
+      </AppSelect>
+      <AppSelect v-model="logFilters.triggered_by" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
         <option value="">All sources</option>
         <option value="scheduler">Scheduler</option>
         <option value="user">User</option>
         <option value="admin">Admin</option>
-      </select>
+      </AppSelect>
     </div>
 
     <!-- Loading -->
@@ -163,66 +116,18 @@
 
     <!-- Table -->
     <div v-else class="table-shell">
-        <table class="w-full text-left">
-          <thead class="table-head">
-            <tr>
-              <th class="table-th">Time</th>
-              <th class="table-th">User</th>
-              <th class="table-th">Feed</th>
-              <th class="table-th">Provider</th>
-              <th class="table-th">Status</th>
-              <th class="table-th">Posts</th>
-              <th class="table-th">Duration</th>
-              <th class="table-th">Source</th>
-              <th class="table-th">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="log in syncOps.logs" :key="log.id" class="table-tr group">
-              <td class="table-td text-2xs text-slate-500 whitespace-nowrap">{{ formatDate(log.created_at) }}</td>
-              <td class="table-td text-sm-pro text-slate-600">{{ log.user?.name || '—' }}</td>
-              <td class="table-td text-sm-pro text-slate-700 max-w-[10rem] truncate" :title="log.feed_name">{{ log.feed_name || '—' }}</td>
-              <td class="table-td text-sm-pro text-slate-600 capitalize">{{ log.provider || '—' }}</td>
-              <td class="table-td">
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium border cursor-default"
-                  :class="statusBadge(log.status)"
-                  :title="log.error_message || undefined"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full" :class="statusDot(log.status)" />
-                  {{ log.status }}
-                </span>
-              </td>
-              <td class="table-td text-sm-pro text-slate-600">
-                <span v-if="log.posts_synced > 0" class="text-emerald-700 font-medium">+{{ log.posts_synced }}</span>
-                <span v-else class="text-slate-400">0</span>
-              </td>
-              <td class="table-td text-2xs text-slate-500">{{ formatDuration(log.duration_ms) }}</td>
-              <td class="table-td">
-                <span
-                  class="inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-medium"
-                  :class="sourceBadge(log.triggered_by)"
-                >{{ log.triggered_by }}</span>
-              </td>
-              <td class="table-td">
-                <button
-                  v-if="log.feed_id"
-                  type="button"
-                  class="action-link action-link--premium inline-flex items-center gap-1"
-                  :disabled="syncOps.actionLoading[`feed_${log.feed_id}`]"
-                  @click="doSyncFeed(log)"
-                >
-                  <span v-if="syncOps.actionLoading[`feed_${log.feed_id}`]" class="inline-block w-3 h-3 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
-                  <svg v-else class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Z" clip-rule="evenodd" />
-                  </svg>
-                  Sync now
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <AppTable :columns="logColumns" :rows="syncOps.logs" row-key="id">
+        <template #cell-created_at="{ row: log }"><span class="text-2xs text-slate-500 whitespace-nowrap">{{ formatDate(log.created_at) }}</span></template>
+        <template #cell-user="{ row: log }"><span class="text-sm-pro text-slate-600">{{ log.user?.name || '—' }}</span></template>
+        <template #cell-feed_name="{ row: log }"><span class="text-sm-pro text-slate-700 max-w-[10rem] truncate" :title="log.feed_name">{{ log.feed_name || '—' }}</span></template>
+        <template #cell-provider="{ row: log }"><span class="text-sm-pro text-slate-600 capitalize">{{ log.provider || '—' }}</span></template>
+        <template #cell-status="{ row: log }"><span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium border cursor-default" :class="statusBadge(log.status)" :title="log.error_message || undefined"><span class="w-1.5 h-1.5 rounded-full" :class="statusDot(log.status)" />{{ log.status }}</span></template>
+        <template #cell-posts_synced="{ row: log }"><span v-if="log.posts_synced > 0" class="text-emerald-700 font-medium">+{{ log.posts_synced }}</span><span v-else class="text-slate-400">0</span></template>
+        <template #cell-duration_ms="{ row: log }"><span class="text-2xs text-slate-500">{{ formatDuration(log.duration_ms) }}</span></template>
+        <template #cell-triggered_by="{ row: log }"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-medium" :class="sourceBadge(log.triggered_by)">{{ log.triggered_by }}</span></template>
+        <template #cell-actions="{ row: log }"><AppButton v-if="log.feed_id" variant="ghost" class="inline-flex items-center gap-1" :disabled="syncOps.actionLoading[`feed_${log.feed_id}`]" @click="doSyncFeed(log)">Sync now</AppButton></template>
+      </AppTable>
+    </div>
 
       <!-- Pagination -->
       <div v-if="syncOps.logsPagination && syncOps.logsPagination.last_page > 1" class="flex items-center justify-between pt-1">
@@ -230,25 +135,25 @@
           Showing {{ syncOps.logsPagination.from }}–{{ syncOps.logsPagination.to }} of {{ syncOps.logsPagination.total }}
         </div>
         <div class="flex items-center gap-1">
-          <button
-            type="button"
-            class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          <AppButton
+            variant="ghost"
+            class="inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="syncOps.logsPage === 1"
             @click="goToPage(syncOps.logsPage - 1)"
           >
             <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
             Prev
-          </button>
+          </AppButton>
           <span class="text-2xs text-slate-600 px-2">Page {{ syncOps.logsPage }} of {{ syncOps.logsPagination.last_page }}</span>
-          <button
-            type="button"
-            class="action-link action-link--premium inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+          <AppButton
+            variant="ghost"
+            class="inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="syncOps.logsPage === syncOps.logsPagination.last_page"
             @click="goToPage(syncOps.logsPage + 1)"
           >
             Next
             <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -266,10 +171,31 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useSyncOpsStore } from '../../stores/syncOps';
+import { AppButton, AppSelect, AppTable } from '../../components/ui';
+import { AppPageHeader } from '../../components/layout/index.js';
 
 const syncOps = useSyncOpsStore();
 const toast = ref(null);
 const logFilters = reactive({ provider: '', status: '', triggered_by: '' });
+const brokenColumns = [
+  { key: 'user', label: 'User' },
+  { key: 'provider', label: 'Provider' },
+  { key: 'account', label: 'Account' },
+  { key: 'status', label: 'Status' },
+  { key: 'updated_at', label: 'Last updated' },
+  { key: 'actions', label: 'Actions' },
+];
+const logColumns = [
+  { key: 'created_at', label: 'Time' },
+  { key: 'user', label: 'User' },
+  { key: 'feed_name', label: 'Feed' },
+  { key: 'provider', label: 'Provider' },
+  { key: 'status', label: 'Status' },
+  { key: 'posts_synced', label: 'Posts' },
+  { key: 'duration_ms', label: 'Duration' },
+  { key: 'triggered_by', label: 'Source' },
+  { key: 'actions', label: 'Actions' },
+];
 
 onMounted(() => {
   syncOps.fetchStatus();
@@ -378,9 +304,3 @@ function sourceBadge(source) {
 }
 </script>
 
-<style scoped>
-.action-link--premium {
-  border-color: rgba(203, 213, 225, 0.95);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-}
-</style>

@@ -2,10 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Sync\SocialCredentialOnlyRequest;
+use App\Http\Requests\Sync\TestFacebookRequest;
+use App\Http\Requests\Sync\TestInstagramRequest;
+use App\Http\Requests\Sync\TestRssRequest;
+use App\Http\Requests\Sync\TestYouTubeRequest;
+use App\Http\Resources\ApiResponse;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
+use App\Repositories\Contracts\SocialCredentialRepositoryInterface;
 use App\Services\FeedSyncService;
 use App\Support\ActivityLogger;
 use App\Sync\FacebookSyncer;
@@ -22,236 +29,190 @@ use Illuminate\Support\Str;
 class FeedSyncController extends Controller
 {
     public function __construct(
-        private YouTubeSyncer $youtube,
-        private FacebookSyncer $facebook,
-        private InstagramSyncer $instagram,
-        private TwitterSyncer $twitter,
-        private TikTokSyncer $tiktok,
-        private ThreadsSyncer $threads,
-        private RssSyncer $rss,
-        private FeedSyncService $syncService,
+        private readonly YouTubeSyncer $youtube,
+        private readonly FacebookSyncer $facebook,
+        private readonly InstagramSyncer $instagram,
+        private readonly TwitterSyncer $twitter,
+        private readonly TikTokSyncer $tiktok,
+        private readonly ThreadsSyncer $threads,
+        private readonly RssSyncer $rss,
+        private readonly FeedSyncService $syncService,
+        private readonly SocialCredentialRepositoryInterface $credentialRepository,
     ) {}
 
     // -------------------------------------------------------------------------
     // Account / channel discovery
     // -------------------------------------------------------------------------
 
-    public function youtubeChannels(Request $request, Workspace $workspace)
+    public function youtubeChannels(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'youtube');
+        $credential = $this->credentialForProvider($request, 'youtube');
         if (! $credential) {
-            return response()->json(['message' => 'YouTube credential not found for this user.'], 404);
+            return ApiResponse::error('YouTube credential not found for this user.', null, 404);
         }
 
-        $result = $this->youtube->channels($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->youtube->channels($credential));
     }
 
-    public function twitterAccount(Request $request, Workspace $workspace)
+    public function twitterAccount(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'twitter');
+        $credential = $this->credentialForProvider($request, 'twitter');
         if (! $credential) {
-            return response()->json(['message' => 'Twitter / X credential not found for this user.'], 404);
+            return ApiResponse::error('Twitter / X credential not found for this user.', null, 404);
         }
 
-        $result = $this->twitter->account($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->twitter->account($credential));
     }
 
-    public function tiktokAccount(Request $request, Workspace $workspace)
+    public function tiktokAccount(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'tiktok');
+        $credential = $this->credentialForProvider($request, 'tiktok');
         if (! $credential) {
-            return response()->json(['message' => 'TikTok credential not found for this user.'], 404);
+            return ApiResponse::error('TikTok credential not found for this user.', null, 404);
         }
 
-        $result = $this->tiktok->account($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->tiktok->account($credential));
     }
 
-    public function facebookPages(Request $request, Workspace $workspace)
+    public function facebookPages(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'facebook');
+        $credential = $this->credentialForProvider($request, 'facebook');
         if (! $credential) {
-            return response()->json(['message' => 'Facebook credential not found for this user.'], 404);
+            return ApiResponse::error('Facebook credential not found for this user.', null, 404);
         }
 
-        $result = $this->facebook->pages($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->facebook->pages($credential));
     }
 
-    public function threadsAccount(Request $request, Workspace $workspace)
+    public function threadsAccount(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'threads');
+        $credential = $this->credentialForProvider($request, 'threads');
         if (! $credential) {
-            return response()->json(['message' => 'Threads credential not found for this user.'], 404);
+            return ApiResponse::error('Threads credential not found for this user.', null, 404);
         }
 
-        $result = $this->threads->account($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->threads->account($credential));
     }
 
-    public function instagramAccounts(Request $request, Workspace $workspace)
+    public function instagramAccounts(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'instagram');
+        $credential = $this->credentialForProvider($request, 'instagram');
         if (! $credential) {
-            return response()->json(['message' => 'Instagram credential not found for this user.'], 404);
+            return ApiResponse::error('Instagram credential not found for this user.', null, 404);
         }
 
-        $result = $this->instagram->accounts($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->instagram->accounts($credential));
     }
 
     // -------------------------------------------------------------------------
     // Connection tests
     // -------------------------------------------------------------------------
 
-    public function testYouTube(Request $request, Workspace $workspace)
+    public function testYouTube(TestYouTubeRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $validated = $request->validate([
-            'social_credential_id' => ['required', 'integer', 'exists:social_credentials,id'],
-            'youtube_channel_id' => ['required', 'string', 'max:255'],
-        ]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForId($request, $validated['social_credential_id']);
+        $credential = $this->credentialById($request, (int) $request->validated('social_credential_id'));
         if (! $credential) {
-            return response()->json(['message' => 'Credential not found for this user.'], 404);
+            return ApiResponse::error('Credential not found for this user.', null, 404);
         }
 
-        $result = $this->youtube->test($credential, $validated['youtube_channel_id']);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->youtube->test($credential, $request->validated('youtube_channel_id')));
     }
 
-    public function testRss(Request $request, Workspace $workspace)
+    public function testRss(TestRssRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $validated = $request->validate(['source_url' => ['required', 'string', 'max:500']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $result = $this->rss->test(trim($validated['source_url']));
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->rss->test(trim($request->validated('source_url'))));
     }
 
-    public function testFacebook(Request $request, Workspace $workspace)
+    public function testFacebook(TestFacebookRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $validated = $request->validate([
-            'social_credential_id' => ['required', 'integer', 'exists:social_credentials,id'],
-            'facebook_page_id' => ['required', 'string', 'max:255'],
-        ]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'facebook');
+        $credential = $this->credentialForProvider($request, 'facebook');
         if (! $credential) {
-            return response()->json(['message' => 'Facebook credential not found for this user.'], 404);
+            return ApiResponse::error('Facebook credential not found for this user.', null, 404);
         }
 
-        $result = $this->facebook->test($credential, trim($validated['facebook_page_id']), $request->user()->id);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
-    }
-
-    public function testInstagram(Request $request, Workspace $workspace)
-    {
-        $this->authorizeWorkspace($request, $workspace);
-        $validated = $request->validate([
-            'social_credential_id' => ['required', 'integer', 'exists:social_credentials,id'],
-            'facebook_page_id' => ['required', 'string', 'max:255'],
-            'instagram_business_account_id' => ['required', 'string', 'max:255'],
-        ]);
-
-        $credential = $this->credentialFor($request, 'instagram');
-        if (! $credential) {
-            return response()->json(['message' => 'Instagram credential not found for this user.'], 404);
-        }
-
-        $result = $this->instagram->test(
-            $credential,
-            trim($validated['facebook_page_id']),
-            trim($validated['instagram_business_account_id']),
-            $request->user()->id,
+        return $this->wrapSyncerResult(
+            $this->facebook->test($credential, trim($request->validated('facebook_page_id')), $request->user()->id)
         );
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
     }
 
-    public function testTwitter(Request $request, Workspace $workspace)
+    public function testInstagram(TestInstagramRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'twitter');
+        $credential = $this->credentialForProvider($request, 'instagram');
         if (! $credential) {
-            return response()->json(['message' => 'Twitter / X credential not found for this user.'], 404);
+            return ApiResponse::error('Instagram credential not found for this user.', null, 404);
         }
 
-        $result = $this->twitter->test($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->instagram->test(
+            $credential,
+            trim($request->validated('facebook_page_id')),
+            trim($request->validated('instagram_business_account_id')),
+            $request->user()->id,
+        ));
     }
 
-    public function testThreads(Request $request, Workspace $workspace)
+    public function testTwitter(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'threads');
+        $credential = $this->credentialForProvider($request, 'twitter');
         if (! $credential) {
-            return response()->json(['message' => 'Threads credential not found for this user.'], 404);
+            return ApiResponse::error('Twitter / X credential not found for this user.', null, 404);
         }
 
-        $result = $this->threads->test($credential);
-
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+        return $this->wrapSyncerResult($this->twitter->test($credential));
     }
 
-    public function testTikTok(Request $request, Workspace $workspace)
+    public function testThreads(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
-        $request->validate(['social_credential_id' => ['required', 'integer', 'exists:social_credentials,id']]);
+        $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialFor($request, 'tiktok');
+        $credential = $this->credentialForProvider($request, 'threads');
         if (! $credential) {
-            return response()->json(['message' => 'TikTok credential not found for this user.'], 404);
+            return ApiResponse::error('Threads credential not found for this user.', null, 404);
         }
 
-        $result = $this->tiktok->test($credential);
+        return $this->wrapSyncerResult($this->threads->test($credential));
+    }
 
-        return $result instanceof JsonResponse ? $result : response()->json($result);
+    public function testTikTok(SocialCredentialOnlyRequest $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+
+        $credential = $this->credentialForProvider($request, 'tiktok');
+        if (! $credential) {
+            return ApiResponse::error('TikTok credential not found for this user.', null, 404);
+        }
+
+        return $this->wrapSyncerResult($this->tiktok->test($credential));
     }
 
     // -------------------------------------------------------------------------
     // Sync
     // -------------------------------------------------------------------------
 
-    public function sync(Request $request, Workspace $workspace, Feed $feed)
+    public function sync(Request $request, Workspace $workspace, Feed $feed): JsonResponse
     {
-        $this->authorizeWorkspace($request, $workspace);
+        $this->authorizeOwner($request, $workspace);
         $this->ensureFeedInWorkspace($workspace, $feed);
 
         $credErr = $this->ensureFeedUsesOwnerCredential($workspace, $feed);
@@ -267,17 +228,17 @@ class FeedSyncController extends Controller
                 ActivityLogger::log($request->user(), 'feed.synced', "Synced {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
             }
 
-            return $result ?? response()->json(['message' => 'Credential expired or revoked. Reconnect in Credentials.'], 422);
+            return $result ?? ApiResponse::error('Credential expired or revoked. Reconnect in Credentials.');
         }
 
         return $this->syncStub($request, $feed);
     }
 
     // -------------------------------------------------------------------------
-    // Helpers
+    // Private helpers
     // -------------------------------------------------------------------------
 
-    private function authorizeWorkspace(Request $request, Workspace $workspace): void
+    private function authorizeOwner(Request $request, Workspace $workspace): void
     {
         if ($workspace->owner_id !== $request->user()->id) {
             abort(403, 'Unauthorized');
@@ -298,19 +259,17 @@ class FeedSyncController extends Controller
             return null;
         }
 
-        $cred = SocialCredential::query()->find($cid);
+        $cred = SocialCredential::find($cid);
         if (! $cred || (int) $cred->user_id !== (int) $workspace->owner_id) {
-            return response()->json([
-                'message' => 'This feed references a credential that does not belong to the workspace owner. Re-save the feed with your own credential.',
-            ], 422);
+            return ApiResponse::error('This feed references a credential that does not belong to the workspace owner. Re-save the feed with your own credential.');
         }
 
         return null;
     }
 
-    private function credentialFor(Request $request, string $provider): ?SocialCredential
+    private function credentialForProvider(Request $request, string $provider): ?SocialCredential
     {
-        $id = $request->input('social_credential_id');
+        $id = (int) $request->input('social_credential_id');
 
         return SocialCredential::where('id', $id)
             ->where('user_id', $request->user()->id)
@@ -318,30 +277,35 @@ class FeedSyncController extends Controller
             ->first();
     }
 
-    private function credentialForId(Request $request, int $id): ?SocialCredential
+    private function credentialById(Request $request, int $id): ?SocialCredential
     {
         return SocialCredential::where('id', $id)
             ->where('user_id', $request->user()->id)
             ->first();
     }
 
+    private function wrapSyncerResult(mixed $result): JsonResponse
+    {
+        return $result instanceof JsonResponse ? $result : response()->json($result);
+    }
+
     private function syncStub(Request $request, Feed $feed): JsonResponse
     {
-        $count = max(1, min((int) $request->input('count', 8), 30));
-        $now = now();
+        $count   = max(1, min((int) $request->input('count', 8), 30));
+        $now     = now();
         $created = 0;
 
         for ($i = 0; $i < $count; $i++) {
             Post::create([
-                'feed_id' => $feed->id,
-                'title' => ucfirst($feed->type).' sample post',
-                'content' => $this->sampleContent($feed->type),
+                'feed_id'     => $feed->id,
+                'title'       => ucfirst($feed->type) . ' sample post',
+                'content'     => $this->sampleContent($feed->type),
                 'thumbnail_url' => null,
-                'video_url' => null,
-                'posted_at' => $now->copy()->subMinutes($i * 37),
-                'external_id' => $feed->type.'-'.Str::random(10),
-                'status' => 'pending',
-                'pinned' => false,
+                'video_url'   => null,
+                'posted_at'   => $now->copy()->subMinutes($i * 37),
+                'external_id' => $feed->type . '-' . Str::random(10),
+                'status'      => 'pending',
+                'pinned'      => false,
             ]);
             $created++;
         }
@@ -355,12 +319,12 @@ class FeedSyncController extends Controller
     {
         $examples = [
             'instagram' => ["New drop: behind the scenes from today's shoot. #bts #studio", 'Quick carousel from the event—crowd energy was unreal.'],
-            'youtube' => ['New video is live: "How we built the social wall (v1)"', 'Short: 3 UX details that make dashboards feel premium.'],
-            'rss' => ['Blog: UGC best practices for moderation and brand safety.', 'Release notes: Feed filters + pinning are now available.'],
-            'twitter' => ['Shipping a new curation flow today. Small UI details matter.', 'Poll: Which sources do you want next—TikTok or LinkedIn?'],
-            'tiktok' => ['Fast cut: product demo in 15 seconds. Thoughts?', 'Creator spotlight: top community clips of the week.'],
-            'facebook' => ['Community update: new templates are available in the dashboard.', 'Customer story: how a brand curated 5k posts safely.'],
-            'other' => ['Sample post generated for this feed.', 'Another sample post to help test curation.'],
+            'youtube'   => ['New video is live: "How we built the social wall (v1)"', 'Short: 3 UX details that make dashboards feel premium.'],
+            'rss'       => ['Blog: UGC best practices for moderation and brand safety.', 'Release notes: Feed filters + pinning are now available.'],
+            'twitter'   => ['Shipping a new curation flow today. Small UI details matter.', 'Poll: Which sources do you want next—TikTok or LinkedIn?'],
+            'tiktok'    => ['Fast cut: product demo in 15 seconds. Thoughts?', 'Creator spotlight: top community clips of the week.'],
+            'facebook'  => ['Community update: new templates are available in the dashboard.', 'Customer story: how a brand curated 5k posts safely.'],
+            'other'     => ['Sample post generated for this feed.', 'Another sample post to help test curation.'],
         ];
 
         $key = array_key_exists($type, $examples) ? $type : 'other';

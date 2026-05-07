@@ -12,108 +12,98 @@
     </template>
 
     <template #actions>
-      <router-link
-        :to="`/workspaces/${workspaceId}/feeds/new`"
-        class="btn-secondary !w-auto !px-3 !py-2 text-sm-pro inline-flex items-center gap-2"
-        title="Add new feed"
-      >
-        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
-        Add Feed
+      <router-link :to="`/workspaces/${workspaceId}/feeds/new`" title="Add new feed">
+        <AppButton variant="secondary" size="sm" class="!w-auto !px-3 !py-1.5 text-sm-pro inline-flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+          Add Feed
+        </AppButton>
       </router-link>
-      <router-link
-        :to="nextCurateUrl"
-        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center gap-2"
-        :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
-        :aria-disabled="!feeds.list.length"
-        title="Continue to curate posts"
-      >
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-        Curate
+      <router-link :to="nextCurateUrl" :aria-disabled="!feeds.list.length" title="Continue to curate posts">
+        <AppButton
+          size="sm"
+          class="!w-auto !px-3 !py-1.5 inline-flex items-center gap-2"
+          :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+          Curate
+        </AppButton>
       </router-link>
     </template>
 
-    <div v-if="feeds.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading…
+    <div v-if="feeds.loading" class="surface-card-soft px-4 py-3">
+      <AppLoader size="sm" label="Loading..." />
     </div>
     <div v-else-if="feeds.error" class="text-sm-pro text-red-600">{{ feeds.error }}</div>
-    <div v-else-if="!feeds.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
-      <div>No feeds yet. Create the first feed to start workspace setup.</div>
-      <router-link :to="`/workspaces/${workspaceId}/feeds/new`" class="btn-primary !w-auto !py-1.5 !px-3 text-sm-pro mt-3 inline-flex">
-        Create feed
+    <AppEmptyState
+      v-else-if="!feeds.list.length"
+      title="No feeds yet"
+      description="Create the first feed to start workspace setup."
+      icon="🧩"
+      class="surface-card"
+    >
+      <router-link :to="`/workspaces/${workspaceId}/feeds/new`">
+        <AppButton class="!w-auto !py-1.5 !px-3 text-sm-pro">Create feed</AppButton>
       </router-link>
-    </div>
-    <div v-if="!feeds.loading && feeds.list.length" class="table-shell feed-table-shell">
-      <table class="w-full text-left">
-        <thead class="table-head feed-table-head">
-          <tr>
-            <th class="table-th">Name</th>
-            <th class="table-th">Type</th>
-            <th class="table-th">Source</th>
-            <th class="table-th w-32">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="f in feeds.list" :key="f.id" class="table-tr feed-table-row">
-            <td class="table-td font-medium text-slate-800">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="feed-name-dot" :class="`feed-name-dot--${String(f.type || 'other')}`" />
-                <span class="truncate">{{ f.name }}</span>
-              </div>
-            </td>
-            <td class="table-td">
-              <span class="type-pill" :class="`type-pill--${String(f.type || 'other')}`">
-                <span class="type-pill__icon">
-                  <SocialIcon :type="f.type" />
-                </span>
-                {{ feedTypeLabel(f.type) }}
-              </span>
-            </td>
-            <td class="px-4 py-2.5 text-2xs text-slate-600 truncate max-w-[240px]">
-              <span v-if="f.source_url" class="source-chip">{{ f.source_url }}</span>
-              <span v-else>—</span>
-            </td>
-            <td class="table-td">
-              <div class="flex items-center gap-2">
-                <router-link
-                  :to="`/workspaces/${workspaceId}/feeds/${f.id}/edit`"
-                  class="action-link action-link--premium"
-                  :class="canEditOrDelete ? '' : 'text-slate-400 cursor-not-allowed'"
-                  @click.prevent="handleEditClick(f)"
-                >
-                  <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
-                  Edit
-                </router-link>
-                <button
-                  type="button"
-                  class="action-link action-link--premium"
-                  :class="canEditOrDelete ? '!text-rose-700 hover:!text-rose-800 hover:!bg-rose-50/75 hover:!border-rose-200/80' : 'text-slate-400 cursor-not-allowed'"
-                  @click="handleDeleteClick(f)"
-                >
-                  <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
-                  Delete
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    </AppEmptyState>
+    <div v-if="!feeds.loading && feeds.list.length" class="feed-table-shell">
+      <AppTable :columns="tableColumns" :rows="feeds.list" row-key="id">
+        <template #cell-name="{ row }">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="feed-name-dot" :class="`feed-name-dot--${String(row.type || 'other')}`" />
+            <span class="truncate font-medium text-slate-800">{{ row.name }}</span>
+          </div>
+        </template>
+        <template #cell-type="{ row }">
+          <span class="type-pill" :class="`type-pill--${String(row.type || 'other')}`">
+            <span class="type-pill__icon">
+              <SocialIcon :type="row.type" />
+            </span>
+            {{ feedTypeLabel(row.type) }}
+          </span>
+        </template>
+        <template #cell-source_url="{ row }">
+          <span v-if="row.source_url" class="source-chip">{{ row.source_url }}</span>
+          <span v-else>—</span>
+        </template>
+        <template #cell-actions="{ row }">
+          <div class="flex items-center gap-2">
+            <router-link :to="`/workspaces/${workspaceId}/feeds/${row.id}/edit`" @click.prevent="handleEditClick(row)">
+              <AppButton
+                variant="ghost"
+                size="sm"
+                class="!w-auto inline-flex items-center gap-1.5 !px-3 !py-1.5 text-sm-pro border border-slate-200 bg-white hover:bg-slate-50"
+                :class="canEditOrDelete ? '' : 'text-slate-400 cursor-not-allowed'"
+              >
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
+                Edit
+              </AppButton>
+            </router-link>
+            <AppButton
+              variant="danger"
+              size="sm"
+              class="!w-auto inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm-pro"
+              @click="handleDeleteClick(row)"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
+              Delete
+            </AppButton>
+          </div>
+        </template>
+      </AppTable>
     </div>
 
     <template #footer>
-      <router-link to="/workspaces" class="btn-secondary !w-auto inline-flex items-center justify-center" title="Go back">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
-        <span class="ml-1">Back</span>
+      <router-link to="/workspaces" title="Go back">
+        <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center justify-center !py-1.5 !px-3 text-sm-pro">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+          <span class="ml-1">Back</span>
+        </AppButton>
       </router-link>
-      <router-link
-        :to="nextCurateUrl"
-        class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center gap-2"
-        :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'"
-        :aria-disabled="!feeds.list.length"
-        title="Continue to curate posts"
-      >
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-        Curate
+      <router-link :to="nextCurateUrl" :aria-disabled="!feeds.list.length" title="Continue to curate posts">
+        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center gap-2 text-sm-pro" :class="feeds.list.length ? '' : 'pointer-events-none opacity-50'">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+          Curate
+        </AppButton>
       </router-link>
     </template>
   </WizardPageLayout>
@@ -124,14 +114,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
-import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
+import { AppButton, AppEmptyState, AppLoader, AppTable } from '../components/ui';
 
 const route = useRoute();
 const feeds = useFeedsStore();
 const workspaces = useWorkspacesStore();
-const toast = useToastStore();
 
 const workspaceId = computed(() => route.params.workspaceId);
 const workspaceName = computed(() => {
@@ -140,7 +129,6 @@ const workspaceName = computed(() => {
 });
 const totalFeeds = computed(() => feeds.list.length);
 const feedsWithSource = computed(() => feeds.list.filter((f) => String(f.source_url || '').trim().length > 0).length);
-const feedsWithoutSource = computed(() => Math.max(0, totalFeeds.value - feedsWithSource.value));
 const sourceCoverage = computed(() =>
   totalFeeds.value ? Math.round((feedsWithSource.value / totalFeeds.value) * 100) : 0,
 );
@@ -151,26 +139,16 @@ const feedTypeCounts = computed(() =>
     return acc;
   }, {}),
 );
-const maxTypeCount = computed(() => Math.max(1, ...Object.values(feedTypeCounts.value).map((v) => Number(v || 0))));
-const feedTypeDistribution = computed(() =>
-  Object.entries(feedTypeCounts.value)
-    .map(([type, count]) => ({
-      type,
-      count: Number(count || 0),
-      width: Math.max(10, Math.round((Number(count || 0) / maxTypeCount.value) * 100)),
-    }))
-    .sort((a, b) => b.count - a.count),
-);
 const typeVariety = computed(() => Object.keys(feedTypeCounts.value).length);
-const feedRingStyle = computed(() => {
-  const pct = Math.min(100, Math.round((totalFeeds.value / 20) * 100));
-  return {
-    background: `conic-gradient(rgba(99,102,241,0.75) ${pct}%, rgba(224,231,255,0.9) ${pct}% 100%)`,
-  };
-});
 const feedsTrend = ref(0);
 const coverageTrend = ref(0);
 const typeVarietyTrend = ref(0);
+const tableColumns = [
+  { key: 'name', label: 'Name' },
+  { key: 'type', label: 'Type' },
+  { key: 'source_url', label: 'Source' },
+  { key: 'actions', label: 'Actions', class: 'w-32' },
+];
 const nextCurateUrl = computed(() => {
   return `/workspaces/${workspaceId.value}/curate`;
 });
@@ -202,24 +180,6 @@ function feedTypeLabel(type) {
   return type || '—';
 }
 
-function sourceDescriptor(f) {
-  if (f.type === 'youtube') {
-    const pub = f.source_account_label?.trim();
-    if (pub) return pub;
-    const nm = f.name?.trim();
-    if (nm) return nm;
-    return 'YouTube';
-  }
-  if (f.type === 'facebook' && f.facebook_page_id) return `Page: ${f.facebook_page_id}`;
-  if (f.type === 'instagram' && f.instagram_business_account_id) {
-    const page = f.facebook_page_id ? ` · Page ${f.facebook_page_id}` : '';
-    return `IG: ${f.instagram_business_account_id}${page}`;
-  }
-  if (f.type === 'twitter' && f.twitter_username) return `@${f.twitter_username}`;
-  if (f.source_url) return f.source_url;
-  return 'No source metadata yet';
-}
-
 function handleEditClick(f) {
   // Let backend enforce the accepted-post rule; just navigate.
   // If the backend rejects, FeedForm will show the error toast + message.
@@ -228,31 +188,11 @@ function handleEditClick(f) {
 
 async function handleDeleteClick(f) {
   if (!window.confirm(`Delete feed "${f.name}"?`)) return;
+
   try {
     await feeds.remove(workspaceId.value, f.id);
   } catch {
     // Error toast already handled in store; nothing else needed here.
-  }
-}
-
-function trendLabel(val, suffix) {
-  if (!val) return `No change ${suffix}`;
-  const sign = val > 0 ? '+' : '';
-  return `${sign}${val} ${suffix}`;
-}
-
-function trendClass(val) {
-  if (val > 0) return 'text-emerald-600';
-  if (val < 0) return 'text-rose-600';
-  return 'text-slate-500';
-}
-
-function formatDate(v) {
-  if (!v) return '—';
-  try {
-    return new Date(v).toLocaleString();
-  } catch {
-    return String(v);
   }
 }
 
@@ -387,14 +327,6 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   transform: translateY(-1px);
   background: linear-gradient(90deg, rgba(248, 250, 252, 0.85), rgba(241, 245, 249, 0.7));
   box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.33);
-}
-
-.action-link--premium {
-  border-color: rgba(203, 213, 225, 0.95);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-}
-.action-link--premium:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .type-pill {

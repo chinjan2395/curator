@@ -15,27 +15,6 @@ docker compose up --build
 ```
 
 ### Backend (Laravel)
-```bash
-cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan serve --host=0.0.0.0 --port=8000
-
-composer dev    # concurrent PHP server + queue worker + log tail + Vite
-composer test   # clears config cache, then runs PHPUnit
-php artisan test --filter TestName   # run a single test
-```
-
-### Frontend (Vue/Vite)
-```bash
-cd frontend
-npm install
-npm run dev     # Vite dev server with /api proxy
-npm run build   # production bundle
-```
-
 ## Architecture
 
 ### Request Flow
@@ -100,22 +79,3 @@ Each user registers their own OAuth app on each platform (no shared platform cre
 - Key controllers: `SocialConnectController` (OAuth), `FeedSyncController` (all provider sync logic), `FeedPublishController` (publish + stats + settings + embed code generation), `EmbedController` (public embed JS/CSS), `PublicFeedController` (unauthenticated posts API)
 - Publish layout config: [backend/app/Support/PublishSettings.php](backend/app/Support/PublishSettings.php) — 11 layout styles; settings merged with defaults on read
 - Embed runtime: [backend/resources/embed/curator-embed.js](backend/resources/embed/curator-embed.js)
-
-## Environment Variables
-
-Backend key vars (see [backend/.env.example](backend/.env.example)):
-- `FRONTEND_URL` — used for OAuth callback redirect back to frontend
-- `APP_KEY` — Laravel app key (used for encrypting OAuth state + client secrets)
-- Standard DB, queue (`database` driver), and session config
-
-Frontend key vars:
-- `VITE_API_PROXY_TARGET` — backend URL for dev proxy (e.g. `http://localhost:8000`)
-- `VITE_API_BASE_URL` — backend URL for production builds
-
-## Production Deployment (Railway)
-```bash
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan optimize
-```

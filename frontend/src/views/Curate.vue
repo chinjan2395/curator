@@ -12,53 +12,54 @@
     </template>
 
     <template #actions>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center" title="Continue to publish">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-        <span class="sr-only">Continue to publish</span>
+      <router-link :to="`/workspaces/${workspaceId}/publish`" title="Continue to publish">
+        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+          <span class="sr-only">Continue to publish</span>
+        </AppButton>
       </router-link>
     </template>
 
     <div class="flex items-center gap-1.5 flex-wrap mb-3">
-      <select v-model="filterStatus" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
+      <AppSelect v-model="filterStatus" select-class="!py-1.5 !px-2.5 !text-sm-pro !w-auto" :show-placeholder="false">
         <option value="">All statuses</option>
         <option value="pending">Pending</option>
         <option value="approved">Approved</option>
         <option value="rejected">Rejected</option>
-      </select>
-      <select v-model="filterPlatform" class="input-pro !py-1.5 !px-2.5 !text-sm-pro !w-auto">
+      </AppSelect>
+      <AppSelect v-model="filterPlatform" select-class="!py-1.5 !px-2.5 !text-sm-pro !w-auto" :show-placeholder="false">
         <option value="">All platforms</option>
         <option v-for="platform in platformOptions" :key="platform" :value="platform">
           {{ feedTypeLabel(platform) }}
         </option>
-      </select>
+      </AppSelect>
       <div class="text-2xs text-slate-500 hidden sm:block" v-if="lastSyncedAt">
         Last sync: <span class="text-slate-600">{{ formatDate(lastSyncedAt) }}</span>
       </div>
-      <button
-        type="button"
-        class="btn-secondary !py-1 !px-2.5 text-xs-pro"
+      <AppButton
+        variant="secondary"
+        class="!py-1 !px-2.5 text-xs-pro"
         @click="syncNow"
         :disabled="feeds.syncing"
       >
         {{ feeds.syncing ? 'Syncing…' : 'Sync now' }}
-      </button>
-      <button type="button" class="btn-secondary !py-1 !px-2.5 text-xs-pro" @click="refresh" :disabled="posts.loading">
+      </AppButton>
+      <AppButton variant="secondary" class="!py-1 !px-2.5 text-xs-pro" @click="refresh" :disabled="posts.loading">
         {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
+      </AppButton>
       <div class="h-4 w-px bg-slate-200 hidden sm:block" />
-      <button type="button" class="btn-secondary !py-1 !px-2.5 text-xs-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-1.5" @click="approveAllPending" title="Approve all pending posts">
+      <AppButton variant="secondary" class="!py-1 !px-2.5 text-xs-pro text-emerald-700 border-emerald-200 hover:bg-emerald-50 inline-flex items-center gap-1.5" @click="approveAllPending" title="Approve all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
         Approve All
-      </button>
-      <button type="button" class="btn-secondary !py-1 !px-2.5 text-xs-pro text-rose-700 border-rose-200 hover:bg-rose-50 inline-flex items-center gap-1.5" @click="rejectAllPending" title="Reject all pending posts">
+      </AppButton>
+      <AppButton variant="secondary" class="!py-1 !px-2.5 text-xs-pro text-rose-700 border-rose-200 hover:bg-rose-50 inline-flex items-center gap-1.5" @click="rejectAllPending" title="Reject all pending posts">
         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
         Reject All
-      </button>
+      </AppButton>
     </div>
 
     <div v-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading posts…
+      <AppLoader size="sm" label="Loading posts..." />
     </div>
     <div v-else-if="posts.error" class="text-sm-pro text-red-600">{{ posts.error }}</div>
     <div v-else-if="!posts.list.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
@@ -83,15 +84,15 @@
               📌
             </span>
           </div>
-          <button
-            type="button"
+          <AppButton
+            variant="ghost"
             class="text-2xs font-medium px-1 py-0.5 rounded shrink-0 inline-flex items-center justify-center ml-auto"
             :class="p.pinned ? 'text-amber-700' : 'text-slate-400 hover:text-slate-600'"
             @click="togglePin(p)"
             :title="p.pinned ? 'Unpin this post' : 'Pin this post'"
           >
             📌
-          </button>
+          </AppButton>
         </div>
 
         <div class="flex items-center gap-1 mb-1 pb-1 border-b border-slate-100">
@@ -120,69 +121,73 @@
           </a>
         </div>
 
-        <button
-          type="button"
+        <AppButton
+          variant="ghost"
           class="text-left w-full text-2xs text-slate-800 whitespace-pre-wrap line-clamp-3 hover:text-indigo-700 transition-colors flex-grow"
           @click="previewPost = p"
           title="Click to preview"
         >
           <strong v-if="p.title" class="block mb-0.5">{{ p.title }}</strong>
           {{ p.content }}
-        </button>
+        </AppButton>
 
         <div class="flex items-center gap-1 pt-1 mt-auto border-t border-slate-100">
-          <button
-            type="button"
+          <AppButton
+            variant="ghost"
             class="curate-btn-compact curate-btn-approve"
             :class="{ 'curate-btn-active': p.status === 'approved' }"
             @click="setStatus(p, 'approved')"
             title="Approve"
           >
             ✓
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            variant="ghost"
             class="curate-btn-compact curate-btn-reject"
             :class="{ 'curate-btn-active': p.status === 'rejected' }"
             @click="setStatus(p, 'rejected')"
             title="Reject"
           >
             ✕
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            variant="ghost"
             class="curate-btn-compact curate-btn-delete ml-auto"
             @click="deletePost(p)"
             title="Delete"
           >
             🗑
-          </button>
+          </AppButton>
         </div>
       </article>
     </div>
 
     <template #footer>
-      <router-link :to="`/workspaces/${workspaceId}/feeds`" class="btn-secondary !w-auto inline-flex items-center justify-center" title="Go back">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
-        <span class="sr-only">Go back</span>
+      <router-link :to="`/workspaces/${workspaceId}/feeds`" title="Go back">
+        <AppButton variant="secondary" size="sm" class="!w-auto inline-flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+          <span class="sr-only">Go back</span>
+        </AppButton>
       </router-link>
-      <router-link :to="`/workspaces/${workspaceId}/publish`" class="btn-primary !w-auto !px-3 !py-2 inline-flex items-center justify-center" title="Continue to publish">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
-        <span class="sr-only">Continue to publish</span>
+      <router-link :to="`/workspaces/${workspaceId}/publish`" title="Continue to publish">
+        <AppButton size="sm" class="!w-auto !px-3 !py-1.5 inline-flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+          <span class="sr-only">Continue to publish</span>
+        </AppButton>
       </router-link>
     </template>
 
     <!-- Post preview modal -->
-    <div v-if="previewPost" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" @click.self="previewPost = null">
-      <div class="w-full max-w-lg surface-card overflow-hidden">
+    <AppModal v-if="previewPost" :open="true" :closable="true" size="lg" @close="previewPost = null">
+      <div class="w-full">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <span
             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
             :class="statusBadgeClass(previewPost.status)"
           >{{ previewPost.status }}</span>
-          <button type="button" class="btn-secondary !w-auto !py-1 !px-2 inline-flex items-center justify-center" @click="previewPost = null" aria-label="Close preview">
+          <AppButton variant="secondary" class="!w-auto !py-1 !px-2 inline-flex items-center justify-center" @click="previewPost = null" aria-label="Close preview">
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
-          </button>
+          </AppButton>
         </div>
         <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
           <div v-if="previewPost.thumbnail_url" class="aspect-video rounded-md overflow-hidden bg-slate-100">
@@ -196,17 +201,17 @@
           </a>
         </div>
         <div class="px-4 py-3 border-t border-slate-200 flex items-center gap-2">
-          <button type="button" class="curate-btn curate-btn-approve inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'approved' }" @click="setStatus(previewPost, 'approved')" title="Approve">
+          <AppButton variant="ghost" class="curate-btn curate-btn-approve inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'approved' }" @click="setStatus(previewPost, 'approved')" title="Approve">
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" /></svg>
             <span class="sr-only">Approve</span>
-          </button>
-          <button type="button" class="curate-btn curate-btn-reject inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'rejected' }" @click="setStatus(previewPost, 'rejected')" title="Reject">
+          </AppButton>
+          <AppButton variant="ghost" class="curate-btn curate-btn-reject inline-flex items-center justify-center" :class="{ 'curate-btn-active': previewPost.status === 'rejected' }" @click="setStatus(previewPost, 'rejected')" title="Reject">
             <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" /></svg>
             <span class="sr-only">Reject</span>
-          </button>
+          </AppButton>
         </div>
       </div>
-    </div>
+    </AppModal>
   </WizardPageLayout>
 </template>
 
@@ -219,6 +224,9 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { useToastStore } from '../stores/toast';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import SocialIcon from '../components/SocialIcon.vue';
+import { AppButton, AppLoader, AppModal, AppSelect } from '../components/ui';
+
+defineOptions({ name: 'CurateView' });
 
 const toast = useToastStore();
 
@@ -279,17 +287,6 @@ function feedTypeLabel(type) {
   return type || '—';
 }
 
-function feedPlatformIcon(type) {
-  if (type === 'youtube') return '▶';
-  if (type === 'facebook') return 'f';
-  if (type === 'instagram') return '◎';
-  if (type === 'tiktok') return '♪';
-  if (type === 'threads') return '@';
-  if (type === 'rss') return '◉';
-  if (type === 'twitter') return '𝕏';
-  return '•';
-}
-
 async function refresh() {
   posts.clearList();
   const allPosts = [];
@@ -299,7 +296,7 @@ async function refresh() {
       const feedPosts = await posts.fetchAll(workspaceId.value, feed.id, { status: filterStatus.value || null });
       feedPosts.forEach(p => p._feedId = feed.id);
       allPosts.push(...feedPosts);
-    } catch (err) {
+    } catch {
       // Continue loading from other feeds
     }
   }
@@ -313,7 +310,7 @@ async function syncNow() {
     try {
       const result = await feeds.sync(workspaceId.value, Number(feed.id), { silent: true });
       totalCreated += result?.created || 0;
-    } catch (err) {
+    } catch {
       // Continue syncing other feeds
     }
   }
@@ -394,7 +391,7 @@ function cardBorderClass(status) {
 
 <style scoped>
 .curate-btn {
-  /* Match app button language (like btn-secondary), with subtle semantic accents. */
+  /* Match app button language with subtle semantic accents. */
   @apply py-1 px-2 text-xs-pro font-medium rounded-md transition;
   @apply border border-slate-200 bg-slate-100 text-slate-700;
   @apply hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2;

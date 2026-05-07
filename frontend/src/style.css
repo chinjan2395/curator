@@ -34,7 +34,7 @@
   @apply block text-2xs font-medium text-slate-600 uppercase tracking-wider mb-1.5;
 }
 .btn-primary {
-  @apply w-full py-2 text-sm-pro font-medium text-white rounded-md;
+  @apply w-full font-medium text-white rounded-md;
   @apply bg-gradient-to-r from-indigo-600 to-violet-600 shadow-[0_10px_24px_-14px_rgba(79,70,229,0.8)];
   @apply hover:from-indigo-500 hover:to-violet-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 transition;
   transform: translateY(0);
@@ -54,7 +54,7 @@
   filter: saturate(0.98);
 }
 .btn-secondary {
-  @apply py-2 px-3 text-sm-pro font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md shadow-[0_8px_18px_-18px_rgba(30,41,59,0.8)];
+  @apply font-medium text-slate-700 bg-white/90 border border-slate-200/90 rounded-md shadow-[0_8px_18px_-18px_rgba(30,41,59,0.8)];
   @apply hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 transition-colors;
   transform: translateY(0);
   transition:
@@ -71,6 +71,16 @@
 
 .btn-secondary:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.btn-danger {
+  @apply font-medium text-white bg-red-500 rounded-md transition;
+  @apply hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2;
+}
+
+.btn-ghost {
+  @apply font-medium text-slate-600 rounded-md transition;
+  @apply hover:text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2;
 }
 
 .surface-card {
@@ -143,6 +153,8 @@
 @media (prefers-reduced-motion: reduce) {
   .btn-primary,
   .btn-secondary,
+  .btn-danger,
+  .btn-ghost,
   .surface-card,
   .action-link {
     transition: none !important;

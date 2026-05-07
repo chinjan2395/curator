@@ -1,17 +1,10 @@
 <template>
   <AuthLayout title="Create account" :is-login="false">
-    <div class="space-y-4">
-      <!-- Social signup (same env-backed list as login) -->
-      <div v-if="socialLoginLoading" class="flex justify-center py-5">
-        <span class="inline-block w-5 h-5 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" aria-hidden="true" />
-      </div>
+    <AppStack direction="vertical" spacing="md">
+      <AppLoader v-if="socialLoginLoading" size="sm" />
+
       <template v-else>
-        <p
-          v-if="socialLoginNotice"
-          class="text-2xs text-amber-800 bg-amber-50 border border-amber-200/80 rounded-lg px-3 py-2"
-        >
-          {{ socialLoginNotice }}
-        </p>
+        <AppAlert v-if="socialLoginNotice" variant="warning">{{ socialLoginNotice }}</AppAlert>
 
         <template v-if="socialProviders.length">
           <div :class="socialLoginGridClass">
@@ -35,93 +28,88 @@
       </template>
 
       <form @submit.prevent="register" class="space-y-4">
-        <div>
-          <label class="label-pro">Name</label>
-          <input
+        <AppFormField label="Name" id="name" :required="true">
+          <AppInput
+            id="name"
             v-model="name"
             type="text"
-            class="input-pro"
             placeholder="Your name"
-            required
-            autocomplete="name"
           />
-        </div>
-        <div>
-          <label class="label-pro">Email</label>
-          <input
+        </AppFormField>
+
+        <AppFormField label="Email" id="email" :required="true">
+          <AppInput
+            id="email"
             v-model="email"
             type="email"
-            class="input-pro"
             placeholder="you@example.com"
-            required
-            autocomplete="email"
           />
-        </div>
-        <div>
-          <label class="label-pro">Password</label>
-          <input
+        </AppFormField>
+
+        <AppFormField label="Password" id="password" :required="true" hint="Minimum 8 characters.">
+          <AppInput
+            id="password"
             v-model="password"
             type="password"
-            class="input-pro"
             placeholder="••••••••"
-            required
-            autocomplete="new-password"
-            minlength="8"
           />
-        </div>
-        <div v-if="auth.error" class="text-2xs text-red-600">
-          {{ auth.error }}
-        </div>
-        <button type="submit" class="btn-primary mt-2">
+        </AppFormField>
+
+        <AppAlert v-if="auth.error" variant="danger">{{ auth.error }}</AppAlert>
+
+        <AppButton type="submit" variant="primary" :full="true" class="mt-2">
           Create account
-        </button>
+        </AppButton>
+
         <p class="text-2xs text-slate-500 text-center pt-2 border-t border-slate-100">
           Use a work email so your team can recognize the account.
         </p>
       </form>
-    </div>
+    </AppStack>
   </AuthLayout>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import AuthLayout from '../layouts/AuthLayout.vue';
-import { fetchEnabledSocialLoginProviders, socialLoginButtonGridClass } from '../data/socialLoginProviders';
+import { ref, watch, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+import AuthLayout from '../layouts/AuthLayout.vue'
+import { fetchEnabledSocialLoginProviders, socialLoginButtonGridClass } from '../data/socialLoginProviders'
+import { AppAlert, AppButton, AppFormField, AppInput, AppLoader } from '../components/ui/index.js'
+import { AppStack } from '../components/layout/index.js'
 
-const name = ref('');
-const email = ref('');
-const password = ref('');
-const auth = useAuthStore();
-const router = useRouter();
+const name = ref('')
+const email = ref('')
+const password = ref('')
+const auth = useAuthStore()
+const router = useRouter()
 
-const socialProviders = ref([]);
-const socialLoginNotice = ref('');
-const socialLoginLoading = ref(true);
+const socialProviders = ref([])
+const socialLoginNotice = ref('')
+const socialLoginLoading = ref(true)
 
-const socialLoginGridClass = computed(() => socialLoginButtonGridClass(socialProviders.value.length));
+const socialLoginGridClass = computed(() => socialLoginButtonGridClass(socialProviders.value.length))
 
 onMounted(async () => {
   try {
-    const { providers, notice } = await fetchEnabledSocialLoginProviders();
-    socialProviders.value = providers;
-    socialLoginNotice.value = notice;
+    const { providers, notice } = await fetchEnabledSocialLoginProviders()
+    socialProviders.value = providers
+    socialLoginNotice.value = notice
   } catch {
-    socialProviders.value = [];
-    socialLoginNotice.value = '';
+    socialProviders.value = []
+    socialLoginNotice.value = ''
   } finally {
-    socialLoginLoading.value = false;
+    socialLoginLoading.value = false
   }
-});
+})
 
 function register() {
-  auth.register(name.value, email.value, password.value);
+  auth.register(name.value, email.value, password.value)
 }
 
 watch(() => auth.token, (token) => {
-  if (token) router.push('/');
-});
+  if (token) router.push('/')
+})
 </script>
 
 <style scoped>

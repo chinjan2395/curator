@@ -1,13 +1,19 @@
 <template>
-  <div class="surface-card p-6 text-sm-pro text-slate-600">
-    Opening workspace curation…
-  </div>
+  <AppPage max-width="5xl">
+    <AppSection>
+      <AppCard>
+        <AppText>Opening workspace curation…</AppText>
+      </AppCard>
+    </AppSection>
+  </AppPage>
 </template>
 
 <script setup>
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useFeedsStore } from '../stores/feeds';
+import { AppCard, AppText } from '../components/ui';
+import { AppPage, AppSection } from '../components/layout';
 
 const route = useRoute();
 const router = useRouter();
