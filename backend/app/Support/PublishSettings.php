@@ -41,6 +41,8 @@ class PublishSettings
                 'source_row_alignment' => 'center',
                 'showcase_content_alignment' => 'start',
                 'showcase_share_icon' => 'upload_share',
+                'showcase_share_icon_color_mode' => 'post_icon',
+                'showcase_share_icon_color' => '#e2e8f0',
             ],
             'colors' => [
                 'post_icon' => '#64748b',
@@ -134,6 +136,15 @@ class PublishSettings
             str_replace('-', '_', (string) ($out['post']['showcase_share_icon'] ?? 'upload_share')),
             ['upload_share', 'arrow', 'none'],
             'upload_share',
+        );
+        $out['post']['showcase_share_icon_color_mode'] = self::enumOrFallback(
+            str_replace('-', '_', (string) ($out['post']['showcase_share_icon_color_mode'] ?? 'post_icon')),
+            ['post_icon', 'post_text', 'post_button', 'custom'],
+            'post_icon',
+        );
+        $out['post']['showcase_share_icon_color'] = self::sanitizeHexColor(
+            (string) ($out['post']['showcase_share_icon_color'] ?? '#e2e8f0'),
+            '#e2e8f0',
         );
 
         foreach (['post_icon', 'post_text', 'post_date', 'post_link', 'post_button'] as $key) {
