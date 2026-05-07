@@ -28,7 +28,7 @@
   var showLoadMore = feedOpts.show_load_more !== false;
 
   var SHARE_SHOWCASE_UPLOAD =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>';
+    '<svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.65875 0.821899V13.0736L17.2182 6.94777L9.65875 0.821899Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M0.138031 13.1146C0.138031 8.46583 3.7997 4.60382 10.2833 4.60382V9.39066C10.2833 9.39066 6.07325 8.10554 1.03012 13.1146C0.76259 13.1439 0.138031 13.1146 0.138031 13.1146Z" fill="currentColor"></path></svg>';
 
   var SHARE_SHOWCASE_ARROW =
     '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M17 7H9M17 7v8"/></svg>';
@@ -218,16 +218,16 @@
 
     var shareEl = null;
     if (shareMode !== 'none' && shareUrl && shareUrl !== '#') {
-      shareEl = document.createElement('a');
-      shareEl.className = 'crt-showcase-share-btn';
-      shareEl.href =
-        'https://twitter.com/intent/tweet?url=' + encodeURIComponent(String(shareUrl));
-      shareEl.target = '_blank';
-      shareEl.rel = 'noreferrer';
-      shareEl.setAttribute('aria-label', 'Share');
-      shareEl.innerHTML = shareMode === 'arrow' ? SHARE_SHOWCASE_ARROW : SHARE_SHOWCASE_UPLOAD;
-      shareEl.addEventListener('click', function (e) {
-        e.stopPropagation();
+      shareEl = buildShareTooltip({
+        url: shareUrl,
+        wrapperClass: 'crt-showcase-share',
+        triggerClass: 'crt-showcase-share-btn',
+        menuClass: 'crt-showcase-share-tooltip',
+        triggerHtml: shareMode === 'arrow' ? SHARE_SHOWCASE_ARROW : SHARE_SHOWCASE_UPLOAD,
+        providers: [
+          { provider: 'twitter', label: 'Share on X' },
+          { provider: 'facebook', label: 'Share on Facebook' },
+        ],
       });
     }
 
@@ -320,6 +320,85 @@
     return wrap;
   }
 
+  function shareTargetUrl(provider, url) {
+    var enc = encodeURIComponent(String(url || ''));
+    if (provider === 'facebook') return 'https://www.facebook.com/sharer/sharer.php?u=' + enc;
+    if (provider === 'linkedin') return 'https://www.linkedin.com/sharing/share-offsite/?url=' + enc;
+    return 'https://twitter.com/intent/tweet?url=' + enc;
+  }
+
+  function openShare(provider, url) {
+    window.open(shareTargetUrl(provider, url), '_blank', 'noopener,noreferrer');
+  }
+
+  function sharePlatformSvg(provider) {
+    var p = String(provider || '').toLowerCase();
+    if (p === 'twitter') {
+      return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L.8 2h6.5l4.4 5.9L18.9 2Z" /></svg>';
+    }
+    if (p === 'facebook') {
+      return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7v-3.5h3.1V9.4c0-3.1 1.9-4.8 4.7-4.8 1.3 0 2.6.2 2.6.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.3h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12Z" /></svg>';
+    }
+    if (p === 'linkedin') {
+      return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.05-1.86-3.05-1.86 0-2.14 1.45-2.14 2.95v5.67H9.33V9h3.42v1.56h.05c.48-.9 1.63-1.86 3.36-1.86 3.59 0 4.25 2.36 4.25 5.42v6.33ZM5.31 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14ZM7.09 20.45H3.54V9h3.55v11.45Z"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/></svg>';
+  }
+
+  function buildShareTooltip(options) {
+    var wrap = document.createElement('div');
+    wrap.className = options.wrapperClass;
+    wrap.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    wrap.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = options.triggerClass;
+    trigger.setAttribute('aria-label', 'Share');
+    trigger.title = 'Share';
+    trigger.innerHTML = options.triggerHtml || SHARE_SHOWCASE_UPLOAD;
+
+    var menu = document.createElement('div');
+    menu.className = options.menuClass;
+
+    function closeMenu() {
+      menu.classList.remove('is-open');
+    }
+
+    (options.providers || []).forEach(function (entry) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'crt-showcase-share-platform';
+      btn.setAttribute('aria-label', entry.label);
+      btn.title = entry.label;
+      btn.innerHTML = sharePlatformSvg(entry.provider);
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openShare(entry.provider, options.url);
+        closeMenu();
+      });
+      menu.appendChild(btn);
+    });
+
+    trigger.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      menu.classList.toggle('is-open');
+    });
+
+    document.addEventListener('click', closeMenu);
+    wrap.appendChild(trigger);
+    wrap.appendChild(menu);
+    return wrap;
+  }
+
   function renderStandardSourceRow(p) {
     var showIcon = postOpts.show_platform_icon !== false;
     var showName = postOpts.show_feed_name !== false;
@@ -378,6 +457,14 @@
     } else {
       el.style.setProperty('--crt-card-bg', 'transparent');
     }
+    var mode = normalizeUnderscore(postOpts.showcase_share_icon_color_mode || 'post_icon');
+    var shareColor = c.post_icon || '#64748b';
+    if (mode === 'post_text') shareColor = c.post_text || '#0f172a';
+    else if (mode === 'post_button') shareColor = c.post_button || '#0f172a';
+    else if (mode === 'custom') {
+      shareColor = postOpts.showcase_share_icon_color || c.post_icon || '#64748b';
+    }
+    el.style.setProperty('--crt-showcase-share-color', shareColor);
   }
 
   function ensureInner(container) {
@@ -483,25 +570,17 @@
 
   function shareBar(url) {
     if (!url || url === '#') return null;
-    var enc = encodeURIComponent(url);
-    var bar = document.createElement('div');
-    bar.className = 'crt-share';
-    var links = [
-      { h: 'https://twitter.com/intent/tweet?url=' + enc, t: '𝕏' },
-      { h: 'https://www.facebook.com/sharer/sharer.php?u=' + enc, t: 'f' },
-      { h: 'https://www.linkedin.com/sharing/share-offsite/?url=' + enc, t: 'in' },
-    ];
-    links.forEach(function (L) {
-      var a = document.createElement('a');
-      a.href = L.h;
-      a.target = '_blank';
-      a.rel = 'noreferrer';
-      a.className = 'crt-share-link';
-      a.textContent = L.t;
-      a.title = 'Share';
-      bar.appendChild(a);
+    return buildShareTooltip({
+      url: url,
+      wrapperClass: 'crt-share',
+      triggerClass: 'crt-share-link crt-share-link--trigger',
+      menuClass: 'crt-share-tooltip',
+      triggerHtml: SHARE_SHOWCASE_UPLOAD,
+      providers: [
+        { provider: 'twitter', label: 'Share on X' },
+        { provider: 'facebook', label: 'Share on Facebook' },
+      ],
     });
-    return bar;
   }
 
   function metaRow(p) {
