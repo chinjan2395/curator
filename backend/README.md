@@ -135,6 +135,7 @@ Verify:
 - Feeds:
   - `GET/POST /api/workspaces/{workspace}/feeds`
   - `GET/PUT/DELETE /api/workspaces/{workspace}/feeds/{feed}`
+  - `PATCH /api/workspaces/{workspace}/feeds/{feed}/sync-settings` (updates `auto_publish_new_posts` only; allowed even when the feed has approved posts)
   - `POST /api/workspaces/{workspace}/feeds/{feed}/sync`
   - Provider helper endpoints:
     - `GET /api/workspaces/{workspace}/feeds/youtube/channels`
@@ -176,14 +177,19 @@ Implemented feed types:
 - `rss`: parses RSS 2.0 and Atom feeds from `source_url`
 - other types currently use stub sample post generation
 
-Synced posts are upserted by `external_id` and default to `status=pending`.
+Synced posts are upserted by `external_id`. Content fields refresh on every sync; `status`, `pinned`, and `published_at` are set **only on first insert** so manual curation is preserved. New inserts default to `pending` unless the feed has `auto_publish_new_posts` enabled (then they are `approved` with `published_at` set and the workspace `public_key` is ensured for embed URLs).
+
+## Scheduler and queues
+
+- `bootstrap/app.php` schedules **sync-all-feeds** every fifteen minutes. Each run dispatches a queued `SyncFeedJob` per feed (see `App\Jobs\SyncFeedJob`).
+- Production and staging need **both**: cron running `php artisan schedule:run` (typically every minute) and a worker running `php artisan queue:work` (or Horizon) so jobs execute. Without a worker, periodic sync will queue but not run.
 
 ## Curation + Publish Rules
 
 - Curation updates post `status` (`pending`, `approved`, `rejected`) and `pinned`.
 - Publish marks approved + unpublished posts with `published_at`.
-- Public feed endpoint returns only published posts.
-- Feed edit/delete is blocked when feed has approved posts.
+- Public feed endpoint returns posts that are **approved** and have `published_at` set.
+- Feed edit/delete is blocked when feed has approved posts (use `PATCH .../sync-settings` to toggle auto-publish independently).
 
 ## Embed
 
@@ -203,4 +209,4 @@ Run test suite:
 php artisan test
 ```
 
-There is a feature test for TikTok integration in `tests/Feature/TikTokIntegrationTest.php`.
+Feature tests include `tests/Feature/TikTokIntegrationTest.php` and `tests/Feature/FeedAutoPublishTest.php`.

@@ -9,12 +9,12 @@ use App\Http\Requests\Sync\TestRssRequest;
 use App\Http\Requests\Sync\TestYouTubeRequest;
 use App\Http\Resources\ApiResponse;
 use App\Models\Feed;
-use App\Models\Post;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
 use App\Repositories\Contracts\SocialCredentialRepositoryInterface;
 use App\Services\FeedSyncService;
 use App\Support\ActivityLogger;
+use App\Support\PostSyncUpsert;
 use App\Sync\FacebookSyncer;
 use App\Sync\InstagramSyncer;
 use App\Sync\RssSyncer;
@@ -296,16 +296,12 @@ class FeedSyncController extends Controller
         $created = 0;
 
         for ($i = 0; $i < $count; $i++) {
-            Post::create([
-                'feed_id'     => $feed->id,
-                'title'       => ucfirst($feed->type) . ' sample post',
-                'content'     => $this->sampleContent($feed->type),
+            PostSyncUpsert::apply($feed, $feed->type.'-'.Str::random(10), [
+                'title' => ucfirst($feed->type).' sample post',
+                'content' => $this->sampleContent($feed->type),
                 'thumbnail_url' => null,
-                'video_url'   => null,
-                'posted_at'   => $now->copy()->subMinutes($i * 37),
-                'external_id' => $feed->type . '-' . Str::random(10),
-                'status'      => 'pending',
-                'pinned'      => false,
+                'video_url' => null,
+                'posted_at' => $now->copy()->subMinutes($i * 37),
             ]);
             $created++;
         }

@@ -3,7 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\Post;
+use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use App\Support\OAuthAppConfigResolver;
 use App\Sync\Concerns\ResolvesFacebookPage;
@@ -153,18 +153,13 @@ class FacebookSyncer
             $body = $message !== '' ? $message : $story;
             $title = $body !== '' ? mb_substr($body, 0, 120) : 'Facebook post';
 
-            Post::updateOrCreate(
-                ['feed_id' => $feed->id, 'external_id' => $externalId],
-                [
-                    'title' => $title,
-                    'content' => $body,
-                    'thumbnail_url' => $this->thumbnail($post),
-                    'video_url' => $post['permalink_url'] ?? null,
-                    'posted_at' => $post['created_time'] ?? null,
-                    'status' => 'pending',
-                    'pinned' => false,
-                ]
-            );
+            PostSyncUpsert::apply($feed, (string) $externalId, [
+                'title' => $title,
+                'content' => $body,
+                'thumbnail_url' => $this->thumbnail($post),
+                'video_url' => $post['permalink_url'] ?? null,
+                'posted_at' => $post['created_time'] ?? null,
+            ]);
             $created++;
         }
 

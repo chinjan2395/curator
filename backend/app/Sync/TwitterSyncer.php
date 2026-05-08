@@ -3,7 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\Post;
+use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -125,18 +125,13 @@ class TwitterSyncer
                 }
             }
 
-            Post::updateOrCreate(
-                ['feed_id' => $feed->id, 'external_id' => (string) $externalId],
-                [
-                    'title' => $title,
-                    'content' => $body,
-                    'thumbnail_url' => $thumb,
-                    'video_url' => 'https://x.com/i/web/status/'.rawurlencode((string) $externalId),
-                    'posted_at' => $tweet['created_at'] ?? null,
-                    'status' => 'pending',
-                    'pinned' => false,
-                ]
-            );
+            PostSyncUpsert::apply($feed, (string) $externalId, [
+                'title' => $title,
+                'content' => $body,
+                'thumbnail_url' => $thumb,
+                'video_url' => 'https://x.com/i/web/status/'.rawurlencode((string) $externalId),
+                'posted_at' => $tweet['created_at'] ?? null,
+            ]);
             $created++;
         }
 

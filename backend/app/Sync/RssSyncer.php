@@ -3,7 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\Post;
+use App\Support\PostSyncUpsert;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 
@@ -57,18 +57,13 @@ class RssSyncer
                 continue;
             }
 
-            Post::updateOrCreate(
-                ['feed_id' => $feed->id, 'external_id' => $item['external_id']],
-                [
-                    'title' => $item['title'] ?? null,
-                    'content' => $item['content'] ?? '',
-                    'thumbnail_url' => $item['thumbnail_url'] ?? null,
-                    'video_url' => $item['url'] ?? null,
-                    'posted_at' => $item['posted_at'] ?? null,
-                    'status' => 'pending',
-                    'pinned' => false,
-                ]
-            );
+            PostSyncUpsert::apply($feed, (string) $item['external_id'], [
+                'title' => $item['title'] ?? null,
+                'content' => $item['content'] ?? '',
+                'thumbnail_url' => $item['thumbnail_url'] ?? null,
+                'video_url' => $item['url'] ?? null,
+                'posted_at' => $item['posted_at'] ?? null,
+            ]);
             $created++;
         }
 

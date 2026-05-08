@@ -41,7 +41,9 @@ class FeedServiceTest extends TestCase
                 return $payload['name'] === 'RSS Feed'
                     && $payload['type'] === 'rss'
                     && $payload['source_url'] === 'https://example.com/rss.xml'
-                    && $payload['social_credential_id'] === null;
+                    && $payload['social_credential_id'] === null
+                    && isset($payload['auto_publish_new_posts'])
+                    && $payload['auto_publish_new_posts'] === false;
             }))
             ->andReturn($expectedFeed);
 

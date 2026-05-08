@@ -3,7 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\Post;
+use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -116,18 +116,13 @@ class TikTokSyncer
             $body = trim($title."\n\n".$description) ?: 'TikTok video';
             $resolvedTitle = $title !== '' ? $title : (mb_substr($description, 0, 120) ?: 'TikTok video');
 
-            Post::updateOrCreate(
-                ['feed_id' => $feed->id, 'external_id' => $externalId],
-                [
-                    'title' => $resolvedTitle,
-                    'content' => $body,
-                    'thumbnail_url' => $video['cover_image_url'] ?? null,
-                    'video_url' => $video['share_url'] ?? null,
-                    'posted_at' => $this->normalizePostedAt($video['create_time'] ?? null),
-                    'status' => 'pending',
-                    'pinned' => false,
-                ]
-            );
+            PostSyncUpsert::apply($feed, $externalId, [
+                'title' => $resolvedTitle,
+                'content' => $body,
+                'thumbnail_url' => $video['cover_image_url'] ?? null,
+                'video_url' => $video['share_url'] ?? null,
+                'posted_at' => $this->normalizePostedAt($video['create_time'] ?? null),
+            ]);
             $created++;
         }
 

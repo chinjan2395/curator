@@ -3,7 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\Post;
+use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use App\Support\OAuthAppConfigResolver;
 use App\Sync\Concerns\ResolvesFacebookPage;
@@ -187,18 +187,13 @@ class InstagramSyncer
             $mediaUrl = $item['media_url'] ?? null;
             $link = is_string($permalink) && $permalink !== '' ? $permalink : (is_string($mediaUrl) ? $mediaUrl : null);
 
-            Post::updateOrCreate(
-                ['feed_id' => $feed->id, 'external_id' => (string) $externalId],
-                [
-                    'title' => $title,
-                    'content' => $caption,
-                    'thumbnail_url' => $thumb,
-                    'video_url' => $link,
-                    'posted_at' => $item['timestamp'] ?? null,
-                    'status' => 'pending',
-                    'pinned' => false,
-                ]
-            );
+            PostSyncUpsert::apply($feed, (string) $externalId, [
+                'title' => $title,
+                'content' => $caption,
+                'thumbnail_url' => $thumb,
+                'video_url' => $link,
+                'posted_at' => $item['timestamp'] ?? null,
+            ]);
             $created++;
         }
 
