@@ -27,7 +27,10 @@ class FeedService
         $data = $this->dtoToArray($dto);
         $this->validateProviderConstraints($data, $user->id);
 
-        return $this->feedRepository->create($workspace, $this->buildFeedPayload($data));
+        return $this->feedRepository->create($workspace, array_merge(
+            $this->buildFeedPayload($data),
+            ['auto_publish_new_posts' => $dto->autoPublishNewPosts],
+        ));
     }
 
     public function updateFeed(Feed $feed, FeedData $dto, User $user): Feed

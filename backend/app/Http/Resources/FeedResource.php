@@ -22,6 +22,7 @@ class FeedResource extends JsonResource
             'facebook_page_id'               => $this->facebook_page_id,
             'instagram_business_account_id'  => $this->instagram_business_account_id,
             'twitter_username'               => $this->twitter_username,
+            'auto_publish_new_posts'         => (bool) $this->auto_publish_new_posts,
             'last_synced_at'                 => $this->last_synced_at,
             'created_at'                     => $this->created_at,
             'updated_at'                     => $this->updated_at,

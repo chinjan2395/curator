@@ -21,6 +21,7 @@ class Feed extends Model
         'instagram_business_account_id',
         'twitter_username',
         'last_synced_at',
+        'auto_publish_new_posts',
         'public_key',
         'publish_settings',
         'last_published_at',
@@ -28,6 +29,7 @@ class Feed extends Model
 
     protected $casts = [
         'last_synced_at' => 'datetime',
+        'auto_publish_new_posts' => 'boolean',
         'last_published_at' => 'datetime',
         'publish_settings' => 'array',
     ];

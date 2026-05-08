@@ -252,31 +252,48 @@
     var wrap = document.createElement('span');
     wrap.className = 'crt-showcase-provider-icon';
     wrap.setAttribute('aria-hidden', 'true');
-    var svg = '';
-    if (p === 'youtube') {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="40" viewBox="0 0 56 40" fill="none"><rect width="56" height="40" rx="8" fill="#FF0000"/><path d="M23 12v16l14-8-14-8z" fill="#fff"/></svg>';
-    } else if (p === 'facebook') {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="22" fill="#1877F2"/><path d="M24.5 15.2h2.9v-3.4c0-.1 0-1.6.5-2.8.5-1.3 1.5-2.6 3.6-2.6 2.9 0 4.2.4 4.2.4l-.6 3.5s-1-.3-2-.3c-1 0-1.2.5-1.2 1.2v3h4l-.3 3.4h-3.7V37h-4.5V21.6h-3v-3.4h3V15.2z" fill="#fff"/></svg>';
-    } else if (p === 'instagram') {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="#E4405F"/><path d="M24 14.5c3.5 0 3.9 0 5.3.1 2.6.1 3.8 1.2 3.9 3.9 0 1.4.1 1.8.1 5.3s0 3.9-.1 5.3c-.1 2.7-1.3 3.8-3.9 3.9-1.4 0-1.8.1-5.3.1s-3.9 0-5.3-.1c-2.6-.1-3.8-1.2-3.9-3.9 0-1.4-.1-1.8-.1-5.3s0-3.9.1-5.3c.1-2.7 1.3-3.8 3.9-3.9 1.4-.1 1.8-.1 5.3-.1zm0-2.4c-3.6 0-4 0-5.4.1-3.8.2-5.8 2.1-6 6-.1 1.4-.1 1.8-.1 5.4s0 4 .1 5.4c.2 3.8 2.2 5.8 6 6 1.4.1 1.8.1 5.4.1s4 0 5.4-.1c3.8-.2 5.8-2.2 6-6 .1-1.4.1-1.8.1-5.4s0-4-.1-5.4c-.2-3.8-2.2-5.8-6-6-1.4-.1-1.8-.1-5.4-.1zm0 6.6a8.5 8.5 0 100 17 8.5 8.5 0 000-17zm0 14a5.5 5.5 0 110-11 5.5 5.5 0 010 11zm10.8-14.3a2 2 0 11-4 0 2 2 0 014 0z" fill="#fff"/></svg>';
-    } else if (p === 'tiktok') {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="22" fill="#000"/><path d="M26 12v5.2c-1.6-.9-3.5-1.2-5.3-.9v4.2c1.2-.2 2.5 0 3.6.6 1.3.7 2.2 2 2.5 3.5.4 2.1-.3 4.3-1.9 5.7-2 1.8-5.2 1.8-7.2 0-1.6-1.5-2.3-3.7-1.9-5.8h4.1c-.2 1.1.4 2.2 1.4 2.7 1.1.6 2.5.3 3.2-.7.6-.9.5-2.2-.3-2.9-.9-.8-2.3-.9-3.3-.2V12h4z" fill="#fff"/></svg>';
-    } else if (p === 'twitter') {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="22" fill="#000"/><path d="M13 13h5l5.4 7.3L29 13h4l-7.8 10.4L34 31h-5l-6-8.1L15 31h-4l8.4-11.2L13 13z" fill="#fff"/></svg>';
-    } else if (p === 'threads') {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#101419"/><path d="M12.2 7.5c-2.8 0-4.8 1.4-5.5 3.6-.2.6-.3 1.2-.3 1.9 0 2.6 1.6 4.4 4.2 4.8 1.2.2 2.4-.1 3.3-.7a3.7 3.7 0 001.4-2.4h-2.1c-.3 1.1-1.2 1.8-2.5 1.8-1.6 0-2.6-1.1-2.6-2.9 0-2 1.3-3.4 3.4-3.4 1 0 1.8.4 2.3 1l1.5-.9c-.9-1.2-2.4-1.9-4.2-1.9z" fill="#fff"/></svg>';
-    } else {
-      svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="22" fill="rgba(255,255,255,.2)"/><circle cx="22" cy="22" r="8" stroke="#fff" stroke-width="2" fill="none"/></svg>';
-    }
-    wrap.innerHTML = svg;
+    wrap.style.color = providerBrandColor(p);
+    wrap.innerHTML = providerGlyphSvg(p, 44);
     return wrap;
+  }
+
+  function providerBrandColor(provider) {
+    var p = String(provider || '').toLowerCase();
+    if (p === 'youtube') return '#FF0000';
+    if (p === 'facebook') return '#1877F2';
+    if (p === 'instagram') return '#E4405F';
+    if (p === 'tiktok') return '#000000';
+    if (p === 'twitter') return '#000000';
+    if (p === 'threads') return '#101419';
+    if (p === 'rss') return '#ea580c';
+    return 'currentColor';
+  }
+
+  function providerGlyphSvg(provider, size) {
+    var p = String(provider || '').toLowerCase();
+    var s = String(size || 22);
+    if (p === 'youtube') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.7 3.6 12 3.6 12 3.6s-7.7 0-9.4.5A3 3 0 0 0 .5 6.2 31.8 31.8 0 0 0 0 12a31.8 31.8 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.7.5 9.4.5 9.4.5s7.7 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.8 31.8 0 0 0 24 12a31.8 31.8 0 0 0-.5-5.8ZM9.6 15.6V8.4L16 12l-6.4 3.6Z" /></svg>';
+    }
+    if (p === 'twitter') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L.8 2h6.5l4.4 5.9L18.9 2Z" /></svg>';
+    }
+    if (p === 'facebook') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7v-3.5h3.1V9.4c0-3.1 1.9-4.8 4.7-4.8 1.3 0 2.6.2 2.6.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.3h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12Z" /></svg>';
+    }
+    if (p === 'instagram') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm8.2 2H8a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V8a4 4 0 0 0-4-4Zm-4 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Zm5-3a1.1 1.1 0 1 1-1.1 1.1A1.1 1.1 0 0 1 17 6.5Z" /></svg>';
+    }
+    if (p === 'tiktok') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2c.4 2.1 1.6 3.8 3.7 4.6.9.3 1.8.5 2.7.4v3.1a9.6 9.6 0 0 1-3.7-.8V15a7 7 0 1 1-7-7c.4 0 .8 0 1.2.1v3.2a3.9 3.9 0 1 0 2.9 3.7V2h2.2Z" /></svg>';
+    }
+    if (p === 'threads') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.2 2C6.7 2 3 5.7 3 11.7v.6C3 18.3 6.7 22 12.2 22c2.6 0 4.7-.6 6.3-1.8a6.4 6.4 0 0 0 2.5-4.6c.2-2.6-1.4-4.5-4.2-5.1a4.4 4.4 0 0 0-1.4-2.6c-.9-.7-2.1-1-3.6-1-1.7 0-3 .5-4 1.5-.5.5-.9 1.2-1.1 1.9l1.8.7c.2-.4.4-.8.7-1.1.6-.6 1.4-.9 2.5-.9.9 0 1.6.2 2.1.6.4.3.7.7.9 1.3a16 16 0 0 0-2.5-.1c-1.6.1-2.8.5-3.7 1.3-.9.8-1.3 1.8-1.2 3 .1 1.3.7 2.3 1.7 3 .9.6 2 .9 3.2.8a5 5 0 0 0 3.4-1.4c.7-.7 1.2-1.6 1.4-2.6 1.5.5 2.3 1.5 2.2 2.9-.1 1-.6 1.9-1.5 2.5-1.1.8-2.7 1.2-4.7 1.2-4.4 0-7.2-2.7-7.2-7.6v-.6C5 7.5 7.7 4.7 12.2 4.7c4.4 0 7.1 2.7 7.2 7.4l1.8-.5C20.9 5.7 17.4 2 12.2 2Zm.4 9.7c.7 0 1.4 0 2 .1-.2 1.7-1.1 2.7-2.7 2.8-.7 0-1.3-.1-1.7-.4-.5-.3-.7-.7-.7-1.2 0-.5.2-.8.6-1.1.5-.3 1.3-.5 2.5-.2Z"/></svg>';
+    }
+    if (p === 'rss') {
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 17a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-4-9v4a11 11 0 0 1 11 11h4C15 14.2 8.8 8 0 8Zm0-8v4c14.4 0 20 5.6 20 20h4C24 7.7 16.3 0 0 0Z" /></svg>';
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.7 9h-3.2a15.5 15.5 0 0 0-1-5 8 8 0 0 1 4.2 5ZM12 4.2c.8 1 1.8 3.1 2.3 6H9.7c.5-2.9 1.5-5 2.3-6ZM4.3 13h3.2a15.5 15.5 0 0 0 1 5 8 8 0 0 1-4.2-5Zm3.2-2H4.3a8 8 0 0 1 4.2-5 15.5 15.5 0 0 0-1 5Zm4.5 8.8c-.8-1-1.8-3.1-2.3-6h4.6c-.5 2.9-1.5 5-2.3 6Zm2.8-1.8a15.5 15.5 0 0 0 1-5h3.2a8 8 0 0 1-4.2 5Z" /></svg>';
   }
 
   function youtubeId(url) {
@@ -288,35 +305,16 @@
 
   function platformInlineSvg(provider) {
     var p = String(provider || '').toLowerCase();
-    if (p === 'youtube') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 56 40" fill="none" aria-hidden="true"><rect width="56" height="40" rx="8" fill="#FF0000"/><path d="M23 12v16l14-8-14-8z" fill="#fff"/></svg>';
-    }
-    if (p === 'facebook') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 44 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="22" fill="#1877F2"/><path d="M24.5 15.2h2.9v-3.4c0-.1 0-1.6.5-2.8.5-1.3 1.5-2.6 3.6-2.6 2.9 0 4.2.4 4.2.4l-.6 3.5s-1-.3-2-.3c-1 0-1.2.5-1.2 1.2v3h4l-.3 3.4h-3.7V37h-4.5V21.6h-3v-3.4h3V15.2z" fill="#fff"/></svg>';
-    }
-    if (p === 'instagram') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#E4405F"/><path d="M24 14.5c3.5 0 3.9 0 5.3.1 2.6.1 3.8 1.2 3.9 3.9 0 1.4.1 1.8.1 5.3s0 3.9-.1 5.3c-.1 2.7-1.3 3.8-3.9 3.9-1.4 0-1.8.1-5.3.1s-3.9 0-5.3-.1c-2.6-.1-3.8-1.2-3.9-3.9 0-1.4-.1-1.8-.1-5.3s0-3.9.1-5.3c.1-2.7 1.3-3.8 3.9-3.9 1.4-.1 1.8-.1 5.3-.1zm0-2.4c-3.6 0-4 0-5.4.1-3.8.2-5.8 2.1-6 6-.1 1.4-.1 1.8-.1 5.4s0 4 .1 5.4c.2 3.8 2.2 5.8 6 6 1.4.1 1.8.1 5.4.1s4 0 5.4-.1c3.8-.2 5.8-2.2 6-6 .1-1.4.1-1.8.1-5.4s0-4-.1-5.4c-.2-3.8-2.2-5.8-6-6-1.4-.1-1.8-.1-5.4-.1zm0 6.6a8.5 8.5 0 100 17 8.5 8.5 0 000-17zm0 14a5.5 5.5 0 110-11 5.5 5.5 0 010 11zm10.8-14.3a2 2 0 11-4 0 2 2 0 014 0z" fill="#fff"/></svg>';
-    }
-    if (p === 'tiktok') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 44 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="22" fill="#000"/><path d="M26 12v5.2c-1.6-.9-3.5-1.2-5.3-.9v4.2c1.2-.2 2.5 0 3.6.6 1.3.7 2.2 2 2.5 3.5.4 2.1-.3 4.3-1.9 5.7-2 1.8-5.2 1.8-7.2 0-1.6-1.5-2.3-3.7-1.9-5.8h4.1c-.2 1.1.4 2.2 1.4 2.7 1.1.6 2.5.3 3.2-.7.6-.9.5-2.2-.3-2.9-.9-.8-2.3-.9-3.3-.2V12h4z" fill="#fff"/></svg>';
-    }
-    if (p === 'twitter') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 44 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="22" fill="#000"/><path d="M13 13h5l5.4 7.3L29 13h4l-7.8 10.4L34 31h-5l-6-8.1L15 31h-4l8.4-11.2L13 13z" fill="#fff"/></svg>';
-    }
-    if (p === 'threads') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#101419"/><path d="M12.2 7.5c-2.8 0-4.8 1.4-5.5 3.6-.2.6-.3 1.2-.3 1.9 0 2.6 1.6 4.4 4.2 4.8 1.2.2 2.4-.1 3.3-.7a3.7 3.7 0 001.4-2.4h-2.1c-.3 1.1-1.2 1.8-2.5 1.8-1.6 0-2.6-1.1-2.6-2.9 0-2 1.3-3.4 3.4-3.4 1 0 1.8.4 2.3 1l1.5-.9c-.9-1.2-2.4-1.9-4.2-1.9z" fill="#fff"/></svg>';
-    }
-    if (p === 'rss') {
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="#ea580c" d="M4 17a3 3 0 100 6 3 3 0 000-6zm-4-9v3c7.2 0 13 5.8 13 13h3C16 12.8 8.2 5 0 5zm0-5v3c11 0 20 9 20 20h3C23 9.9 14.1 0 0 0z"/></svg>';
-    }
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.75"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
+    return providerGlyphSvg(p, 22);
   }
 
   function platformIconInlineEl(provider) {
+    var p = String(provider || '').toLowerCase();
     var wrap = document.createElement('span');
     wrap.className = 'crt-platform-badge crt-platform-badge--inline';
     wrap.setAttribute('aria-hidden', 'true');
-    wrap.innerHTML = platformInlineSvg(provider);
+    wrap.style.color = providerBrandColor(p);
+    wrap.innerHTML = platformInlineSvg(p);
     return wrap;
   }
 
@@ -554,8 +552,20 @@
     if (p.thumbnail_url) {
       var img = document.createElement('img');
       img.src = p.thumbnail_url;
-      img.alt = p.title || 'Post';
+      img.alt = '';
       img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      img.addEventListener('error', function () {
+        try {
+          if (img.parentNode) img.parentNode.removeChild(img);
+        } catch (e) {}
+        if (!wrap.querySelector('.crt-media-ph')) {
+          var ph = document.createElement('div');
+          ph.className = 'crt-media-ph';
+          ph.textContent = 'Image unavailable';
+          wrap.appendChild(ph);
+        }
+      });
       wrap.appendChild(img);
       return wrap;
     }

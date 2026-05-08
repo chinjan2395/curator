@@ -23,6 +23,7 @@ class PublicFeedController extends Controller
 
         $baseQuery = Post::query()
             ->whereIn('feed_id', $workspaceFeedIds)
+            ->where('status', 'approved')
             ->whereNotNull('published_at')
             ->orderByDesc('pinned')
             ->orderByDesc('posted_at');

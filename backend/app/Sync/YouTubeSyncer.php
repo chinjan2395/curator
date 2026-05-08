@@ -3,8 +3,8 @@
 namespace App\Sync;
 
 use App\Models\Feed;
-use App\Models\Post;
 use App\Models\SocialCredential;
+use App\Support\PostSyncUpsert;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 
@@ -114,18 +114,13 @@ class YouTubeSyncer
                 ?? $snippet['thumbnails']['default']['url']
                 ?? null;
 
-            Post::updateOrCreate(
-                ['feed_id' => $feed->id, 'external_id' => $videoId],
-                [
-                    'title' => $title,
-                    'content' => trim($title."\n\n".$description),
-                    'thumbnail_url' => $thumb,
-                    'video_url' => 'https://www.youtube.com/watch?v='.$videoId,
-                    'posted_at' => $publishedAt,
-                    'status' => 'pending',
-                    'pinned' => false,
-                ]
-            );
+            PostSyncUpsert::apply($feed, (string) $videoId, [
+                'title' => $title,
+                'content' => trim($title."\n\n".$description),
+                'thumbnail_url' => $thumb,
+                'video_url' => 'https://www.youtube.com/watch?v='.$videoId,
+                'posted_at' => $publishedAt,
+            ]);
             $created++;
         }
 

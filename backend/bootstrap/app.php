@@ -4,8 +4,8 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Jobs\SyncFeedJob;
 use App\Models\Feed;
-use App\Services\FeedSyncService;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,11 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->call(function () {
-            $service = app(FeedSyncService::class);
-            Feed::with('socialCredential')->chunk(50, function ($feeds) use ($service) {
+        $schedule->call(function (): void {
+            Feed::query()->select('id')->chunkById(50, function ($feeds): void {
                 foreach ($feeds as $feed) {
-                    $service->syncFeed($feed);
+                    SyncFeedJob::dispatch($feed->id);
                 }
             });
         })->everyFifteenMinutes()->name('sync-all-feeds')->withoutOverlapping();

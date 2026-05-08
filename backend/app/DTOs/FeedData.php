@@ -15,6 +15,7 @@ class FeedData
         public readonly ?string $instagramBusinessAccountId,
         public readonly ?string $instagramUsername,
         public readonly ?string $twitterUsername,
+        public readonly bool $autoPublishNewPosts = false,
     ) {}
 
     public static function fromArray(array $data): self
@@ -30,6 +31,7 @@ class FeedData
             instagramBusinessAccountId:    $data['instagram_business_account_id'] ?? null,
             instagramUsername:             $data['instagram_username'] ?? null,
             twitterUsername:               $data['twitter_username'] ?? null,
+            autoPublishNewPosts:           filter_var($data['auto_publish_new_posts'] ?? false, FILTER_VALIDATE_BOOL),
         );
     }
 }

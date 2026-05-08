@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\FeedSyncController;
+use App\Http\Controllers\FeedSyncSettingsController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SocialConnectController;
 use App\Http\Controllers\SocialCredentialController;
@@ -45,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/sync-summary', [UserSyncSummaryController::class, 'show']);
     Route::apiResource('workspaces', WorkspaceController::class);
     Route::apiResource('workspaces.feeds', FeedController::class);
+    Route::patch('workspaces/{workspace}/feeds/{feed}/sync-settings', [FeedSyncSettingsController::class, 'patch']);
     Route::post('workspaces/{workspace}/feeds/{feed}/sync', [FeedSyncController::class, 'sync']);
     Route::post('workspaces/{workspace}/feeds/test-youtube', [FeedSyncController::class, 'testYouTube']);
     Route::get('workspaces/{workspace}/feeds/youtube/channels', [FeedSyncController::class, 'youtubeChannels']);

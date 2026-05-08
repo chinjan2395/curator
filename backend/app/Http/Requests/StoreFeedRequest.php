@@ -24,6 +24,7 @@ class StoreFeedRequest extends FormRequest
             'instagram_business_account_id'  => ['nullable', 'string', 'max:255'],
             'instagram_username'             => ['nullable', 'string', 'max:80'],
             'twitter_username'               => ['nullable', 'string', 'max:32'],
+            'auto_publish_new_posts'        => ['sometimes', 'boolean'],
         ];
     }
 }
