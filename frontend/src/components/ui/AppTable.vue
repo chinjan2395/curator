@@ -18,7 +18,7 @@ defineProps({
 
 <template>
   <div class="table-shell">
-    <div class="overflow-x-auto">
+    <div class="table-scroll">
       <table class="w-full text-sm">
         <thead class="table-head">
           <tr>

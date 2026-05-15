@@ -10,13 +10,14 @@ defineProps({
   valueKey: { type: String, default: 'value' },
   labelKey: { type: String, default: 'label' },
   id: { type: String, default: '' },
+  wrapperClass: { type: String, default: '' },
 })
 
 defineEmits(['update:modelValue'])
 </script>
 
 <template>
-  <div class="w-full">
+  <div :class="['w-full', wrapperClass]">
     <select
       :id="id"
       :value="modelValue"

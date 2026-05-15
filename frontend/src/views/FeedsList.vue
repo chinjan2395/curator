@@ -4,6 +4,7 @@
     title="Feeds"
     description="Source channels configured for this workspace."
     :workspaceId="route.params.workspaceId"
+    :breadcrumb="['Workspaces', workspaceName || 'Workspace', 'Feeds']"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
@@ -13,11 +14,11 @@
 
     <template #actions>
       <AppButton :to="`/workspaces/${workspaceId}/feeds/new`" variant="secondary" size="sm" title="Add new feed">
-        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" /></svg>
+        <AppIcon name="add" class="w-3.5 h-3.5 shrink-0" />
         Add Feed
       </AppButton>
       <AppButton :to="nextCurateUrl" size="sm" :disabled="!feeds.list.length" title="Continue to curate posts">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <AppIcon name="forward" class="w-4 h-4" />
         Curate
       </AppButton>
     </template>
@@ -26,15 +27,18 @@
       <AppLoader size="sm" label="Loading..." />
     </div>
     <div v-else-if="feeds.error" class="text-sm-pro text-red-600">{{ feeds.error }}</div>
-    <AppEmptyState
-      v-else-if="!feeds.list.length"
-      title="No feeds yet"
-      description="Create the first feed to start workspace setup."
-      icon="🧩"
-      class="surface-card"
-    >
-      <AppButton :to="`/workspaces/${workspaceId}/feeds/new`" size="sm">Create feed</AppButton>
-    </AppEmptyState>
+    <AppCard v-else-if="!feeds.list.length" class="p-6">
+      <AppEmptyState
+        title="No feeds yet"
+        description="Create the first feed to start workspace setup."
+        icon="feeds"
+      >
+        <AppButton :to="`/workspaces/${workspaceId}/feeds/new`" size="sm">
+          <AppIcon name="add" class="w-3.5 h-3.5 shrink-0" />
+          Create feed
+        </AppButton>
+      </AppEmptyState>
+    </AppCard>
     <div v-if="!feeds.loading && feeds.list.length" class="feed-table-shell">
       <AppTable :columns="tableColumns" :rows="feeds.list" row-key="id">
         <template #cell-name="{ row }">
@@ -57,12 +61,12 @@
         </template>
         <template #cell-actions="{ row }">
           <div class="flex items-center gap-2">
-            <AppButton variant="secondary" size="sm" @click="handleEditClick(row)">
-              <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" /></svg>
+            <AppButton variant="ghost" size="sm" class="gap-1.5" @click="handleEditClick(row)">
+              <AppIcon name="edit" class="w-3.5 h-3.5 shrink-0" />
               Edit
             </AppButton>
-            <AppButton variant="ghost" tone="destructive" size="sm" @click="handleDeleteClick(row)">
-              <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" /></svg>
+            <AppButton variant="ghost" tone="destructive" size="sm" class="gap-1.5" @click="handleDeleteClick(row)">
+              <AppIcon name="delete" class="w-3.5 h-3.5 shrink-0" />
               Delete
             </AppButton>
           </div>
@@ -72,11 +76,11 @@
 
     <template #footer>
       <AppButton to="/workspaces" variant="secondary" size="sm" title="Go back">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M17 10a.75.75 0 0 0-.75-.75H5.612l4.158-3.96a.75.75 0 1 0-1.04-1.08l-5.5 5.25a.75.75 0 0 0 0 1.08l5.5 5.25a.75.75 0 1 0 1.04-1.08L5.612 10.75H16.25A.75.75 0 0 0 17 10Z" clip-rule="evenodd" /></svg>
+        <AppIcon name="back" class="w-4 h-4" />
         Back
       </AppButton>
       <AppButton :to="nextCurateUrl" size="sm" :disabled="!feeds.list.length" title="Continue to curate posts">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clip-rule="evenodd" /></svg>
+        <AppIcon name="forward" class="w-4 h-4" />
         Curate
       </AppButton>
     </template>
@@ -90,7 +94,7 @@ import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
-import { AppButton, AppEmptyState, AppLoader, AppTable } from '../components/ui';
+import { AppButton, AppCard, AppEmptyState, AppIcon, AppLoader, AppTable } from '../components/ui';
 
 const route = useRoute();
 const feeds = useFeedsStore();
@@ -208,14 +212,14 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
 .analytics-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(150deg, #ffffff 0%, #f8fbff 100%);
-  border-color: rgba(199, 210, 254, 0.7);
+  background: linear-gradient(150deg, #ffffff 0%, #f8fafc 100%);
+  border-color: rgba(30, 58, 138, 0.12);
 }
 .feed-setup-hero {
   background:
-    radial-gradient(860px 240px at -8% -45%, rgba(56, 189, 248, 0.1), transparent 65%),
-    radial-gradient(720px 220px at 110% -40%, rgba(99, 102, 241, 0.12), transparent 62%),
-    linear-gradient(170deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+    radial-gradient(860px 240px at -8% -45%, rgba(30, 58, 138, 0.05), transparent 65%),
+    radial-gradient(720px 220px at 110% -40%, rgba(30, 58, 138, 0.04), transparent 62%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
 }
 .wizard-actions {
   display: flex;
@@ -238,7 +242,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   right: -64px;
   top: -72px;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(129, 140, 248, 0.16), rgba(129, 140, 248, 0));
+  background: radial-gradient(circle, rgba(30, 58, 138, 0.08), rgba(30, 58, 138, 0));
   pointer-events: none;
 }
 .analytics-card::after {
@@ -248,7 +252,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   right: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.7), rgba(34, 211, 238, 0.45));
+  background: linear-gradient(90deg, rgba(30, 58, 138, 0.7), rgba(37, 99, 235, 0.45));
 }
 .metric-chip {
   display: inline-flex;
@@ -258,9 +262,9 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  border: 1px solid rgba(165, 180, 252, 0.7);
-  background: rgba(238, 242, 255, 0.9);
-  color: rgb(79, 70, 229);
+  border: 1px solid rgba(30, 58, 138, 0.2);
+  background: rgba(239, 246, 255, 0.9);
+  color: #1e3a8a;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -284,7 +288,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
   place-items: center;
 }
 .feed-table-shell {
-  border-color: rgba(191, 219, 254, 0.58);
+  border-color: #e6ebf2;
 }
 
 .feed-table-head {
@@ -298,7 +302,7 @@ watch([totalFeeds, sourceCoverage, typeVariety], () => {
 .feed-table-row:hover {
   transform: translateY(-1px);
   background: linear-gradient(90deg, rgba(248, 250, 252, 0.85), rgba(241, 245, 249, 0.7));
-  box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.33);
+  box-shadow: inset 3px 0 0 rgba(30, 58, 138, 0.3);
 }
 
 .type-pill {

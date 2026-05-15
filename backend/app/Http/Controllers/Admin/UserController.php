@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
@@ -58,22 +59,38 @@ class UserController extends Controller
 
         $user->update($validated);
 
+        ActivityLogger::log(
+            $request->user(),
+            'admin.user_updated',
+            "Admin updated user \"{$user->name}\" (#{$user->id})",
+            'user', $user->id, $user->name,
+        );
+
         return response()->json(['user' => $user->fresh()]);
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
         if ($user->id === auth()->id()) {
             return response()->json(['message' => 'You cannot delete your own account.'], 422);
         }
 
+        $name = $user->name;
+        $id   = $user->id;
+
         $user->tokens()->delete();
         $user->delete();
+
+        ActivityLogger::log(
+            $request->user(),
+            'admin.user_deleted',
+            "Admin deleted user \"{$name}\" (#{$id})",
+        );
 
         return response()->json(['message' => 'User deleted successfully.']);
     }
 
-    public function resetPassword(User $user)
+    public function resetPassword(Request $request, User $user)
     {
         if (! $user->email || str_ends_with($user->email, '@social.curator.local')) {
             return response()->json(['message' => 'This user has no email address to send a reset link to.'], 422);
@@ -81,10 +98,17 @@ class UserController extends Controller
 
         Password::sendResetLink(['email' => $user->email]);
 
+        ActivityLogger::log(
+            $request->user(),
+            'admin.password_reset',
+            "Admin sent password reset to \"{$user->email}\"",
+            'user', $user->id, $user->name,
+        );
+
         return response()->json(['message' => 'Password reset link sent to ' . $user->email . '.']);
     }
 
-    public function deactivate(User $user)
+    public function deactivate(Request $request, User $user)
     {
         if ($user->id === auth()->id()) {
             return response()->json(['message' => 'You cannot deactivate your own account.'], 422);
@@ -97,16 +121,30 @@ class UserController extends Controller
         $user->update(['deactivated_at' => now()]);
         $user->tokens()->delete();
 
+        ActivityLogger::log(
+            $request->user(),
+            'admin.user_deactivated',
+            "Admin deactivated user \"{$user->name}\" (#{$user->id})",
+            'user', $user->id, $user->name,
+        );
+
         return response()->json(['message' => 'User deactivated.', 'user' => $user->fresh()]);
     }
 
-    public function activate(User $user)
+    public function activate(Request $request, User $user)
     {
         if (! $user->isDeactivated()) {
             return response()->json(['message' => 'User is already active.'], 422);
         }
 
         $user->update(['deactivated_at' => null]);
+
+        ActivityLogger::log(
+            $request->user(),
+            'admin.user_activated',
+            "Admin reactivated user \"{$user->name}\" (#{$user->id})",
+            'user', $user->id, $user->name,
+        );
 
         return response()->json(['message' => 'User activated.', 'user' => $user->fresh()]);
     }

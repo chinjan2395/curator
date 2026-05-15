@@ -8,6 +8,13 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token') || null,
     error: null,
     brokenCredentials: [],
+    syncSummary: {
+      new_post_count: 0,
+      scheduler_synced_post_count: 0,
+      scheduler_unread_count: 0,
+      broken_credentials: [],
+      sync_notifications_seen_at: null,
+    },
   }),
   actions: {
     init() {
@@ -23,7 +30,7 @@ export const useAuthStore = defineStore('auth', {
         this.error = null;
         localStorage.setItem('token', this.token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
-        this._fetchSyncSummary();
+        this.fetchSyncSummary();
       } catch (err) {
         this.error = err.response?.data?.message || 'Login failed';
       }
@@ -66,10 +73,17 @@ export const useAuthStore = defineStore('auth', {
         await this.logout();
       }
     },
-    async _fetchSyncSummary() {
+    async fetchSyncSummary() {
       try {
         const { data } = await axios.get('/api/user/sync-summary');
         const toast = useToastStore();
+        this.syncSummary = {
+          new_post_count: Number(data?.new_post_count || 0),
+          scheduler_synced_post_count: Number(data?.scheduler_synced_post_count || 0),
+          scheduler_unread_count: Number(data?.scheduler_unread_count || 0),
+          broken_credentials: data?.broken_credentials || [],
+          sync_notifications_seen_at: data?.sync_notifications_seen_at || null,
+        };
 
         if (data.new_post_count > 0) {
           const msg = `${data.new_post_count} new post${data.new_post_count !== 1 ? 's' : ''} synced since your last login.`;
@@ -77,6 +91,7 @@ export const useAuthStore = defineStore('auth', {
         }
 
         this.brokenCredentials = data.broken_credentials || [];
+        this.syncSummary.broken_credentials = this.brokenCredentials;
 
         if (this.brokenCredentials.length > 0) {
           const names = this.brokenCredentials.map(c => c.account_label || c.account_id || c.provider).join(', ');
@@ -85,6 +100,15 @@ export const useAuthStore = defineStore('auth', {
         }
       } catch {
         // Fail silently — login already succeeded
+      }
+    },
+    async acknowledgeSyncNotifications() {
+      try {
+        await axios.post('/api/user/sync-summary/acknowledge');
+        this.syncSummary.scheduler_unread_count = 0;
+        this.syncSummary.sync_notifications_seen_at = new Date().toISOString();
+      } catch {
+        // Ignore: this is best-effort UX behavior.
       }
     },
   },

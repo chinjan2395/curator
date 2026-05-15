@@ -4,9 +4,13 @@
       title="Workspaces"
       subtitle="Manage workspace setup from Feed to Curate to Publish."
       icon="folder"
+      :breadcrumb="['Curator', 'Workspaces']"
     >
       <template #actions>
-        <AppButton to="/workspaces/new" size="sm">+ New workspace</AppButton>
+        <AppButton to="/workspaces/new" size="sm">
+          <AppIcon name="add" class="w-3.5 h-3.5 shrink-0" />
+          New workspace
+        </AppButton>
       </template>
     </AppPageHeader>
 
@@ -16,11 +20,14 @@
 
     <AppEmptyState
       v-else-if="!workspaces.list.length"
-      icon="🚀"
+      icon="rocket"
       title="Welcome to Curator"
       description="Get your first feed live in 4 steps."
     >
-      <AppButton to="/workspaces/new" size="lg">Create your first workspace →</AppButton>
+      <AppButton to="/workspaces/new" size="lg">
+        <AppIcon name="add" class="w-4 h-4 shrink-0" />
+        Create your first workspace
+      </AppButton>
     </AppEmptyState>
 
     <AppTable
@@ -34,9 +41,18 @@
 
       <template #cell-actions="{ row }">
         <AppStack direction="horizontal" spacing="xs" align="center">
-          <AppButton :to="`/workspaces/${row.id}/feeds`" variant="ghost" size="sm">Feeds</AppButton>
-          <AppButton :to="`/workspaces/${row.id}/edit`" variant="ghost" size="sm">Edit</AppButton>
-          <AppButton variant="ghost" tone="destructive" size="sm" @click="confirmDelete(row)">Delete</AppButton>
+          <AppButton :to="`/workspaces/${row.id}/feeds`" variant="ghost" size="sm" class="gap-1.5">
+            <AppIcon name="feeds" class="w-3.5 h-3.5 shrink-0" />
+            Feeds
+          </AppButton>
+          <AppButton :to="`/workspaces/${row.id}/edit`" variant="ghost" size="sm" class="gap-1.5">
+            <AppIcon name="edit" class="w-3.5 h-3.5 shrink-0" />
+            Edit
+          </AppButton>
+          <AppButton variant="ghost" tone="destructive" size="sm" class="gap-1.5" @click="confirmDelete(row)">
+            <AppIcon name="delete" class="w-3.5 h-3.5 shrink-0" />
+            Delete
+          </AppButton>
         </AppStack>
       </template>
     </AppTable>
@@ -46,7 +62,7 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useWorkspacesStore } from '../stores/workspaces'
-import { AppAlert, AppEmptyState, AppButton, AppLoader, AppTable } from '../components/ui/index.js'
+import { AppAlert, AppEmptyState, AppButton, AppIcon, AppLoader, AppTable } from '../components/ui/index.js'
 import { AppPageHeader, AppSection, AppStack } from '../components/layout/index.js'
 
 const workspaces = useWorkspacesStore()
@@ -66,4 +82,3 @@ async function confirmDelete(w) {
   }
 }
 </script>
-

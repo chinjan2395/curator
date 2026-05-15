@@ -42,6 +42,26 @@ export const useFeedsStore = defineStore('feeds', {
         throw err;
       }
     },
+    async patchSyncSettings(workspaceId, feedId, payload) {
+      this.error = null;
+      this.lastActionError = null;
+      try {
+        const { data: body } = await axios.patch(
+          `/api/workspaces/${workspaceId}/feeds/${feedId}/sync-settings`,
+          payload,
+        );
+        const feedData = body?.data ?? body;
+        const i = this.list.findIndex((f) => f.id === feedId);
+        if (i !== -1) this.list[i] = { ...this.list[i], ...feedData };
+        return feedData;
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Failed to update sync settings';
+        this.error = msg;
+        this.lastActionError = msg;
+        useToastStore().error(msg);
+        throw err;
+      }
+    },
     async update(workspaceId, feedId, payload) {
       this.error = null;
       this.lastActionError = null;

@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::get('/user/sync-summary', [UserSyncSummaryController::class, 'show']);
+    Route::post('/user/sync-summary/acknowledge', [UserSyncSummaryController::class, 'acknowledge']);
     Route::apiResource('workspaces', WorkspaceController::class);
     Route::apiResource('workspaces.feeds', FeedController::class);
     Route::patch('workspaces/{workspace}/feeds/{feed}/sync-settings', [FeedSyncSettingsController::class, 'patch']);
@@ -69,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('social-credentials', SocialCredentialController::class);
     Route::put('social-credentials/{socialCredential}/label', [SocialCredentialController::class, 'label']);
+    Route::post('social-credentials/{socialCredential}/sync', [SocialCredentialController::class, 'sync']);
     Route::post('social/connect', [SocialConnectController::class, 'connect']);
     Route::post('social/disconnect', [SocialConnectController::class, 'disconnect']);
 

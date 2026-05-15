@@ -33,8 +33,13 @@ export const usePostsStore = defineStore('posts', {
           patch,
         );
         const i = this.list.findIndex((p) => p.id === postId);
-        if (i !== -1) this.list[i] = data;
-        return data;
+        const normalized = {
+          ...data,
+          // Preserve local link used by Curate grouping when API payload omits it.
+          _feedId: data?._feedId ?? data?.feed_id ?? this.list[i]?._feedId ?? feedId,
+        };
+        if (i !== -1) this.list[i] = normalized;
+        return normalized;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to update post';
         useToastStore().error(msg);

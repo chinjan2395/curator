@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
-defineProps({
+const props = defineProps({
   items: {
     type: Array,
     default: () => [],
@@ -17,43 +17,94 @@ defineEmits(['select'])
 
 const open = ref(false)
 const container = ref(null)
+const trigger = ref(null)
+const dropdown = ref(null)
+const position = ref({ top: 0, left: 0 })
+const align = computed(() => props.align)
+const dropdownOffset = 6
 
-function handleOutsideClick(e) {
-  if (container.value && !container.value.contains(e.target)) {
-    open.value = false
+function close() {
+  open.value = false
+}
+
+function updatePosition() {
+  if (!open.value || !trigger.value || !dropdown.value) return
+
+  const triggerRect = trigger.value.getBoundingClientRect()
+  const dropdownRect = dropdown.value.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  let left = align.value === 'right'
+    ? triggerRect.right - dropdownRect.width
+    : triggerRect.left
+  let top = triggerRect.bottom + dropdownOffset
+
+  left = Math.max(8, Math.min(left, viewportWidth - dropdownRect.width - 8))
+
+  if (top + dropdownRect.height > viewportHeight - 8) {
+    const aboveTop = triggerRect.top - dropdownRect.height - dropdownOffset
+    top = aboveTop >= 8 ? aboveTop : Math.max(8, viewportHeight - dropdownRect.height - 8)
+  }
+
+  position.value = {
+    top,
+    left,
   }
 }
 
-onMounted(() => document.addEventListener('click', handleOutsideClick))
-onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
+function handleOutsideClick(e) {
+  if (container.value && !container.value.contains(e.target) && !dropdown.value?.contains(e.target)) {
+    close()
+  }
+}
+
+watch(open, async (isOpen) => {
+  if (!isOpen) return
+  await nextTick()
+  updatePosition()
+})
+
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick)
+  window.addEventListener('resize', updatePosition)
+  window.addEventListener('scroll', updatePosition, true)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideClick)
+  window.removeEventListener('resize', updatePosition)
+  window.removeEventListener('scroll', updatePosition, true)
+})
 </script>
 
 <template>
   <div ref="container" class="relative inline-block">
-    <div @click.stop="open = !open">
+    <div ref="trigger" @click.stop="open = !open">
       <slot name="trigger" :open="open" />
     </div>
 
-    <Transition name="dropdown">
-      <div
-        v-if="open"
-        :class="[
-          'absolute z-20 mt-1 min-w-[10rem] bg-white border border-slate-200 rounded-lg shadow-lg py-1',
-          align === 'right' ? 'right-0' : 'left-0',
-        ]"
-      >
-        <slot>
-          <button
-            v-for="item in items"
-            :key="item.label"
-            class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition"
-            @click="$emit('select', item); open = false"
-          >
-            {{ item.label }}
-          </button>
-        </slot>
-      </div>
-    </Transition>
+    <Teleport to="body">
+      <Transition name="dropdown">
+        <div
+          v-if="open"
+          ref="dropdown"
+          class="fixed z-[1000] min-w-[10rem] bg-white border border-slate-100 rounded-xl shadow-lg py-1.5"
+          :style="{ top: `${position.top}px`, left: `${position.left}px` }"
+        >
+          <slot :close="close">
+            <button
+              v-for="item in items"
+              :key="item.label"
+              class="mx-0.5 w-[calc(100%-4px)] rounded-md px-3.5 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+              @click="$emit('select', item); close()"
+            >
+              {{ item.label }}
+            </button>
+          </slot>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 

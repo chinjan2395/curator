@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Models\SyncLog;
+use App\Support\ActivityLogger;
 use App\Sync\FacebookSyncer;
 use App\Sync\InstagramSyncer;
 use App\Sync\RssSyncer;
@@ -40,7 +41,14 @@ class FeedSyncService
 
         $credential = $feed->socialCredential;
 
-        if ($credential && $credential->getValidAccessToken() === null) {
+        try {
+            $token = $credential?->getValidAccessToken();
+        } catch (\Throwable $e) {
+            $this->writeLog($feed, $userId, 'error', 0, 'Token refresh error: ' . $e->getMessage(), $startedAt, $triggeredBy);
+            return null;
+        }
+
+        if ($credential && $token === null) {
             $credential->update(['status' => 'disconnected']);
             $this->writeLog($feed, $userId, 'disconnected', 0, 'Token expired or revoked.', $startedAt, $triggeredBy);
             return null;
@@ -100,5 +108,30 @@ class FeedSyncService
             'duration_ms'   => (int) ((microtime(true) - $startedAt) * 1000),
             'triggered_by'  => $triggeredBy,
         ]);
+
+        if (in_array($triggeredBy, ['queue', 'scheduler'], true)) {
+            $feedName = $feed->name ?? $feed->type;
+            match ($status) {
+                'success'      => ActivityLogger::logForUserId(
+                    $userId,
+                    'feed.auto_synced',
+                    "Auto-synced {$feed->type} feed \"{$feedName}\" ({$postsSynced} new post(s))",
+                    'feed', $feed->id, $feedName,
+                ),
+                'error'        => ActivityLogger::logForUserId(
+                    $userId,
+                    'feed.sync_error',
+                    "Auto-sync error for {$feed->type} feed \"{$feedName}\": {$errorMessage}",
+                    'feed', $feed->id, $feedName,
+                ),
+                'disconnected' => ActivityLogger::logForUserId(
+                    $userId,
+                    'feed.sync_disconnected',
+                    "Auto-sync: credential expired or revoked for {$feed->type} feed \"{$feedName}\"",
+                    'feed', $feed->id, $feedName,
+                ),
+                default        => null,
+            };
+        }
     }
 }

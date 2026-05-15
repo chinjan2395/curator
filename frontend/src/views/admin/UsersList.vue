@@ -16,9 +16,7 @@
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-2">
       <div class="relative flex-1 min-w-[200px] max-w-xs">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" />
-        </svg>
+        <AppIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <AppInput
           v-model="filters.search"
           type="text"
@@ -27,12 +25,12 @@
           @input="onFilterChange"
         />
       </div>
-      <AppSelect v-model="filters.role" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
+      <AppSelect v-model="filters.role" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
         <option value="">All roles</option>
         <option value="user">User</option>
         <option value="admin">Admin</option>
       </AppSelect>
-      <AppSelect v-model="filters.status" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
+      <AppSelect v-model="filters.status" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
         <option value="">All statuses</option>
         <option value="active">Active</option>
         <option value="deactivated">Deactivated</option>
@@ -40,25 +38,22 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="users.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading users…
-    </div>
+    <AppLoader v-if="users.loading" label="Loading users…" />
 
     <!-- Error -->
     <div v-else-if="users.error" class="text-sm-pro text-red-600">{{ users.error }}</div>
 
     <!-- Empty -->
-    <div v-else-if="!users.list.length" class="surface-card p-8 text-center text-sm-pro text-slate-500">
+    <AppCard v-else-if="!users.list.length" class="p-8 text-center text-sm-pro text-slate-500">
       No users found.
-    </div>
+    </AppCard>
 
     <!-- Table -->
     <div v-else>
       <AppTable :columns="tableColumns" :rows="users.list" row-key="id">
         <template #cell-user="{ row: user }">
-          <router-link :to="`/admin/users/${user.id}`" class="flex items-center gap-3 hover:text-indigo-700 transition-colors">
-            <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 text-sm-pro font-semibold flex items-center justify-center shrink-0">
+          <router-link :to="`/admin/users/${user.id}`" class="flex items-center gap-3 hover:text-blue-700 transition-colors">
+            <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-700 text-sm-pro font-semibold flex items-center justify-center shrink-0">
               {{ initials(user.name) }}
             </div>
             <div class="min-w-0">
@@ -70,7 +65,7 @@
         <template #cell-role="{ row: user }">
           <AppSelect
             :model-value="user.role"
-            select-class="text-2xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700 focus:ring-1 focus:ring-indigo-400 focus:outline-none cursor-pointer"
+            select-class="text-2xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700 focus:ring-1 focus:ring-blue-400 focus:outline-none cursor-pointer"
             :show-placeholder="false"
             @update:modelValue="(role) => changeRole(user, role)"
             :disabled="actionLoading[user.id]"
@@ -105,13 +100,71 @@
           <span class="text-sm-pro text-slate-500">{{ formatDate(user.created_at) }}</span>
         </template>
         <template #cell-actions="{ row: user }">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <AppButton :to="`/admin/users/${user.id}`" variant="ghost" size="sm" title="View details">View</AppButton>
-            <AppButton variant="ghost" size="sm" title="Send password reset email" @click="doResetPassword(user)" :disabled="actionLoading[user.id]">Reset pwd</AppButton>
-            <AppButton v-if="!user.deactivated_at" variant="ghost" tone="warning" size="sm" @click="doDeactivate(user)" :disabled="actionLoading[user.id]">Deactivate</AppButton>
-            <AppButton v-else variant="ghost" tone="success" size="sm" @click="doActivate(user)" :disabled="actionLoading[user.id]">Activate</AppButton>
-            <AppButton variant="ghost" tone="destructive" size="sm" @click="doDelete(user)" :disabled="actionLoading[user.id]">Delete</AppButton>
-          </div>
+          <AppDropdown align="right">
+            <template #trigger>
+              <AppButton
+                variant="ghost"
+                size="sm"
+                class="!px-2.5"
+                :disabled="actionLoading[user.id]"
+                :title="`Open actions for ${user.name}`"
+                :aria-label="`Open actions for ${user.name}`"
+              >
+                <AppIcon name="more" class="w-4 h-4" />
+              </AppButton>
+            </template>
+
+            <template #default="{ close }">
+              <div class="mx-0.5 flex min-w-[11rem] flex-col gap-0.5">
+                <router-link
+                  :to="`/admin/users/${user.id}`"
+                  class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
+                  @click="close()"
+                >
+                  <AppIcon name="view" class="w-4 h-4 shrink-0" />
+                  View details
+                </router-link>
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="actionLoading[user.id]"
+                  @click="close(); doResetPassword(user)"
+                >
+                  <AppIcon name="sync" class="w-4 h-4 shrink-0" />
+                  Reset password
+                </button>
+                <button
+                  v-if="!user.deactivated_at"
+                  type="button"
+                  class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="actionLoading[user.id]"
+                  @click="close(); doDeactivate(user)"
+                >
+                  <AppIcon name="activity" class="w-4 h-4 shrink-0" />
+                  Deactivate
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="actionLoading[user.id]"
+                  @click="close(); doActivate(user)"
+                >
+                  <AppIcon name="check" class="w-4 h-4 shrink-0" />
+                  Activate
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="actionLoading[user.id]"
+                  @click="close(); doDelete(user)"
+                >
+                  <AppIcon name="delete" class="w-4 h-4 shrink-0" />
+                  Delete user
+                </button>
+              </div>
+            </template>
+          </AppDropdown>
         </template>
       </AppTable>
     </div>
@@ -123,13 +176,13 @@
       </div>
       <div class="flex items-center gap-1">
         <AppButton variant="ghost" size="sm" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+          <AppIcon name="chevron-left" class="w-3.5 h-3.5" />
           Prev
         </AppButton>
         <span class="text-2xs text-slate-600 px-2">Page {{ currentPage }} of {{ users.pagination.last_page }}</span>
         <AppButton variant="ghost" size="sm" :disabled="currentPage === users.pagination.last_page" @click="goToPage(currentPage + 1)">
           Next
-          <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+          <AppIcon name="chevron-right" class="w-3.5 h-3.5" />
         </AppButton>
       </div>
     </div>
@@ -149,7 +202,7 @@
 import { ref, onMounted } from 'vue';
 import { useUsersStore } from '../../stores/users';
 import SocialIcon from '../../components/SocialIcon.vue';
-import { AppButton, AppInput, AppSelect, AppTable } from '../../components/ui';
+import { AppButton, AppCard, AppDropdown, AppIcon, AppInput, AppLoader, AppSelect, AppTable } from '../../components/ui';
 import { AppPageHeader } from '../../components/layout/index.js';
 
 /** Same palette / labels as Credentials.vue */
@@ -186,7 +239,7 @@ const tableColumns = [
   { key: 'connected', label: 'Connected' },
   { key: 'status', label: 'Status' },
   { key: 'joined', label: 'Joined' },
-  { key: 'actions', label: 'Actions', class: 'w-72' },
+  { key: 'actions', label: 'Actions', class: 'w-20 text-right' },
 ];
 let searchTimeout = null;
 

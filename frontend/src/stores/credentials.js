@@ -64,6 +64,24 @@ export const useCredentialsStore = defineStore('credentials', {
         throw err;
       }
     },
+    async syncAll() {
+      await Promise.allSettled(this.list.map((c) => this.syncCredential(c.id)));
+    },
+    async syncCredential(id) {
+      try {
+        const { data } = await axios.post(`/api/social-credentials/${id}/sync`);
+        const result = data?.data ?? data;
+        const idx = this.list.findIndex((c) => c.id === id);
+        if (idx !== -1 && result.status) {
+          this.list[idx] = { ...this.list[idx], status: result.status };
+        }
+        return result;
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Sync failed';
+        useToastStore().error(msg);
+        throw err;
+      }
+    },
     async renameCredential(id, accountLabel) {
       try {
         const { data } = await axios.put(`/api/social-credentials/${id}/label`, { account_label: accountLabel });

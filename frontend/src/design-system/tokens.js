@@ -1,6 +1,6 @@
 export const colors = {
-  primary: 'indigo-600',
-  primaryHover: 'indigo-500',
+  primary: 'blue-500',
+  primaryHover: 'blue-600',
   danger: 'red-500',
   dangerHover: 'red-600',
   success: 'emerald-500',
@@ -11,6 +11,7 @@ export const colors = {
   border: 'slate-200',
   surface: 'white',
   background: 'slate-100',
+  sidebar: 'slate-800',
 }
 
 export const spacing = {
@@ -30,9 +31,9 @@ export const radius = {
 }
 
 export const shadow = {
-  card: 'shadow-sm',
-  modal: 'shadow-xl',
-  dropdown: 'shadow-lg',
+  card: 'shadow-card',
+  modal: 'shadow-floating',
+  dropdown: 'shadow-panel',
 }
 
 export const typography = {

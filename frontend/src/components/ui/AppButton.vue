@@ -5,7 +5,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'danger', 'ghost'].includes(v),
+    validator: (v) => ['primary', 'secondary', 'danger', 'success', 'warning', 'pending', 'ghost'].includes(v),
   },
   // Semantic color modifier. Currently only meaningful for the `ghost` variant,
   // where it replaces the per-call !important overrides callers used to sprinkle
@@ -29,6 +29,8 @@ const props = defineProps({
   // common source of layout drift inside flex rows).
   to: { type: [String, Object], default: null },
   href: { type: String, default: null },
+  target: { type: String, default: null },
+  rel: { type: String, default: null },
 })
 
 defineEmits(['click'])
@@ -37,6 +39,9 @@ const variantClasses = {
   primary: 'btn-primary',
   secondary: 'btn-secondary',
   danger: 'btn-danger',
+  success: 'btn-success',
+  warning: 'btn-warning',
+  pending: 'btn-pending',
   ghost: 'btn-ghost',
 }
 
@@ -61,7 +66,7 @@ const tag = computed(() => {
 
 const tagAttrs = computed(() => {
   if (props.to) return { to: props.to }
-  if (props.href) return { href: props.href }
+  if (props.href) return { href: props.href, target: props.target, rel: props.rel }
   return { type: props.type }
 })
 
