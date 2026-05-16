@@ -28,6 +28,9 @@ class FeedSyncSettingsController extends Controller
             "Updated sync settings for feed \"{$feedName}\" (auto-publish: " . ($autoPublish ? 'on' : 'off') . ')',
             'feed', $feed->id, $feedName,
         );
+        $feed->update([
+            'auto_publish_new_posts' => $request->boolean('auto_publish_new_posts'),
+        ]);
 
         return ApiResponse::success(new FeedResource($feed->fresh()), 'Sync settings updated.');
     }
