@@ -4,6 +4,7 @@
     :title="isEdit ? 'Edit workspace' : 'New workspace'"
     description="Name the workspace, then continue through Feed → Curate → Publish."
     :workspaceId="route.params.id"
+    :breadcrumb="['Workspaces', isEdit ? 'Edit Workspace' : 'New Workspace']"
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>

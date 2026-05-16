@@ -4,6 +4,8 @@
     title="Publish"
     description="Publish approved posts, customize how the embed looks, and copy the embed snippet."
     :workspaceId="workspaceId"
+    :breadcrumb="['Workspaces', workspaceName || 'Workspace', 'Publish']"
+    no-sticky
   >
     <template #breadcrumb>
       <router-link to="/workspaces">Workspaces</router-link>
@@ -19,17 +21,23 @@
         @click="publishNow"
         title="Publish and finish"
       >
-        {{ publish.publishing ? '⏳' : '✓' }}
+        <span v-if="publish.publishing" class="inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        <AppIcon v-else name="check" class="w-4 h-4" />
       </AppButton>
     </template>
 
     <!-- Publish success banner -->
     <div v-if="publishedCount !== null" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-300 bg-emerald-50 text-sm-pro text-emerald-800 mb-2">
-      <span>✓ <strong>{{ publishedCount }} post{{ publishedCount !== 1 ? 's' : '' }}</strong> published and live in your embed.</span>
+      <span class="inline-flex items-center gap-2">
+        <AppIcon name="check" class="w-4 h-4 shrink-0" />
+        <span><strong>{{ publishedCount }} post{{ publishedCount !== 1 ? 's' : '' }}</strong> published and live in your embed.</span>
+      </span>
       <div class="flex items-center gap-2">
         <AppButton variant="secondary" size="sm" class="border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="showEmbedPreview = true">Test embed</AppButton>
         <AppButton variant="secondary" size="sm" class="border-emerald-300 text-emerald-700 hover:bg-emerald-100" @click="openCode">Get code</AppButton>
-        <AppButton variant="ghost" size="sm" class="text-emerald-500 hover:text-emerald-700 text-lg leading-none" @click="publishedCount = null" title="Dismiss">✕</AppButton>
+        <AppButton variant="ghost" size="sm" class="text-emerald-500 hover:text-emerald-700" @click="publishedCount = null" title="Dismiss">
+          <AppIcon name="close" class="w-4 h-4" />
+        </AppButton>
       </div>
     </div>
 
@@ -38,7 +46,7 @@
       Loading…
     </div>
 
-    <div v-else-if="!workspaceId" class="surface-card p-6 text-sm-pro text-slate-600">
+    <AppCard v-else-if="!workspaceId" class="p-6 text-sm-pro text-slate-600">
       <div class="flex items-center gap-2 mb-3">
         <AppSelect v-model="workspaceId" select-class="!py-1.5 !px-2.5 !text-sm-pro flex-1" :show-placeholder="false">
           <option value="">Select workspace</option>
@@ -46,11 +54,11 @@
         </AppSelect>
       </div>
       Pick a workspace to manage publishing.
-    </div>
+    </AppCard>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-[minmax(0,550px)_minmax(0,1fr)] gap-6 items-start">
         <div class="space-y-4">
-          <div v-if="appearance" class="surface-card p-6 space-y-6">
+          <AppCard v-if="appearance" class="p-6 space-y-6">
             <!-- Header -->
             <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-200">
               <div>
@@ -385,14 +393,14 @@
                       placeholder="https://example.com/avatar.jpg"
                       input-class="w-full py-2 font-mono text-xs"
                     />
-                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </AppCard>
+        </div>
 
         <div class="lg:sticky lg:top-5 self-start max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
-          <div class="surface-card p-4">
+          <AppCard class="p-4">
             <div class="flex items-start justify-between gap-2 mb-3">
               <div class="text-sm-pro text-slate-700">
                 Publishing will make all <span class="font-medium">approved</span> posts live in the public feed.
@@ -451,6 +459,7 @@
             Open JSON
           </a>
         </div>
+        </AppCard>
 
         <Teleport to="head">
           <link
@@ -990,11 +999,10 @@
             </a>
           </div>
         </div>
-        </div>
     </div>
 
     <div v-if="showCode" class="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
-      <div class="w-full max-w-2xl surface-card overflow-hidden">
+      <AppCard class="w-full max-w-2xl overflow-hidden" padding="none">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div class="text-sm-pro font-medium text-slate-800">Embed code</div>
           <AppButton variant="secondary" size="sm" @click="showCode = false">Close</AppButton>
@@ -1009,24 +1017,28 @@
             <div v-if="copied" class="text-2xs text-slate-500">Copied</div>
           </div>
         </div>
-      </div>
+      </AppCard>
     </div>
 
     <!-- Embed iframe preview modal -->
     <div v-if="showEmbedPreview" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div class="w-full max-w-3xl surface-card overflow-hidden flex flex-col h-[80vh]">
+      <AppCard class="w-full max-w-4xl overflow-hidden" padding="none">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div class="text-sm-pro font-medium text-slate-800">Live embed preview</div>
           <AppButton variant="secondary" size="sm" @click="showEmbedPreview = false">Close</AppButton>
         </div>
-        <iframe
-          v-if="embedPublicKey"
-          :srcdoc="embedIframeHtml"
-          class="flex-1 w-full border-0"
-          title="Embed preview"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-        />
-      </div>
+        <div class="p-4 overflow-y-auto max-h-[calc(100vh-120px)]">
+          <iframe
+            v-if="embedPublicKey"
+            ref="embedPreviewIframeRef"
+            :srcdoc="embedIframeHtml"
+            class="w-full border-0"
+            title="Embed preview"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            scrolling="no"
+          />
+        </div>
+      </AppCard>
     </div>
 
     <template #footer>
@@ -1051,8 +1063,9 @@ import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
-import { AppButton, AppCheckbox, AppInput, AppSelect } from '../components/ui';
+import { AppButton, AppCard, AppCheckbox, AppIcon, AppInput, AppSelect } from '../components/ui';
 import { fetchPreviewPosts } from '../composables/usePublishApi';
+import { absolutePageAssetUrl, apiUrlFromAny } from '../config/api.js';
 
 defineOptions({ name: 'PublishView' });
 
@@ -1061,6 +1074,8 @@ const route = useRoute();
 const router = useRouter();
 const workspaces = useWorkspacesStore();
 const publish = usePublishStore();
+
+const embedPreviewIframeRef = ref(null);
 
 const workspaceId = ref('');
 
@@ -1124,6 +1139,8 @@ const previewPosts = ref([]);
 const previewStripRef = ref(null);
 const previewShareMenuForPostId = ref(null);
 const embedPreviewVersion = ref(0);
+const embedLivePreviewNonce = ref(0);
+const autoPublishInFlight = ref(false);
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
@@ -1156,18 +1173,7 @@ const embedPublicKey = computed(
   () => publish.code?.public_key || publish.stats?.public_key || '',
 );
 
-function toSameOriginPath(url) {
-  if (!url || typeof window === 'undefined') return '';
-  try {
-    const u = new URL(url, window.location.origin);
-
-    return u.pathname + u.search;
-  } catch {
-    return url.startsWith('/') ? url : `/${url}`;
-  }
-}
-
-/** Relative `/api/embed/...` so the SPA origin + Vite proxy load CSS (APP_URL on another host breaks otherwise). */
+/** Map backend embed URLs to a browser-reachable API URL (Railway when split from Netlify, else path for Vite proxy). */
 const embedCssHref = computed(() => {
   const key = embedPublicKey.value;
   if (!key) return '';
@@ -1175,12 +1181,14 @@ const embedCssHref = computed(() => {
   const fromCode = publish.code?.embed_css_url;
   if (fromCode) {
     const sep = fromCode.includes('?') ? '&' : '?';
-    return `${toSameOriginPath(fromCode)}${sep}pv=${embedPreviewVersion.value}`;
+    return `${apiUrlFromAny(fromCode)}${sep}pv=${embedPreviewVersion.value}&lpv=${embedLivePreviewNonce.value}`;
   }
 
   const v = encodeURIComponent(String(publish.stats?.last_published_at || Date.now()));
 
-  return `/api/embed/${encodeURIComponent(key)}.css?v=${v}&pv=${embedPreviewVersion.value}`;
+  return apiUrlFromAny(
+    `/api/embed/${encodeURIComponent(key)}.css?v=${v}&pv=${embedPreviewVersion.value}&lpv=${embedLivePreviewNonce.value}`,
+  );
 });
 
 const embedJsPath = computed(() => {
@@ -1190,12 +1198,14 @@ const embedJsPath = computed(() => {
   const fromCode = publish.code?.embed_js_url;
   if (fromCode) {
     const sep = fromCode.includes('?') ? '&' : '?';
-    return `${toSameOriginPath(fromCode)}${sep}pv=${embedPreviewVersion.value}`;
+    return `${apiUrlFromAny(fromCode)}${sep}pv=${embedPreviewVersion.value}&lpv=${embedLivePreviewNonce.value}`;
   }
 
   const v = encodeURIComponent(String(publish.stats?.last_published_at || Date.now()));
 
-  return `/api/embed/${encodeURIComponent(key)}.js?v=${v}&pv=${embedPreviewVersion.value}`;
+  return apiUrlFromAny(
+    `/api/embed/${encodeURIComponent(key)}.js?v=${v}&pv=${embedPreviewVersion.value}&lpv=${embedLivePreviewNonce.value}`,
+  );
 });
 
 const previewUsesEmbedStylesheet = computed(() => !!embedCssHref.value);
@@ -1203,16 +1213,13 @@ const previewUsesEmbedStylesheet = computed(() => !!embedCssHref.value);
 const previewPostsJsonUrl = computed(() => {
   const key = embedPublicKey.value;
   if (!key) return '';
-  if (publish.code?.public_posts_url) return publish.code.public_posts_url;
-  return `/api/public/feeds/${encodeURIComponent(key)}/posts`;
+  if (publish.code?.public_posts_url) return apiUrlFromAny(publish.code.public_posts_url);
+  return apiUrlFromAny(`/api/public/feeds/${encodeURIComponent(key)}/posts`);
 });
 
 const embedIframeHtml = computed(() => {
   const key = embedPublicKey.value;
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const markup =
-    publish.code?.embed_html ||
-    (key ? `<div data-curator-feed="${key}"></div>` : '');
+  const markup = key ? `<div data-curator-feed="${key}"></div>` : '';
 
   if (!key || !markup) {
     return '<p style="font-family:sans-serif;padding:1rem;color:#64748b">No embed code yet — publish once so this workspace has a public key, then try again.</p>';
@@ -1220,11 +1227,151 @@ const embedIframeHtml = computed(() => {
 
   const cssPath = embedCssHref.value;
   const jsPath = embedJsPath.value;
-  const css = cssPath ? `<link rel="stylesheet" href="${origin}${cssPath}">` : '';
-  const js = jsPath ? `<script src="${origin}${jsPath}"></scr` + 'ipt>' : '';
+  const css = cssPath ? `<link rel="stylesheet" href="${absolutePageAssetUrl(cssPath)}">` : '';
+  const js = jsPath ? `<script src="${absolutePageAssetUrl(jsPath)}"></scr` + 'ipt>' : '';
+  const baseCss = `<style>
+body{margin:0;padding:16px;background:#f8fafc;overflow:visible}
+[data-curator-feed]{display:block}
+</style>`;
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${css}</head><body style="margin:0;padding:16px;background:#f8fafc">${markup}${js}</body></html>`;
+  const legacyIconPatchScript = `<scr` + `ipt>
+(function(){
+  function brand(provider){
+    if (provider === 'youtube') return '#FF0000';
+    if (provider === 'facebook') return '#1877F2';
+    if (provider === 'instagram') return '#E4405F';
+    if (provider === 'tiktok') return '#000000';
+    if (provider === 'twitter') return '#000000';
+    if (provider === 'threads') return '#101419';
+    if (provider === 'rss') return '#ea580c';
+    return 'currentColor';
+  }
+  function glyph(provider, size){
+    var s = String(size || 22);
+    if (provider === 'youtube') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.7 3.6 12 3.6 12 3.6s-7.7 0-9.4.5A3 3 0 0 0 .5 6.2 31.8 31.8 0 0 0 0 12a31.8 31.8 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.7.5 9.4.5 9.4.5s7.7 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.8 31.8 0 0 0 24 12a31.8 31.8 0 0 0-.5-5.8ZM9.6 15.6V8.4L16 12l-6.4 3.6Z" /></svg>';
+    if (provider === 'twitter') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L.8 2h6.5l4.4 5.9L18.9 2Z" /></svg>';
+    if (provider === 'facebook') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7v-3.5h3.1V9.4c0-3.1 1.9-4.8 4.7-4.8 1.3 0 2.6.2 2.6.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.3h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12Z" /></svg>';
+    if (provider === 'instagram') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm8.2 2H8a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4V8a4 4 0 0 0-4-4Zm-4 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Zm5-3a1.1 1.1 0 1 1-1.1 1.1A1.1 1.1 0 0 1 17 6.5Z" /></svg>';
+    if (provider === 'tiktok') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2c.4 2.1 1.6 3.8 3.7 4.6.9.3 1.8.5 2.7.4v3.1a9.6 9.6 0 0 1-3.7-.8V15a7 7 0 1 1-7-7c.4 0 .8 0 1.2.1v3.2a3.9 3.9 0 1 0 2.9 3.7V2h2.2Z" /></svg>';
+    if (provider === 'threads') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.2 2C6.7 2 3 5.7 3 11.7v.6C3 18.3 6.7 22 12.2 22c2.6 0 4.7-.6 6.3-1.8a6.4 6.4 0 0 0 2.5-4.6c.2-2.6-1.4-4.5-4.2-5.1a4.4 4.4 0 0 0-1.4-2.6c-.9-.7-2.1-1-3.6-1-1.7 0-3 .5-4 1.5-.5.5-.9 1.2-1.1 1.9l1.8.7c.2-.4.4-.8.7-1.1.6-.6 1.4-.9 2.5-.9.9 0 1.6.2 2.1.6.4.3.7.7.9 1.3a16 16 0 0 0-2.5-.1c-1.6.1-2.8.5-3.7 1.3-.9.8-1.3 1.8-1.2 3 .1 1.3.7 2.3 1.7 3 .9.6 2 .9 3.2.8a5 5 0 0 0 3.4-1.4c.7-.7 1.2-1.6 1.4-2.6 1.5.5 2.3 1.5 2.2 2.9-.1 1-.6 1.9-1.5 2.5-1.1.8-2.7 1.2-4.7 1.2-4.4 0-7.2-2.7-7.2-7.6v-.6C5 7.5 7.7 4.7 12.2 4.7c4.4 0 7.1 2.7 7.2 7.4l1.8-.5C20.9 5.7 17.4 2 12.2 2Zm.4 9.7c.7 0 1.4 0 2 .1-.2 1.7-1.1 2.7-2.7 2.8-.7 0-1.3-.1-1.7-.4-.5-.3-.7-.7-.7-1.2 0-.5.2-.8.6-1.1.5-.3 1.3-.5 2.5-.2Z"/></svg>';
+    if (provider === 'rss') return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 17a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-4-9v4a11 11 0 0 1 11 11h4C15 14.2 8.8 8 0 8Zm0-8v4c14.4 0 20 5.6 20 20h4C24 7.7 16.3 0 0 0Z" /></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.7 9h-3.2a15.5 15.5 0 0 0-1-5 8 8 0 0 1 4.2 5ZM12 4.2c.8 1 1.8 3.1 2.3 6H9.7c.5-2.9 1.5-5 2.3-6ZM4.3 13h3.2a15.5 15.5 0 0 0 1 5 8 8 0 0 1-4.2-5Zm3.2-2H4.3a8 8 0 0 1 4.2-5 15.5 15.5 0 0 0-1 5Zm4.5 8.8c-.8-1-1.8-3.1-2.3-6h4.6c-.5 2.9-1.5 5-2.3 6Zm2.8-1.8a15.5 15.5 0 0 0 1-5h3.2a8 8 0 0 1-4.2 5Z" /></svg>';
+  }
+  function detectLegacyProvider(svg){
+    if (!svg) return '';
+    var rect = svg.querySelector('rect');
+    var circle = svg.querySelector('circle');
+    var path = svg.querySelector('path');
+    var rf = rect && (rect.getAttribute('fill') || '').toLowerCase();
+    var cf = circle && (circle.getAttribute('fill') || '').toLowerCase();
+    var d = path && (path.getAttribute('d') || '');
+    if (rf === '#ff0000') return 'youtube';
+    if (rf === '#e4405f') return 'instagram';
+    if (cf === '#1877f2') return 'facebook';
+    if (cf === '#101419') return 'threads';
+    if (d.indexOf('M13 13h5') === 0) return 'twitter';
+    if (d.indexOf('M26 12v5.2') === 0) return 'tiktok';
+    return '';
+  }
+  function patchNode(node, size){
+    var svg = node.querySelector('svg');
+    if (!svg) return;
+    var vb = (svg.getAttribute('viewBox') || '').trim();
+    // Legacy badges were 56x40 / 44x44 / 48x48
+    if (vb !== '0 0 56 40' && vb !== '0 0 44 44' && vb !== '0 0 48 48') return;
+    var provider = detectLegacyProvider(svg);
+    if (!provider) return;
+    node.style.color = brand(provider);
+    node.innerHTML = glyph(provider, size);
+  }
+  function patchAll(){
+    var badges = document.querySelectorAll('.crt-showcase-provider-icon');
+    for (var i = 0; i < badges.length; i++) patchNode(badges[i], 44);
+    var inline = document.querySelectorAll('.crt-platform-badge--inline');
+    for (var j = 0; j < inline.length; j++) patchNode(inline[j], 22);
+  }
+  var pending = false;
+  function schedule(){
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function(){ pending = false; patchAll(); });
+  }
+  window.addEventListener('load', function(){ setTimeout(schedule, 0); setTimeout(schedule, 250); setTimeout(schedule, 700); });
+  try {
+    var mo = new MutationObserver(schedule);
+    mo.observe(document.documentElement || document.body, { subtree: true, childList: true });
+  } catch (e) {}
+  schedule();
+})();
+</scr` + `ipt>`;
+
+  const heightScript = `<scr` + `ipt>
+(function(){
+  var KEY = ${JSON.stringify(String(key))};
+  var last = 0;
+  var pending = false;
+  function measure(){
+    // Measure the feed container itself to avoid feedback loops where
+    // body/document scrollHeight tracks the iframe viewport height.
+    var pad = 32; // body padding top+bottom (16px each)
+    var feed = document.querySelector('[data-curator-feed]');
+    if (feed) {
+      var rect = feed.getBoundingClientRect();
+      var h1 = rect && rect.height ? rect.height : 0;
+      var h2 = feed.scrollHeight || 0;
+      var h = Math.max(h1, h2);
+      return Math.max(0, Math.ceil(h + pad));
+    }
+    var b = document.body;
+    var d = document.documentElement;
+    var fallback = Math.max(b ? b.scrollHeight : 0, d ? d.scrollHeight : 0);
+    return Math.max(0, Math.ceil(fallback));
+  }
+  function send(){
+    pending = false;
+    var h = measure();
+    if (!h || h === last) return;
+    last = h;
+    try { parent.postMessage({ type: 'curator:embedHeight', key: KEY, height: h }, '*'); } catch (e) {}
+  }
+  function schedule(){
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(send);
+  }
+
+  window.addEventListener('load', function(){ setTimeout(schedule, 0); setTimeout(schedule, 200); setTimeout(schedule, 800); });
+  window.addEventListener('resize', schedule);
+
+  try {
+    if ('ResizeObserver' in window) {
+      var ro = new ResizeObserver(function(){ schedule(); });
+      if (document.body) ro.observe(document.body);
+      if (document.documentElement) ro.observe(document.documentElement);
+    } else {
+      var mo = new MutationObserver(function(){ schedule(); });
+      mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    }
+  } catch (e) {}
+
+  schedule();
+})();
+</scr` + `ipt>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${baseCss}${css}</head><body>${markup}${js}${legacyIconPatchScript}${heightScript}</body></html>`;
 });
+
+function handleEmbedPreviewMessage(event) {
+  const iframe = embedPreviewIframeRef.value;
+  const win = iframe?.contentWindow;
+  if (!iframe || !win || event.source !== win) return;
+  const data = event.data || {};
+  if (data.type !== 'curator:embedHeight') return;
+  if (String(data.key || '') !== String(embedPublicKey.value || '')) return;
+  const h = Number(data.height);
+  if (!Number.isFinite(h) || h < 120) return;
+  iframe.style.height = `${Math.ceil(h)}px`;
+}
 
 const previewLayoutClass = computed(() => {
   const st = String(appearance.value?.feed_style || 'grid').replace(/-/g, '_');
@@ -1516,6 +1663,7 @@ watch(
 
 onMounted(async () => {
   document.addEventListener('click', handlePreviewShareOutsideClick);
+  window.addEventListener('message', handleEmbedPreviewMessage);
   await workspaces.fetchAll();
   if (route.params.workspaceId) {
     workspaceId.value = String(route.params.workspaceId);
@@ -1526,11 +1674,22 @@ onMounted(async () => {
     await publish.fetchStats(workspaceId.value);
     await publish.fetchCode(workspaceId.value);
     await loadPreview();
+    await autoPublishIfNeeded();
   }
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handlePreviewShareOutsideClick);
+  window.removeEventListener('message', handleEmbedPreviewMessage);
+});
+
+watch(showEmbedPreview, (open) => {
+  if (!open) return;
+  // Force fresh embed JS/CSS fetch for each modal open.
+  embedLivePreviewNonce.value = Date.now();
+  const iframe = embedPreviewIframeRef.value;
+  if (!iframe) return;
+  iframe.style.height = '720px';
 });
 
 watch(workspaceId, async (id) => {
@@ -1540,6 +1699,7 @@ watch(workspaceId, async (id) => {
     await publish.fetchStats(id);
     await publish.fetchCode(id);
     await loadPreview();
+    await autoPublishIfNeeded();
   }
   if (route.name === 'workspace-publish' && id) {
     router.replace(`/workspaces/${id}/publish`);
@@ -1558,6 +1718,26 @@ async function refresh() {
   await publish.fetchStats(workspaceId.value);
   await publish.fetchCode(workspaceId.value);
   await loadPreview();
+}
+
+async function autoPublishIfNeeded() {
+  if (!workspaceId.value || autoPublishInFlight.value || publish.publishing) return;
+  const stats = publish.stats;
+  if (!stats) return;
+
+  const approved = Number(stats.approved || 0);
+  const published = Number(stats.published || 0);
+  if (approved <= published) return;
+
+  autoPublishInFlight.value = true;
+  try {
+    const result = await publish.publish(workspaceId.value);
+    publishedCount.value = result?.published ?? 0;
+    await publish.fetchCode(workspaceId.value);
+    await loadPreview();
+  } finally {
+    autoPublishInFlight.value = false;
+  }
 }
 
 async function publishNow() {
@@ -1587,9 +1767,7 @@ async function copyCode() {
 async function loadPreview() {
   const key = publish.code?.public_key || publish.stats?.public_key;
   if (!key) return;
-  // Same-origin `/api/...` matches other stores (and Vite proxy) so preview works when APP_URL
-  // differs from the SPA origin or CORS blocks absolute public_posts_url.
-  const url = `/api/public/feeds/${encodeURIComponent(key)}/posts`;
+  const url = apiUrlFromAny(`/api/public/feeds/${encodeURIComponent(key)}/posts`);
   previewLoading.value = true;
   try {
     const data = await fetchPreviewPosts(url, 9);
@@ -1742,7 +1920,7 @@ async function loadPreview() {
   position: relative;
   overflow: hidden;
   background: linear-gradient(150deg, #ffffff 0%, #f8fbff 100%);
-  border-color: rgba(199, 210, 254, 0.7);
+  border-color: rgba(30, 58, 138, 0.12);
 }
 .publish-widget:hover {
   transform: translateY(-2px);
@@ -1756,7 +1934,7 @@ async function loadPreview() {
   right: -64px;
   top: -72px;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(129, 140, 248, 0.16), rgba(129, 140, 248, 0));
+  background: radial-gradient(circle, rgba(30, 58, 138, 0.08), rgba(30, 58, 138, 0));
   pointer-events: none;
 }
 .publish-widget::after {
@@ -1766,7 +1944,7 @@ async function loadPreview() {
   right: 0;
   top: 0;
   height: 2px;
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.7), rgba(34, 211, 238, 0.45));
+  background: linear-gradient(90deg, rgba(30, 58, 138, 0.7), rgba(37, 99, 235, 0.45));
 }
 .metric-chip {
   display: inline-flex;
@@ -1776,9 +1954,9 @@ async function loadPreview() {
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  border: 1px solid rgba(165, 180, 252, 0.7);
-  background: rgba(238, 242, 255, 0.9);
-  color: rgb(79, 70, 229);
+  border: 1px solid rgba(30, 58, 138, 0.25);
+  background: rgba(239, 246, 255, 0.9);
+  color: #1e3a8a;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1786,9 +1964,9 @@ async function loadPreview() {
 
 .publish-hero {
   background:
-    radial-gradient(860px 240px at -8% -45%, rgba(56, 189, 248, 0.12), transparent 65%),
-    radial-gradient(720px 220px at 110% -40%, rgba(99, 102, 241, 0.14), transparent 62%),
-    linear-gradient(170deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+    radial-gradient(860px 240px at -8% -45%, rgba(30, 58, 138, 0.06), transparent 65%),
+    radial-gradient(720px 220px at 110% -40%, rgba(30, 58, 138, 0.05), transparent 62%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
 }
 
 .type-dot {
@@ -1824,59 +2002,4 @@ async function loadPreview() {
   }
 }
 
-.wizard-stepper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.wizard-step {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  flex: 1 1 180px;
-  padding: 0.7rem 0.8rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: rgba(248, 250, 252, 0.82);
-}
-
-.wizard-step--active {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(238, 242, 255, 0.72);
-}
-
-.wizard-step--done,
-.wizard-step--ready {
-  border-color: rgba(191, 219, 254, 0.8);
-}
-
-.wizard-step__index {
-  width: 1.7rem;
-  height: 1.7rem;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: rgb(51 65 85);
-  background: rgba(226, 232, 240, 0.95);
-  flex: 0 0 auto;
-}
-
-.wizard-step--active .wizard-step__index {
-  color: rgb(67 56 202);
-  background: rgba(199, 210, 254, 0.95);
-}
-
-.wizard-step__label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: rgb(30 41 59);
-}
-
-.wizard-step__meta {
-  font-size: 0.7rem;
-  color: rgb(100 116 139);
-}
 </style>

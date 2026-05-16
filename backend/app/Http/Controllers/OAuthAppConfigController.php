@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpsertOAuthAppConfigRequest;
 use App\Models\OAuthAppConfig;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -72,6 +73,12 @@ class OAuthAppConfigController extends Controller
             ]
         );
 
+        ActivityLogger::log(
+            $user,
+            'oauth_app.configured',
+            "Configured {$scope} OAuth app for {$validated['provider']}",
+        );
+
         return response()->json($this->formatConfig($config), 201);
     }
 
@@ -93,6 +100,12 @@ class OAuthAppConfigController extends Controller
             ->where('user_id', $scope === OAuthAppConfig::SCOPE_USER ? $user->id : null)
             ->where('provider', $provider)
             ->delete();
+
+        ActivityLogger::log(
+            $user,
+            'oauth_app.removed',
+            "Removed {$scope} OAuth app config for {$provider}",
+        );
 
         return response()->json(null, 204);
     }
@@ -130,6 +143,12 @@ class OAuthAppConfigController extends Controller
 
             $existingShared ? $updated++ : $created++;
         }
+
+        ActivityLogger::log(
+            $user,
+            'oauth_app.promoted',
+            "Promoted {$sourceConfigs->count()} user OAuth app config(s) to shared defaults ({$created} created, {$updated} updated, {$skipped} skipped)",
+        );
 
         return response()->json([
             'message'      => 'Promotion complete.',

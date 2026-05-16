@@ -15,6 +15,7 @@ defineProps({
   step: { type: [String, Number], default: null },
   rows: { type: Number, default: 4 },
   inputClass: { type: String, default: '' },
+  wrapperClass: { type: String, default: '' },
 })
 
 defineEmits(['update:modelValue'])
@@ -23,7 +24,7 @@ const attrs = useAttrs()
 </script>
 
 <template>
-  <div class="w-full">
+  <div :class="['w-full', wrapperClass]">
     <textarea
       v-if="type === 'textarea'"
       :id="id"

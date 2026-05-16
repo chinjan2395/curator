@@ -7,15 +7,12 @@
     />
 
     <!-- Scheduler status card -->
-    <div class="surface-card p-5">
+    <AppCard class="p-5">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-6">
           <div>
             <div class="text-2xs font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Last run</div>
-            <div v-if="syncOps.loading.status" class="flex items-center gap-1.5 text-sm-pro text-slate-500">
-              <span class="inline-block w-3 h-3 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-              Loading…
-            </div>
+            <AppLoader v-if="syncOps.loading.status" size="sm" label="Loading…" />
             <div v-else class="text-sm-pro font-medium text-slate-700">
               {{ syncOps.status?.last_run_at ? formatRelative(syncOps.status.last_run_at) : 'No runs yet' }}
             </div>
@@ -45,25 +42,19 @@
           :disabled="syncOps.loading.runAll"
           @click="doRunAll"
         >
-          <span v-if="syncOps.loading.runAll" class="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           {{ syncOps.loading.runAll ? 'Starting…' : 'Run All Feeds Now' }}
         </AppButton>
       </div>
-    </div>
+    </AppCard>
 
     <!-- Broken credentials -->
     <div v-if="syncOps.brokenCredentials.length > 0" class="space-y-3">
       <h2 class="text-sm-pro font-semibold text-rose-700 flex items-center gap-2">
-        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-        </svg>
+        <AppIcon name="alert" class="w-4 h-4" />
         Broken Credentials
         <span class="ml-1 text-2xs bg-rose-100 text-rose-700 rounded-full px-2 py-0.5">{{ syncOps.brokenCredentials.length }}</span>
       </h2>
-      <div v-if="syncOps.loading.broken" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-        <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-        Loading…
-      </div>
+      <AppLoader v-if="syncOps.loading.broken" size="sm" label="Loading…" />
       <div v-else class="table-shell border border-rose-200/70">
         <AppTable :columns="brokenColumns" :rows="syncOps.brokenCredentials" row-key="id">
           <template #cell-user="{ row: cred }"><div class="font-medium text-slate-800 text-sm-pro">{{ cred.user?.name || '—' }}</div><div class="text-2xs text-slate-500">{{ cred.user?.email || '' }}</div></template>
@@ -78,7 +69,7 @@
 
     <!-- Filters -->
     <div class="flex flex-wrap items-center gap-2">
-      <AppSelect v-model="logFilters.provider" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
+      <AppSelect v-model="logFilters.provider" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
         <option value="">All providers</option>
         <option value="youtube">YouTube</option>
         <option value="facebook">Facebook</option>
@@ -88,14 +79,14 @@
         <option value="threads">Threads</option>
         <option value="rss">RSS</option>
       </AppSelect>
-      <AppSelect v-model="logFilters.status" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
+      <AppSelect v-model="logFilters.status" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
         <option value="">All statuses</option>
         <option value="success">Success</option>
         <option value="error">Error</option>
         <option value="disconnected">Disconnected</option>
         <option value="skipped">Skipped</option>
       </AppSelect>
-      <AppSelect v-model="logFilters.triggered_by" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
+      <AppSelect v-model="logFilters.triggered_by" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="applyFilters">
         <option value="">All sources</option>
         <option value="scheduler">Scheduler</option>
         <option value="user">User</option>
@@ -104,15 +95,12 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="syncOps.loading.logs" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading logs…
-    </div>
+    <AppLoader v-if="syncOps.loading.logs" label="Loading logs…" />
 
     <!-- Empty -->
-    <div v-else-if="!syncOps.logs.length" class="surface-card p-8 text-center text-sm-pro text-slate-500">
+    <AppCard v-else-if="!syncOps.logs.length" class="p-8 text-center text-sm-pro text-slate-500">
       No sync logs yet. Logs will appear here after feeds are synced.
-    </div>
+    </AppCard>
 
     <!-- Table -->
     <div v-else class="table-shell">
@@ -141,7 +129,7 @@
             :disabled="syncOps.logsPage === 1"
             @click="goToPage(syncOps.logsPage - 1)"
           >
-            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+            <AppIcon name="chevron-left" class="w-3.5 h-3.5" />
             Prev
           </AppButton>
           <span class="text-2xs text-slate-600 px-2">Page {{ syncOps.logsPage }} of {{ syncOps.logsPagination.last_page }}</span>
@@ -152,7 +140,7 @@
             @click="goToPage(syncOps.logsPage + 1)"
           >
             Next
-            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            <AppIcon name="chevron-right" class="w-3.5 h-3.5" />
           </AppButton>
         </div>
       </div>
@@ -171,7 +159,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useSyncOpsStore } from '../../stores/syncOps';
-import { AppButton, AppSelect, AppTable } from '../../components/ui';
+import { AppButton, AppCard, AppIcon, AppLoader, AppSelect, AppTable } from '../../components/ui';
 import { AppPageHeader } from '../../components/layout/index.js';
 
 const syncOps = useSyncOpsStore();
@@ -297,10 +285,9 @@ function statusDot(status) {
 
 function sourceBadge(source) {
   return {
-    scheduler: 'bg-indigo-50 text-indigo-700',
+    scheduler: 'bg-blue-50 text-blue-700',
     user:      'bg-sky-50 text-sky-700',
     admin:     'bg-purple-50 text-purple-700',
   }[source] ?? 'bg-slate-50 text-slate-600';
 }
 </script>
-

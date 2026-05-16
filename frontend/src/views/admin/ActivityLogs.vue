@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <AppPageHeader
       title="Activity Logs"
-      subtitle="Full audit trail of every user action across the platform."
+      subtitle="Full audit trail of user, admin, and background sync activity across the platform."
       :breadcrumb="['Admin', 'Activity Logs']"
     />
 
@@ -12,29 +12,29 @@
         v-model="filters.user_id"
         type="number"
         placeholder="User ID"
+        wrapper-class="!w-auto shrink-0"
         input-class="!w-28"
         @input="onFilterChange"
       />
-      <AppSelect v-model="filters.action" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
+      <AppSelect v-model="filters.action" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
         <option value="">All actions</option>
         <option value="auth">Auth</option>
         <option value="workspace">Workspace</option>
         <option value="feed">Feed</option>
         <option value="post">Post</option>
         <option value="credential">Credential</option>
+        <option value="admin">Admin</option>
+        <option value="oauth_app">OAuth App</option>
       </AppSelect>
     </div>
 
     <!-- Loading -->
-    <div v-if="activityLog.adminLoading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading logs…
-    </div>
+    <AppLoader v-if="activityLog.adminLoading" label="Loading logs…" />
 
     <!-- Empty -->
-    <div v-else-if="!activityLog.adminLogs.length" class="surface-card p-8 text-center text-sm-pro text-slate-500">
+    <AppCard v-else-if="!activityLog.adminLogs.length" class="p-8 text-center text-sm-pro text-slate-500">
       No activity logs found.
-    </div>
+    </AppCard>
 
     <!-- Table -->
     <div v-else class="table-shell">
@@ -73,7 +73,7 @@
           :disabled="currentPage <= 1"
           @click="goToPage(currentPage - 1)"
         >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+          <AppIcon name="chevron-left" class="w-3.5 h-3.5" />
           Prev
         </AppButton>
         <span class="text-2xs text-slate-600 px-2">Page {{ currentPage }} of {{ activityLog.adminMeta.last_page }}</span>
@@ -84,7 +84,7 @@
           @click="goToPage(currentPage + 1)"
         >
           Next
-          <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+          <AppIcon name="chevron-right" class="w-3.5 h-3.5" />
         </AppButton>
       </div>
     </div>
@@ -95,7 +95,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useActivityLogStore } from '../../stores/activityLog'
-import { AppButton, AppInput, AppSelect, AppTable } from '../../components/ui'
+import { AppButton, AppCard, AppIcon, AppInput, AppLoader, AppSelect, AppTable } from '../../components/ui'
 import { AppPageHeader } from '../../components/layout/index.js'
 
 const activityLog = useActivityLogStore()
@@ -147,6 +147,9 @@ function actionLabel(action) {
     'feed.updated':             'Feed updated',
     'feed.deleted':             'Feed deleted',
     'feed.synced':              'Feed synced',
+    'feed.auto_synced':         'Auto-synced',
+    'feed.sync_error':          'Sync error',
+    'feed.sync_disconnected':   'Credential expired',
     'feed.sync_all':            'Sync all',
     'feed.resync_credential':   'Re-synced',
     'post.approved':            'Post approved',
@@ -156,28 +159,44 @@ function actionLabel(action) {
     'post.deleted':             'Post deleted',
     'credential.connected':     'Connected',
     'credential.disconnected':  'Disconnected',
+    'credential.synced':        'Credential synced',
+    'credential.deleted':       'Credential deleted',
+    'workspace.published':      'Published',
+    'workspace.settings_updated': 'Settings updated',
+    'feed.settings_updated':    'Sync settings updated',
+    'admin.user_updated':       'User updated',
+    'admin.user_deleted':       'User deleted',
+    'admin.password_reset':     'Password reset sent',
+    'admin.user_deactivated':   'User deactivated',
+    'admin.user_activated':     'User activated',
+    'oauth_app.configured':     'OAuth app configured',
+    'oauth_app.removed':        'OAuth app removed',
+    'oauth_app.promoted':       'Configs promoted',
   }
   return labels[action] ?? action
 }
 
 function actionBadgeClass(action) {
   if (action?.startsWith('auth'))       return 'bg-violet-50 text-violet-700 border-violet-200'
-  if (action?.startsWith('workspace')) return 'bg-indigo-50 text-indigo-700 border-indigo-200'
+  if (action?.startsWith('workspace')) return 'bg-blue-50 text-blue-700 border-blue-200'
   if (action?.startsWith('feed'))      return 'bg-sky-50 text-sky-700 border-sky-200'
   if (action?.startsWith('post'))      return 'bg-amber-50 text-amber-700 border-amber-200'
   if (action?.startsWith('credential'))return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (action?.startsWith('admin'))     return 'bg-indigo-50 text-indigo-700 border-indigo-200'
+  if (action?.startsWith('oauth_app')) return 'bg-teal-50 text-teal-700 border-teal-200'
   return 'bg-slate-50 text-slate-600 border-slate-200'
 }
 
 function actionDotClass(action) {
   if (action?.startsWith('auth'))       return 'bg-violet-400'
-  if (action?.startsWith('workspace')) return 'bg-indigo-400'
+  if (action?.startsWith('workspace')) return 'bg-blue-400'
   if (action?.startsWith('feed'))      return 'bg-sky-400'
   if (action?.startsWith('post'))      return 'bg-amber-400'
   if (action?.startsWith('credential'))return 'bg-emerald-400'
+  if (action?.startsWith('admin'))     return 'bg-indigo-400'
+  if (action?.startsWith('oauth_app')) return 'bg-teal-400'
   return 'bg-slate-400'
 }
 
 onMounted(load)
 </script>
-

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\OAuthAppConfig;
 use App\Support\OAuthAppConfigResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
@@ -32,9 +31,23 @@ class SocialCredential extends Model
         'expires_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (self $credential): void {
+            $feedIds = Feed::where('social_credential_id', $credential->id)->pluck('id');
+            Post::whereIn('feed_id', $feedIds)->delete();
+            Feed::whereIn('id', $feedIds)->delete();
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function feeds()
+    {
+        return $this->hasMany(Feed::class, 'social_credential_id');
     }
 
     /**
@@ -71,7 +84,7 @@ class SocialCredential extends Model
         $clientId = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
         if (! $clientId || ! $clientSecret) {
-            return null;
+            throw new \RuntimeException('Google OAuth app credentials are not configured.');
         }
 
         $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
@@ -82,13 +95,17 @@ class SocialCredential extends Model
         ]);
 
         if (! $response->successful()) {
-            return null;
+            // invalid_grant = user revoked access; everything else is transient
+            if ($response->json('error') === 'invalid_grant') {
+                return null;
+            }
+            throw new \RuntimeException('YouTube token refresh failed: ' . ($response->json('error') ?? $response->status()));
         }
 
         $accessToken = $response->json('access_token');
         $expiresIn = (int) $response->json('expires_in', 3600);
         if (! $accessToken) {
-            return null;
+            throw new \RuntimeException('YouTube token refresh returned no access_token.');
         }
 
         $this->access_token = $accessToken;
@@ -117,7 +134,7 @@ class SocialCredential extends Model
         $clientId = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
         if (! $clientId || ! $clientSecret) {
-            return null;
+            throw new \RuntimeException('Twitter OAuth app credentials are not configured.');
         }
 
         $response = Http::asForm()->withBasicAuth($clientId, $clientSecret)->post('https://api.x.com/2/oauth2/token', [
@@ -127,13 +144,17 @@ class SocialCredential extends Model
         ]);
 
         if (! $response->successful()) {
-            return null;
+            // 401 with invalid_request means the refresh token has been revoked or rotated away
+            if ($response->status() === 401 || $response->json('error') === 'invalid_request') {
+                return null;
+            }
+            throw new \RuntimeException('Twitter token refresh failed: ' . ($response->json('error') ?? $response->status()));
         }
 
         $accessToken = $response->json('access_token');
         $expiresIn = (int) $response->json('expires_in', 7200);
         if (! $accessToken) {
-            return null;
+            throw new \RuntimeException('Twitter token refresh returned no access_token.');
         }
 
         $this->access_token = $accessToken;
@@ -173,13 +194,13 @@ class SocialCredential extends Model
             ]);
 
         if (! $response->successful()) {
-            return null;
+            throw new \RuntimeException('Threads token refresh failed: ' . ($response->json('error') ?? $response->status()));
         }
 
         $accessToken = $response->json('access_token');
         $expiresIn = (int) $response->json('expires_in', 5184000);
         if (! $accessToken) {
-            return null;
+            throw new \RuntimeException('Threads token refresh returned no access_token.');
         }
 
         $this->access_token = $accessToken;
@@ -208,7 +229,7 @@ class SocialCredential extends Model
         $clientKey = $oauth?->client_id;
         $clientSecret = $oauth?->client_secret;
         if (! $clientKey || ! $clientSecret) {
-            return null;
+            throw new \RuntimeException('TikTok OAuth app credentials are not configured.');
         }
 
         $response = Http::asForm()
@@ -222,13 +243,13 @@ class SocialCredential extends Model
             ]);
 
         if (! $response->successful()) {
-            return null;
+            throw new \RuntimeException('TikTok token refresh failed: ' . ($response->json('error') ?? $response->status()));
         }
 
         $accessToken = $response->json('access_token');
         $expiresIn = (int) $response->json('expires_in', 86400);
         if (! $accessToken) {
-            return null;
+            throw new \RuntimeException('TikTok token refresh returned no access_token.');
         }
 
         $this->access_token = $accessToken;

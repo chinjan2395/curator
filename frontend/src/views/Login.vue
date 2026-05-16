@@ -8,15 +8,16 @@
 
         <template v-if="socialProviders.length">
           <div :class="socialLoginGridClass">
-            <a
+            <AppButton
               v-for="p in socialProviders"
               :key="p.id"
               :href="`/api/auth/social/${p.id}`"
+              variant="secondary"
               class="social-btn"
             >
               <span class="social-icon" v-html="p.icon" />
               <span>{{ p.label }}</span>
-            </a>
+            </AppButton>
           </div>
 
           <div class="flex items-center gap-2">

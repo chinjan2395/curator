@@ -58,68 +58,78 @@ function stepClass(key) {
 .wizard-stepper {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.625rem;
 }
 
 .wizard-step {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  flex: 1 1 180px;
-  padding: 0.7rem 0.8rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: rgba(248, 250, 252, 0.82);
+  gap: 0.75rem;
+  flex: 1 1 160px;
+  padding: 0.75rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid #e6ebf2;
+  background: #fff;
   text-decoration: none;
   color: inherit;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
 }
 
 .wizard-step:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(30, 58, 138, 0.25);
+  background: #f8fafc;
 }
 
 .wizard-step--active {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(238, 242, 255, 0.72);
+  border-color: rgba(30, 58, 138, 0.35);
+  background: rgba(239, 246, 255, 0.8);
 }
 
 .wizard-step--done {
-  border-color: rgba(191, 219, 254, 0.8);
+  border-color: rgba(30, 58, 138, 0.18);
+  background: #fff;
 }
 
 .wizard-step__index {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: rgb(51 65 85);
-  background: rgba(226, 232, 240, 0.95);
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   flex: 0 0 auto;
 }
 
 .wizard-step--active .wizard-step__index {
-  color: rgb(67 56 202);
-  background: rgba(199, 210, 254, 0.95);
+  color: #fff;
+  background: #1e3a8a;
+  border-color: #1e3a8a;
 }
 
 .wizard-step--done .wizard-step__index {
-  color: rgb(30 64 175);
-  background: rgba(219, 234, 254, 0.95);
+  color: #1e3a8a;
+  background: #dbeafe;
+  border-color: #bfdbfe;
 }
 
 .wizard-step__label {
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(30 41 59);
+  color: #1e293b;
+}
+
+.wizard-step--active .wizard-step__label {
+  color: #1e3a8a;
 }
 
 .wizard-step__meta {
-  font-size: 0.7rem;
-  color: rgb(100 116 139);
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  margin-top: 0.1rem;
 }
 </style>

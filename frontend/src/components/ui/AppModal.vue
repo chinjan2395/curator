@@ -29,17 +29,20 @@ const sizeClasses = {
         role="dialog"
         aria-modal="true"
       >
+        <!-- Backdrop -->
         <div
           class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
           @click="closable && $emit('close')"
         />
 
-        <div :class="['relative w-full surface-card shadow-xl rounded-xl overflow-hidden', sizeClasses[size]]">
-          <div v-if="title || closable" class="flex items-center justify-between px-5 py-4 border-b border-slate-200/80">
-            <h3 v-if="title" class="text-sm font-semibold text-slate-800">{{ title }}</h3>
+        <!-- Panel -->
+        <div :class="['relative w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100', sizeClasses[size]]">
+          <!-- Header -->
+          <div v-if="title || closable" class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 v-if="title" class="text-base font-semibold text-slate-800">{{ title }}</h3>
             <button
               v-if="closable"
-              class="ml-auto text-slate-400 hover:text-slate-600 transition"
+              class="ml-auto p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
               @click="$emit('close')"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,11 +51,13 @@ const sizeClasses = {
             </button>
           </div>
 
-          <div class="p-5">
+          <!-- Body -->
+          <div class="p-6">
             <slot />
           </div>
 
-          <div v-if="$slots.footer" class="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50 flex items-center justify-end gap-2">
+          <!-- Footer -->
+          <div v-if="$slots.footer" class="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-2">
             <slot name="footer" />
           </div>
         </div>
@@ -62,12 +67,26 @@ const sizeClasses = {
 </template>
 
 <style scoped>
-.modal-enter-active,
-.modal-leave-active {
+.modal-enter-active {
   transition: opacity 0.2s ease;
+}
+.modal-leave-active {
+  transition: opacity 0.15s ease;
 }
 .modal-enter-from,
 .modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-active .relative,
+.modal-leave-active .relative {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.modal-enter-from .relative {
+  transform: translateY(-8px) scale(0.98);
+  opacity: 0;
+}
+.modal-leave-to .relative {
+  transform: translateY(4px) scale(0.98);
   opacity: 0;
 }
 </style>

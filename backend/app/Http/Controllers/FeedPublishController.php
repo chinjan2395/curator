@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ApiResponse;
 use App\Models\Workspace;
 use App\Services\PublishService;
+use App\Support\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +17,16 @@ class FeedPublishController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        return ApiResponse::success($this->publishService->publish($workspace), 'Publish complete.');
+        $result = $this->publishService->publish($workspace);
+
+        ActivityLogger::log(
+            $request->user(),
+            'workspace.published',
+            "Published {$result['published']} post(s) for workspace \"{$workspace->name}\"",
+            'workspace', $workspace->id, $workspace->name,
+        );
+
+        return ApiResponse::success($result, 'Publish complete.');
     }
 
     public function publishCode(Request $request, Workspace $workspace): JsonResponse
@@ -58,6 +68,13 @@ class FeedPublishController extends Controller
         }
 
         $normalized = $this->publishService->updateSettings($workspace, $patch);
+
+        ActivityLogger::log(
+            $request->user(),
+            'workspace.settings_updated',
+            "Updated publish settings for workspace \"{$workspace->name}\"",
+            'workspace', $workspace->id, $workspace->name,
+        );
 
         return ApiResponse::success(['publish_settings' => $normalized], 'Settings updated.');
     }

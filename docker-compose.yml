@@ -34,6 +34,42 @@ services:
       # Vite proxy must hit the PHP container by service name (not localhost).
       - VITE_API_PROXY_TARGET=http://backend:8000
 
+  scheduler:
+    image: curator_backend:php8.4
+    container_name: curator_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=curator
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  queue:
+    image: curator_backend:php8.4
+    container_name: curator_queue
+    restart: unless-stopped
+    command: php artisan queue:work --tries=3 --backoff=60 --max-time=3600
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=curator
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   mysql:
     image: mysql:8
     container_name: curator_mysql

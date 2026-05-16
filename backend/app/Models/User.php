@@ -31,6 +31,7 @@ class User extends Authenticatable
         'social_provider_id',
         'deactivated_at',
         'last_login_at',
+        'sync_notifications_seen_at',
     ];
 
     /**
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'deactivated_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'sync_notifications_seen_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

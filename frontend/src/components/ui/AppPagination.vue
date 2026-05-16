@@ -23,14 +23,14 @@ import { computed } from 'vue'
     <div class="flex items-center gap-1">
       <button
         :disabled="!hasPrev"
-        class="px-2.5 py-1.5 rounded border border-slate-200 text-xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
         @click="emit('page-change', currentPage - 1)"
       >
         &larr; Prev
       </button>
       <button
         :disabled="!hasNext"
-        class="px-2.5 py-1.5 rounded border border-slate-200 text-xs hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
         @click="emit('page-change', currentPage + 1)"
       >
         Next &rarr;

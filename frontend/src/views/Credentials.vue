@@ -31,22 +31,37 @@
       <AppLoader size="sm" label="Loading..." />
     </div>
     <div v-else-if="creds.error" class="text-sm-pro text-red-600">{{ creds.error }}</div>
-    <div v-else-if="!providerCards.length" class="surface-card p-6 text-center text-sm-pro text-slate-500">
+    <AppCard v-else-if="!providerCards.length" class="p-6 text-center text-sm-pro text-slate-500">
       No providers are ready yet. Configure shared defaults or your override in
-      <router-link to="/oauth-apps" class="text-indigo-600 font-medium hover:underline">OAuth apps</router-link>.
-    </div>
+      <router-link to="/oauth-apps" class="text-blue-600 font-medium hover:underline">OAuth apps</router-link>.
+    </AppCard>
     <div v-else class="connected-accounts-shell compact-accounts-shell space-y-2.5 sm:p-3 rounded-xl">
       <div class="flex flex-wrap items-center justify-between gap-2 px-1">
         <p class="text-xs-pro font-medium text-slate-700">Current connected accounts</p>
-        <p class="text-2xs text-slate-500">{{ creds.list.length }} total account{{ creds.list.length > 1 ? 's' : '' }}</p>
+        <div class="flex items-center gap-2">
+          <p class="text-2xs text-slate-500">{{ creds.list.length }} account{{ creds.list.length > 1 ? 's' : '' }}</p>
+          <AppButton
+            size="sm"
+            variant="secondary"
+            :disabled="syncingAll"
+            @click="syncAllAccounts"
+            title="Sync all accounts"
+          >
+            <AppIcon name="sync" class="w-3.5 h-3.5 shrink-0" :class="{ 'animate-spin': syncingAll }" />
+            Sync all
+          </AppButton>
+        </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         <div
           v-for="card in providerCards"
           :key="card.type"
           class="connected-provider-card overflow-hidden"
+          :class="{ 'connected-provider-card--broken': card.hasBroken }"
         >
-          <div class="px-3 py-2 border-b border-slate-100/95 flex items-center justify-between gap-2">
+          <div class="px-3 py-2 border-b flex items-center justify-between gap-2"
+            :class="card.hasBroken ? 'border-rose-100' : 'border-slate-100/95'"
+          >
             <div class="flex items-center gap-2 min-w-0">
               <div class="connected-provider-icon" :style="{ background: providerUi[card.type]?.softBg || 'rgba(148,163,184,0.14)', color: providerUi[card.type]?.color || '#475569' }">
                 <SocialIcon :type="card.type" />
@@ -55,62 +70,107 @@
                 <p class="text-xs-pro font-semibold text-slate-800 truncate">{{ providerLabels[card.type] || card.type }}</p>
                 <p class="text-2xs text-slate-500 truncate">{{ providerUi[card.type]?.tagline || 'Connected accounts' }}</p>
               </div>
-              <span class="connected-provider-count">{{ card.credentials.length }} account{{ card.credentials.length > 1 ? 's' : '' }}</span>
+              <span class="connected-provider-count" :class="{ 'connected-provider-count--broken': card.hasBroken }">
+                {{ card.credentials.length }} account{{ card.credentials.length > 1 ? 's' : '' }}
+              </span>
             </div>
             <AppButton
+              size="sm"
               variant="secondary"
-              class="!w-auto !py-1 !px-2 text-xs-pro"
               :disabled="creds.connecting"
               @click="startConnect(card.type)"
               title="Add another account"
             >
-              + Add
+              <AppIcon name="add" class="w-3.5 h-3.5 shrink-0" />
+              Add
             </AppButton>
           </div>
-          <div v-if="!card.credentials.length" class="p-2">
-            <div class="connected-account-empty text-2xs text-slate-500">
-              Configured, but no account connected yet.
+          <!-- Empty state -->
+          <div v-if="!card.credentials.length" class="p-2.5">
+            <div class="connected-account-empty">
+              <p class="text-xs-pro text-slate-500 font-medium">No account connected yet</p>
+              <p class="text-2xs text-slate-400 mt-0.5">Click <strong>Add</strong> above to connect your {{ providerLabels[card.type] }} account.</p>
             </div>
           </div>
+          <!-- Credential rows -->
           <div v-else class="p-2 space-y-2">
-            <div v-for="c in card.credentials" :key="c.id" class="connected-account-row">
-              <div class="min-w-0">
-                  <div v-if="renamingId !== c.id" class="flex items-center gap-2">
-                    <span class="font-medium text-slate-800 truncate">{{ c.account_label || c.account_id || '—' }}</span>
-                    <AppButton
-                      variant="ghost"
-                      class="text-2xs text-slate-400 hover:text-slate-600 underline"
-                      @click="startRename(c)"
-                    >edit</AppButton>
+            <div
+              v-for="c in card.credentials"
+              :key="c.id"
+              class="connected-account-row"
+              :class="{ 'connected-account-row--broken': c.status && c.status !== 'active' }"
+            >
+              <!-- Name + expiry row -->
+              <div v-if="renamingId !== c.id" class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-medium text-slate-800 truncate text-sm-pro">{{ c.account_label || c.account_id || '—' }}</span>
+                    <span
+                      class="credential-status-badge"
+                      :class="c.status === 'active' ? 'credential-status-badge--active' : 'credential-status-badge--broken'"
+                    >
+                      <span class="credential-status-dot"></span>
+                      {{ c.status === 'active' ? 'Active' : 'Disconnected' }}
+                    </span>
                   </div>
-                  <div v-else class="flex items-center gap-1.5">
-                    <AppInput
-                      v-model="renameValue"
-                      type="text"
-                      input-class="!py-1 !text-sm-pro flex-1"
-                      placeholder="Account label"
-                      @keyup.enter="saveRename(c.id)"
-                      @keyup.escape="cancelRename"
-                    />
-                    <AppButton size="sm" @click="saveRename(c.id)">Save</AppButton>
-                    <AppButton variant="secondary" size="sm" @click="cancelRename">✕</AppButton>
-                  </div>
-              </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                  <p class="compact-expiry text-2xs text-slate-500">
-                    <span class="font-medium text-slate-600">{{ c.expires_at ? formatDate(c.expires_at) : '—' }}</span>
+                  <p class="text-2xs text-slate-400 mt-0.5">
+                    {{ c.last_synced_at ? formatSynced(c.last_synced_at) : 'Never synced' }}
                   </p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-2xs font-medium text-slate-600">{{ c.expires_at ? formatExpiry(c.expires_at) : '—' }}</p>
                   <AppButton
+                    size="sm"
                     variant="ghost"
-                    class="compact-disconnect-btn"
-                    @click="disconnect(c)"
-                    title="Disconnect account"
+                    class="text-2xs text-slate-400 hover:text-slate-600 underline mt-0.5"
+                    @click="startRename(c)"
                   >
-                    <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="hidden sm:inline">Disconnect</span>
+                    <AppIcon name="edit" class="w-3 h-3 shrink-0" />
+                    rename
                   </AppButton>
+                </div>
+              </div>
+              <!-- Rename input row -->
+              <div v-else class="flex items-center gap-1.5">
+                <AppInput
+                  v-model="renameValue"
+                  type="text"
+                  input-class="!py-1 !text-sm-pro flex-1"
+                  placeholder="Account label"
+                  @keyup.enter="saveRename(c.id)"
+                  @keyup.escape="cancelRename"
+                />
+                <AppButton size="sm" @click="saveRename(c.id)">
+                  <AppIcon name="save" class="w-3.5 h-3.5 shrink-0" />
+                  Save
+                </AppButton>
+                <AppButton variant="secondary" size="sm" @click="cancelRename">
+                  <AppIcon name="close" class="w-3.5 h-3.5 shrink-0" />
+                </AppButton>
+              </div>
+              <!-- Actions row -->
+              <div v-if="renamingId !== c.id" class="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100">
+                <AppButton
+                  variant="ghost"
+                  size="sm"
+                  class="compact-sync-btn"
+                  :disabled="syncingIds.has(c.id)"
+                  @click="syncCredential(c)"
+                  title="Sync feeds for this account"
+                >
+                  <AppIcon name="sync" class="w-3.5 h-3.5 shrink-0" :class="{ 'animate-spin': syncingIds.has(c.id) }" />
+                  Sync
+                </AppButton>
+                <AppButton
+                  variant="ghost"
+                  size="sm"
+                  class="compact-disconnect-btn"
+                  @click="disconnect(c)"
+                  title="Disconnect account"
+                >
+                  <AppIcon name="delete" class="w-3.5 h-3.5 shrink-0" />
+                  Disconnect
+                </AppButton>
               </div>
             </div>
           </div>
@@ -129,7 +189,7 @@ import { useToastStore } from '../stores/toast';
 import { useAuthStore } from '../stores/auth';
 import SocialIcon from '../components/SocialIcon.vue';
 import { AppPageHeader } from '../components/layout/index.js';
-import { AppButton, AppInput, AppLoader } from '../components/ui';
+import { AppButton, AppCard, AppIcon, AppInput, AppLoader } from '../components/ui';
 
 defineOptions({ name: 'CredentialsView' });
 
@@ -173,10 +233,14 @@ const oauthProviderByProvider = {
   threads: 'threads',
 };
 const connectableProviders = computed(() => socialProviders.filter((item) => isProviderConnectable(item.type)));
-const providerCards = computed(() => connectableProviders.value.map((item) => ({
-  type: item.type,
-  credentials: creds.byProvider?.[item.type] || [],
-})));
+const providerCards = computed(() => connectableProviders.value.map((item) => {
+  const credentials = creds.byProvider?.[item.type] || [];
+  return {
+    type: item.type,
+    credentials,
+    hasBroken: credentials.some((c) => c.status && c.status !== 'active'),
+  };
+}));
 
 function isProviderConnectable(providerType) {
   if (!implementedProviders.includes(providerType)) return false;
@@ -219,6 +283,42 @@ async function startConnect(providerType) {
   }
 }
 
+const syncingIds = ref(new Set());
+const syncingAll = ref(false);
+
+async function syncAllAccounts() {
+  syncingAll.value = true;
+  try {
+    await creds.syncAll();
+    await auth.fetchSyncSummary();
+    toast.success('All accounts synced');
+  } catch {
+    // individual errors handled in store
+  } finally {
+    syncingAll.value = false;
+  }
+}
+
+async function syncCredential(c) {
+  syncingIds.value = new Set([...syncingIds.value, c.id]);
+  try {
+    const result = await creds.syncCredential(c.id);
+    const label = c.account_label || c.account_id || c.provider;
+    if (result.status === 'disconnected') {
+      toast.error(`Sync failed for "${label}" — token expired. Try reconnecting.`);
+    } else {
+      toast.success(`Synced "${label}" (${result.synced} feed${result.synced !== 1 ? 's' : ''})`);
+      await auth.fetchSyncSummary();
+    }
+  } catch {
+    // toast shown in store
+  } finally {
+    const next = new Set(syncingIds.value);
+    next.delete(c.id);
+    syncingIds.value = next;
+  }
+}
+
 const renamingId = ref(null);
 const renameValue = ref('');
 
@@ -245,11 +345,34 @@ async function disconnect(c) {
   }
 }
 
-function formatDate(v) {
+function formatExpiry(v) {
   try {
-    return new Date(v).toLocaleString();
+    const diff = new Date(v) - Date.now();
+    const abs = Math.abs(diff);
+    const days = Math.floor(abs / 86400000);
+    const hours = Math.floor(abs / 3600000);
+    const mins = Math.floor(abs / 60000);
+    const past = diff < 0;
+    if (days > 0) return past ? `Expired ${days}d ago` : `Expires in ${days}d`;
+    if (hours > 0) return past ? `Expired ${hours}h ago` : `Expires in ${hours}h`;
+    return past ? `Expired ${mins}m ago` : `Expires in ${mins}m`;
   } catch {
     return String(v);
+  }
+}
+
+function formatSynced(v) {
+  try {
+    const diff = Date.now() - new Date(v);
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 1) return 'Synced just now';
+    if (mins < 60) return `Synced ${mins}m ago`;
+    if (hours < 24) return `Synced ${hours}h ago`;
+    return `Synced ${days}d ago`;
+  } catch {
+    return 'Last synced unknown';
   }
 }
 </script>
@@ -257,8 +380,8 @@ function formatDate(v) {
 <style scoped>
 .credentials-provider-panel {
   background:
-    radial-gradient(700px 200px at -8% -60%, rgba(56, 189, 248, 0.09), transparent 62%),
-    radial-gradient(560px 200px at 120% -58%, rgba(99, 102, 241, 0.11), transparent 62%),
+    radial-gradient(700px 200px at -8% -60%, rgba(30, 58, 138, 0.05), transparent 62%),
+    radial-gradient(560px 200px at 120% -58%, rgba(30, 58, 138, 0.04), transparent 62%),
     linear-gradient(170deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
 }
 
@@ -266,28 +389,29 @@ function formatDate(v) {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
+  background: #fff;
   padding: 0.65rem 0.75rem;
   transition: all 0.18s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .credentials-provider-card:hover {
-  border-color: rgba(165, 180, 252, 0.72);
-  background: rgba(238, 242, 255, 0.62);
+  border-color: rgba(30, 58, 138, 0.2);
+  background: rgba(239, 246, 255, 0.5);
 }
 
 .credentials-provider-card--active {
-  border-color: rgba(99, 102, 241, 0.55);
-  background: rgba(238, 242, 255, 0.92);
-  box-shadow: 0 10px 24px -18px rgba(79, 70, 229, 0.85);
+  border-color: rgba(30, 58, 138, 0.35);
+  background: rgba(239, 246, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.08);
 }
 
 .oauth-empty-state {
-  border: 1px dashed rgba(203, 213, 225, 0.9);
-  border-radius: 0.75rem;
-  background: rgba(248, 250, 252, 0.72);
+  border: 1px dashed #d1d9e6;
+  border-radius: 0.875rem;
+  background: #f8fafc;
   padding: 0.7rem 0.8rem;
 }
 
@@ -304,11 +428,11 @@ function formatDate(v) {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #e6ebf2;
+  background: #fff;
   border-radius: 999px;
   padding: 0.28rem 0.62rem;
-  color: rgb(100 116 139);
+  color: #64748b;
   font-size: 0.68rem;
 }
 
@@ -318,41 +442,44 @@ function formatDate(v) {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(226, 232, 240, 0.88);
-  color: rgb(71 85 105);
+  background: #f1f5f9;
+  color: #475569;
   font-size: 0.62rem;
   font-weight: 600;
 }
 
 .credentials-step--active {
-  border-color: rgba(129, 140, 248, 0.55);
-  color: rgb(67 56 202);
-  background: rgba(238, 242, 255, 0.84);
+  border-color: rgba(30, 58, 138, 0.3);
+  color: #1e3a8a;
+  background: rgba(239, 246, 255, 0.9);
 }
 
 .credentials-step--active .credentials-step__dot {
-  background: rgba(99, 102, 241, 0.95);
+  background: #1e3a8a;
   color: white;
 }
 
 .credentials-step-divider {
   width: 1rem;
   height: 1px;
-  background: rgba(203, 213, 225, 0.9);
+  background: #e2e8f0;
 }
 
 .connected-accounts-shell {
-  background:
-    radial-gradient(640px 180px at -6% -50%, rgba(56, 189, 248, 0.08), transparent 62%),
-    radial-gradient(540px 180px at 115% -50%, rgba(99, 102, 241, 0.09), transparent 62%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(248, 250, 252, 0.45));
+  background: transparent;
 }
 
 .connected-provider-card {
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 28px -28px rgba(15, 23, 42, 0.6);
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.connected-provider-card--broken {
+  border-color: rgba(251, 113, 133, 0.5);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 0 0 3px rgba(254, 205, 211, 0.4);
 }
 
 .connected-provider-icon {
@@ -365,39 +492,102 @@ function formatDate(v) {
 }
 
 .connected-provider-count {
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(248, 250, 252, 0.9);
-  color: rgb(100 116 139);
+  border: 1px solid #e6ebf2;
+  background: #f8fafc;
+  color: #64748b;
   border-radius: 999px;
   padding: 0.15rem 0.45rem;
   font-size: 0.68rem;
 }
 
+.connected-provider-count--broken {
+  border-color: rgba(252, 165, 165, 0.6);
+  background: rgba(255, 241, 242, 0.9);
+  color: #be123c;
+}
+
 .connected-account-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.55rem;
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  border-radius: 0.7rem;
-  background: rgba(248, 250, 252, 0.68);
-  padding: 0.45rem 0.55rem;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #f1f5f9;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  padding: 0.5rem 0.55rem;
+  transition: border-color 0.15s ease;
+}
+
+.connected-account-row--broken {
+  border-color: rgba(252, 165, 165, 0.45);
+  background: rgba(255, 248, 248, 0.9);
 }
 
 .connected-account-empty {
-  border: 1px dashed rgba(226, 232, 240, 0.95);
-  border-radius: 0.65rem;
-  background: rgba(248, 250, 252, 0.75);
-  padding: 0.6rem 0.65rem;
+  border: 1px dashed #d1d9e6;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  padding: 0.75rem 0.85rem;
+}
+
+.credential-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+}
+
+.credential-status-badge--active {
+  background: rgba(220, 252, 231, 0.9);
+  color: #15803d;
+  border: 1px solid rgba(134, 239, 172, 0.5);
+}
+
+.credential-status-badge--broken {
+  background: rgba(255, 228, 230, 0.9);
+  color: #be123c;
+  border: 1px solid rgba(252, 165, 165, 0.5);
+}
+
+.credential-status-dot {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .compact-accounts-shell .connected-provider-card {
-  border-radius: 0.75rem;
+  border-radius: 0.875rem;
 }
 
-.compact-expiry {
-  white-space: nowrap;
-  padding-right: 0.15rem;
+.compact-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: rgba(248, 250, 252, 0.8);
+  color: #475569;
+  border-radius: 0.5rem;
+  padding: 0.22rem 0.38rem;
+  font-size: 0.68rem;
+  line-height: 1;
+  transition: all 0.16s ease;
+}
+
+.compact-sync-btn:hover:not(:disabled) {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(238, 242, 255, 0.9);
+  color: #4338ca;
+}
+
+.compact-sync-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .compact-disconnect-btn {
@@ -420,4 +610,3 @@ function formatDate(v) {
   color: rgb(159 18 57);
 }
 </style>
-
