@@ -239,7 +239,7 @@
                     :required="!!facebookCredentials.length"
                   >
                     <option value="">Select credential</option>
-                    <option v-for="c in facebookCredentials" :key="c.id" :value="c.id">
+                    <option v-for="c in facebookCredentials" :key="c.id" :value="String(c.id)">
                       {{ c.account_label || c.account_id || c.provider }}{{ c.expires_at ? ` · ${formatDate(c.expires_at)}` : '' }}
                     </option>
                   </AppSelect>
@@ -260,7 +260,7 @@
                       <option value="">
                         {{ !form.social_credential_id ? 'Select credential first' : (loadingFacebookPages ? 'Loading pages…' : 'Select page') }}
                       </option>
-                      <option v-for="p in facebookPages" :key="p.id" :value="p.id">
+                      <option v-for="p in facebookPages" :key="p.id" :value="String(p.id)">
                         {{ p.name || p.id }} ({{ p.id }})
                       </option>
                     </AppSelect>
@@ -274,6 +274,12 @@
                     </AppButton>
                   </div>
                 </AppFormField>
+                <p
+                  v-if="form.social_credential_id && !loadingFacebookPages && !facebookPages.length"
+                  class="feed-error-text"
+                >
+                  No Facebook Pages found for this account. Disconnect and reconnect Facebook in Credentials, select the new Page in Meta’s dialog, then refresh here.
+                </p>
               </div>
 
               <div v-if="form.facebook_page_id" class="feed-field-card">
@@ -774,6 +780,10 @@ const syncToggleSaving = ref(false);
 const loadingFacebookPages = ref(false);
 const facebookPages = ref([]);
 const selectedFacebookPageId = ref('');
+/** When true, Facebook credential watch only loads pages; does not clear selection (edit hydrate). */
+const skipNextFacebookCredReset = ref(false);
+/** Suppresses credential reset while loading an existing feed in edit mode. */
+const hydratingFeed = ref(false);
 const loadingInstagramAccounts = ref(false);
 const instagramAccounts = ref([]);
 const selectedInstagramCombo = ref('');
@@ -818,6 +828,10 @@ const facebookCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'facebook'),
 );
 
+const facebookCredentialIds = computed(() =>
+  new Set(facebookCredentials.value.map((c) => String(c.id))),
+);
+
 const instagramCredentials = computed(() =>
   credentials.list.filter((c) => c.provider === 'instagram'),
 );
@@ -851,6 +865,7 @@ const socialTypes = [
   { type: 'other', label: 'Other', tagline: 'Custom source setup', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
 const accountOptionalTypes = new Set(['rss', 'other']);
+const oauthFeedTypes = new Set(['youtube', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads']);
 const availableSocialTypes = computed(() => socialTypes.filter((item) => (
   accountOptionalTypes.has(item.type)
   || (credentialCounts.value[item.type] || 0) > 0
@@ -1037,6 +1052,7 @@ async function loadYoutubeChannels() {
 
 async function loadFacebookPages() {
   if (form.type !== 'facebook' || !form.social_credential_id) return;
+  if (!facebookCredentialIds.value.has(String(form.social_credential_id))) return;
   loadingFacebookPages.value = true;
   try {
     const data = await fetchFacebookPages(workspaceId.value, Number(form.social_credential_id));
@@ -1062,10 +1078,37 @@ watch(
   () => [form.type, form.social_credential_id],
   async ([type, cred]) => {
     if (type !== 'facebook') return;
+    if (skipNextFacebookCredReset.value) {
+      if (cred && facebookCredentialIds.value.has(String(cred))) {
+        await loadFacebookPages();
+      }
+      return;
+    }
+    if (cred && !facebookCredentialIds.value.has(String(cred))) {
+      form.social_credential_id = '';
+      return;
+    }
     selectedFacebookPageId.value = '';
     form.facebook_page_id = '';
     facebookPages.value = [];
     if (cred) await loadFacebookPages();
+  },
+);
+
+watch(
+  () => form.type,
+  (type, prevType) => {
+    if (hydratingFeed.value || !prevType || type === prevType) return;
+    if (oauthFeedTypes.has(type) && oauthFeedTypes.has(prevType)) {
+      form.social_credential_id = '';
+    }
+    if (
+      type === 'facebook' &&
+      facebookCredentials.value.length === 1 &&
+      !form.social_credential_id
+    ) {
+      form.social_credential_id = String(facebookCredentials.value[0].id);
+    }
   },
 );
 
@@ -1209,8 +1252,12 @@ onMounted(async () => {
     await feeds.fetchAll(workspaceId.value);
     const f = feeds.list.find((x) => x.id === Number(feedId.value));
     if (f) {
+      hydratingFeed.value = true;
       if (f.type === 'youtube' && f.social_credential_id) {
         skipNextYoutubeCredReset.value = true;
+      }
+      if (f.type === 'facebook' && f.social_credential_id) {
+        skipNextFacebookCredReset.value = true;
       }
       if (f.type === 'twitter' && f.social_credential_id) {
         skipNextTwitterCredReset.value = true;
@@ -1241,6 +1288,8 @@ onMounted(async () => {
       if (f.type === 'facebook' && f.social_credential_id) {
         selectedFacebookPageId.value = String(f.facebook_page_id || '');
         await loadFacebookPages();
+        await nextTick();
+        skipNextFacebookCredReset.value = false;
       }
       if (f.type === 'instagram' && f.social_credential_id) {
         await loadInstagramAccounts();
@@ -1273,6 +1322,7 @@ onMounted(async () => {
         await nextTick();
         skipNextThreadsCredReset.value = false;
       }
+      hydratingFeed.value = false;
     }
   }
 });
