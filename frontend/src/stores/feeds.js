@@ -31,9 +31,10 @@ export const useFeedsStore = defineStore('feeds', {
       this.lastActionError = null;
       try {
         const { data } = await axios.post(`/api/workspaces/${workspaceId}/feeds`, payload);
-        this.list.push(data);
+        const feed = data.data ?? data;
+        this.list.push(feed);
         useToastStore().success('Feed created');
-        return data;
+        return feed;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to create feed';
         this.error = msg;
@@ -67,10 +68,11 @@ export const useFeedsStore = defineStore('feeds', {
       this.lastActionError = null;
       try {
         const { data } = await axios.put(`/api/workspaces/${workspaceId}/feeds/${feedId}`, payload);
+        const feed = data.data ?? data;
         const i = this.list.findIndex((f) => f.id === feedId);
-        if (i !== -1) this.list[i] = data;
+        if (i !== -1) this.list[i] = feed;
         useToastStore().success('Feed updated');
-        return data;
+        return feed;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to update feed';
         this.error = msg;
