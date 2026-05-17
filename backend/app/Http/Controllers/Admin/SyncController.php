@@ -80,6 +80,11 @@ class SyncController extends Controller
     {
         ActivityLogger::log($request->user(), 'feed.resync_credential', "Re-synced all feeds for credential \"{$credential->account_label}\" (admin)", 'credential', $credential->id, $credential->account_label);
 
+        // Reset to active before attempting sync so transient failures don't keep it disconnected.
+        // The sync will re-mark it disconnected only on confirmed revocation (invalid_grant).
+        $credential->update(['status' => 'active']);
+
+        // Reload feeds after the reset so eager-loaded socialCredential has fresh status.
         $feeds = Feed::where('social_credential_id', $credential->id)
             ->with(['socialCredential', 'workspace'])
             ->get();
@@ -99,6 +104,7 @@ class SyncController extends Controller
         return response()->json([
             'status'  => $credential->status,
             'results' => $results,
+            'feeds_found' => $feeds->count(),
         ]);
     }
 

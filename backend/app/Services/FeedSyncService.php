@@ -44,6 +44,10 @@ class FeedSyncService
         try {
             $token = $credential?->getValidAccessToken();
         } catch (\Throwable $e) {
+            // Transient failure (network blip, config issue) — restore active so next cycle retries
+            if ($credential && $credential->status !== 'active') {
+                $credential->update(['status' => 'active']);
+            }
             $this->writeLog($feed, $userId, 'error', 0, 'Token refresh error: ' . $e->getMessage(), $startedAt, $triggeredBy);
             return null;
         }

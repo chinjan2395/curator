@@ -43,6 +43,17 @@
       </div>
 
       <div class="curate-toolbar__actions">
+        <label class="curate-select-all-label" title="Select / deselect all posts">
+          <input
+            type="checkbox"
+            :checked="allVisibleSelected"
+            :indeterminate.prop="!allVisibleSelected && hasSelection"
+            @change="toggleSelectAll"
+            class="post-checkbox-input"
+          />
+          <span class="post-checkbox-mark" :class="{ 'post-checkbox-mark--checked': allVisibleSelected }"></span>
+          <span class="curate-select-all-text">All</span>
+        </label>
         <div class="curate-view-toggle" role="group" aria-label="Post view mode">
           <button
             type="button"
@@ -64,21 +75,32 @@
         <AppButton variant="secondary" size="sm" class="curate-toolbar__btn" @click="syncNow" :disabled="feeds.syncing">
           {{ feeds.syncing ? 'Syncing…' : 'Sync now' }}
         </AppButton>
-        <AppButton variant="secondary" size="sm" class="curate-toolbar__btn" @click="refresh" :disabled="posts.loading">
-          {{ posts.loading ? 'Refreshing…' : 'Refresh' }}
-        </AppButton>
-        <AppButton variant="success" size="sm" class="curate-toolbar__btn" @click="approveAllPending" title="Approve all pending posts">
-          <AppIcon name="check" class="w-4 h-4" />
-          Approve all
-        </AppButton>
-        <AppButton variant="danger" size="sm" class="curate-toolbar__btn" @click="rejectAllPending" title="Reject all pending posts">
-          <AppIcon name="close" class="w-4 h-4" />
-          Reject all
-        </AppButton>
       </div>
 
       <div v-if="lastSyncedAt" class="curate-toolbar__meta">
         Last sync: <span class="text-slate-500">{{ formatDate(lastSyncedAt) }}</span>
+      </div>
+    </div>
+
+    <div v-if="hasSelection" class="curate-bulk-bar mb-3">
+      <div class="curate-bulk-bar__info">
+        <input
+          type="checkbox"
+          :checked="allVisibleSelected"
+          :indeterminate.prop="!allVisibleSelected && hasSelection"
+          @change="toggleSelectAll"
+          class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+        />
+        <span class="text-sm font-medium text-slate-700">{{ selectedPostIds.size }} selected</span>
+      </div>
+      <div class="curate-bulk-bar__actions">
+        <AppButton variant="success" size="sm" @click="bulkApprove">
+          <AppIcon name="check" class="w-3.5 h-3.5" /> Approve
+        </AppButton>
+        <AppButton variant="danger" size="sm" @click="bulkReject">
+          <AppIcon name="close" class="w-3.5 h-3.5" /> Reject
+        </AppButton>
+        <AppButton variant="secondary" size="sm" @click="clearSelection">Clear</AppButton>
       </div>
     </div>
 
@@ -167,6 +189,16 @@
                   <svg class="w-3.5 h-3.5 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </div>
               </div>
+              <!-- Checkbox overlay -->
+              <label class="post-checkbox-overlay" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="selectedPostIds.has(p.id)"
+                  @change="toggleSelect(p)"
+                  class="post-checkbox-input"
+                />
+                <span class="post-checkbox-mark" :class="{ 'post-checkbox-mark--checked': selectedPostIds.has(p.id) }"></span>
+              </label>
             </component>
 
             <!-- Body -->
@@ -229,64 +261,6 @@
         </div>
       </section>
 
-      <section v-if="rejectedPostsByPlatform.length" class="space-y-3">
-        <div class="flex items-center justify-between gap-2">
-          <div class="text-sm font-semibold text-slate-700">
-            Rejected posts
-            <span class="text-2xs text-slate-400 font-medium">({{ rejectedCount }})</span>
-          </div>
-          <AppButton variant="secondary" size="sm" @click="showRejected = !showRejected">
-            {{ showRejected ? 'Hide rejected' : 'Show rejected' }}
-          </AppButton>
-        </div>
-
-        <div v-if="showRejected" class="space-y-6">
-          <section v-for="[platform, platformPosts] in rejectedPostsByPlatform" :key="`rejected-${platform}`">
-            <div class="flex items-center gap-2 mb-3">
-              <div class="w-5 h-5 flex-shrink-0 flex items-center justify-center" :class="platformIconClass(platform)">
-                <SocialIcon :type="platform" />
-              </div>
-              <h2 class="text-sm font-semibold" :class="platformLabelClass(platform)">{{ feedTypeLabel(platform) }}</h2>
-              <span class="text-2xs text-slate-400 font-medium">{{ platformPosts.length }} post{{ platformPosts.length !== 1 ? 's' : '' }}</span>
-              <div class="flex-1 h-px" :class="platformDividerClass(platform)" />
-            </div>
-            <div :class="['grid gap-3', sectionGridClass(platformPosts.length)]">
-              <AppCard
-                v-for="p in platformPosts"
-                :key="`rejected-card-${p.id}`"
-                class="rounded-xl p-0 flex flex-col overflow-hidden transition-colors border-rose-200 bg-rose-50/20"
-              >
-                <div class="flex flex-col flex-1 p-2.5 gap-1.5">
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-2xs text-slate-400 truncate flex-1">{{ formatDate(p.posted_at) }}</span>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-semibold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">r</span>
-                  </div>
-                  <button
-                    class="text-left text-2xs text-slate-700 hover:text-blue-700 transition-colors flex-1 leading-relaxed line-clamp-3"
-                    @click="previewPost = p"
-                    title="Click to preview"
-                  >
-                    <strong v-if="p.title" class="block text-slate-800 font-semibold mb-0.5 line-clamp-1">{{ p.title }}</strong>
-                    {{ p.content }}
-                  </button>
-                  <div class="post-action-row">
-                    <AppButton
-                      variant="success"
-                      size="sm"
-                      class="post-action-btn post-action-btn--icon"
-                      @click="setStatus(p, 'approved')"
-                      title="Restore to approved"
-                      aria-label="Restore to approved"
-                    >
-                      <AppIcon name="check" class="w-3.5 h-3.5" />
-                    </AppButton>
-                  </div>
-                </div>
-              </AppCard>
-            </div>
-          </section>
-        </div>
-      </section>
     </div>
 
     <!-- Post preview modal -->
@@ -371,8 +345,10 @@ const filterPlatform = ref('');
 const previewPost = ref(null);
 const viewMode = ref('cards');
 const brokenThumbnails = ref(new Set());
-const showRejected = ref(false);
 const autoRefreshTimer = ref(null);
+const selectedPostIds = ref(new Set());
+
+const hasSelection = computed(() => selectedPostIds.value.size > 0);
 
 const lastSyncedAt = computed(() => {
   if (!feeds.list.length) return null;
@@ -405,8 +381,11 @@ const filteredPosts = computed(() => {
 const platformOrder = ['youtube', 'instagram', 'facebook', 'twitter', 'tiktok', 'threads', 'rss'];
 
 const activeFilteredPosts = computed(() => filteredPosts.value.filter((p) => p.status !== 'rejected'));
-const rejectedFilteredPosts = computed(() => filteredPosts.value.filter((p) => p.status === 'rejected'));
-const rejectedCount = computed(() => rejectedFilteredPosts.value.length);
+
+const allVisibleSelected = computed(() => {
+  const ids = activeFilteredPosts.value.map(p => p.id);
+  return ids.length > 0 && ids.every(id => selectedPostIds.value.has(id));
+});
 
 const postsByPlatform = computed(() => {
   const groups = {};
@@ -425,22 +404,6 @@ const postsByPlatform = computed(() => {
   });
 });
 
-const rejectedPostsByPlatform = computed(() => {
-  const groups = {};
-  for (const p of rejectedFilteredPosts.value) {
-    const type = getPostFeedType(p) || 'unknown';
-    if (!groups[type]) groups[type] = [];
-    groups[type].push(p);
-  }
-  return Object.entries(groups).sort(([a], [b]) => {
-    const ai = platformOrder.indexOf(a);
-    const bi = platformOrder.indexOf(b);
-    if (ai === -1 && bi === -1) return feedTypeLabel(a).localeCompare(feedTypeLabel(b));
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
-});
 
 const statusTotals = computed(() => {
   let approved = 0;
@@ -455,7 +418,7 @@ const statusTotals = computed(() => {
     approved,
     rejected,
     pending,
-    total: filteredPosts.value.length,
+    total: approved + pending,
   };
 });
 
@@ -481,7 +444,43 @@ function feedTypeLabel(type) {
   return type || '—';
 }
 
+function clearSelection() {
+  selectedPostIds.value = new Set();
+}
+
+function toggleSelect(p) {
+  const next = new Set(selectedPostIds.value);
+  if (next.has(p.id)) next.delete(p.id);
+  else next.add(p.id);
+  selectedPostIds.value = next;
+}
+
+function toggleSelectAll() {
+  if (allVisibleSelected.value) {
+    selectedPostIds.value = new Set();
+  } else {
+    selectedPostIds.value = new Set(activeFilteredPosts.value.map(p => p.id));
+  }
+}
+
+async function bulkApprove() {
+  const toUpdate = activeFilteredPosts.value.filter(p => selectedPostIds.value.has(p.id));
+  if (!toUpdate.length) return;
+  await Promise.all(toUpdate.map(p => posts.update(workspaceId.value, getPostFeedId(p), p.id, { status: 'approved' })));
+  toast.success(`Approved ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
+  clearSelection();
+}
+
+async function bulkReject() {
+  const toUpdate = activeFilteredPosts.value.filter(p => selectedPostIds.value.has(p.id));
+  if (!toUpdate.length) return;
+  await Promise.all(toUpdate.map(p => posts.update(workspaceId.value, getPostFeedId(p), p.id, { status: 'rejected' })));
+  toast.success(`Rejected ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
+  clearSelection();
+}
+
 async function refresh() {
+  clearSelection();
   posts.clearList();
   const allPosts = [];
   const feediesToLoad = feedId.value ? feeds.list.filter(f => f.id === Number(feedId.value)) : feeds.list;
@@ -512,19 +511,6 @@ async function syncNow() {
   await refresh();
 }
 
-async function approveAllPending() {
-  const pending = filteredPosts.value.filter((p) => p.status === 'pending');
-  if (!pending.length) { toast.info('No pending posts'); return; }
-  await Promise.all(pending.map((p) => posts.update(workspaceId.value, p._feedId, p.id, { status: 'approved' })));
-  toast.success(`Approved ${pending.length} post${pending.length !== 1 ? 's' : ''}`);
-}
-
-async function rejectAllPending() {
-  const pending = filteredPosts.value.filter((p) => p.status === 'pending');
-  if (!pending.length) { toast.info('No pending posts'); return; }
-  await Promise.all(pending.map((p) => posts.update(workspaceId.value, p._feedId, p.id, { status: 'rejected' })));
-  toast.success(`Rejected ${pending.length} post${pending.length !== 1 ? 's' : ''}`);
-}
 
 onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
@@ -546,7 +532,7 @@ onBeforeUnmount(() => {
 });
 
 watch([filterStatus, filterPlatform], () => {
-  // Filters are applied via computed property, no refresh needed
+  clearSelection();
 });
 
 watch(
@@ -726,6 +712,29 @@ function cardBorderClass(status) {
   color: #94a3b8;
 }
 
+.curate-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.curate-bulk-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.curate-bulk-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .curate-status-strip {
   display: grid;
   gap: 0.55rem;
@@ -769,6 +778,101 @@ function cardBorderClass(status) {
   .curate-status-strip {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+/* ── Checkbox overlay on thumbnail ── */
+.post-checkbox-overlay {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.post-checkbox-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.post-checkbox-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.375rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.post-checkbox-mark::after {
+  content: '';
+  display: block;
+  width: 0.35rem;
+  height: 0.6rem;
+  border: 2px solid transparent;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translateY(-1px);
+  transition: border-color 0.1s;
+}
+
+.post-checkbox-mark--checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.post-checkbox-mark--checked::after {
+  border-color: #fff;
+}
+
+
+/* Toolbar select-all label */
+.curate-select-all-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+
+.curate-select-all-label .post-checkbox-mark {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #94a3b8;
+  background: #fff;
+  backdrop-filter: none;
+  border-radius: 0.25rem;
+}
+
+.curate-select-all-label .post-checkbox-mark::after {
+  width: 0.28rem;
+  height: 0.5rem;
+}
+
+.curate-select-all-label .post-checkbox-mark--checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.curate-select-all-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1;
 }
 
 .post-action-row {

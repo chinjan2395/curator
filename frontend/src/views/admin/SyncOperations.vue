@@ -216,7 +216,19 @@ async function doRunAll() {
 async function doResync(cred) {
   const result = await syncOps.resyncCredential(cred.id);
   if (result.success) {
-    showToast(`Resync complete — credential is now "${result.data.status}".`);
+    const { status, feeds_found, results } = result.data;
+    const synced = results?.filter(r => r.synced).length ?? 0;
+    if (status === 'active') {
+      const detail = feeds_found === 0
+        ? 'No feeds linked yet — credential restored to active.'
+        : `${synced} of ${feeds_found} feed(s) synced successfully.`;
+      showToast(`Resync successful — ${detail}`);
+    } else {
+      showToast(
+        'Token is revoked — please reconnect this account from the Credentials page.',
+        'error',
+      );
+    }
     syncOps.fetchStatus();
     syncOps.fetchLogs(1);
   } else {
