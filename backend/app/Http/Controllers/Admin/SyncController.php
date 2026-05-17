@@ -16,7 +16,7 @@ class SyncController extends Controller
 
     public function status()
     {
-        $lastLog = SyncLog::where('triggered_by', 'scheduler')->latest()->first();
+        $lastLog = SyncLog::whereIn('triggered_by', ['scheduler', 'queue'])->latest()->first();
         $lastRunAt = $lastLog?->created_at;
         $nextRunAt = $lastRunAt?->copy()->addMinutes(15);
 
