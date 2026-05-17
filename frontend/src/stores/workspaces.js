@@ -28,9 +28,10 @@ export const useWorkspacesStore = defineStore('workspaces', {
       this.error = null;
       try {
         const { data } = await axios.post('/api/workspaces', { name });
-        this.list.push(data);
+        const workspace = data.data ?? data;
+        this.list.push(workspace);
         useToastStore().success('Workspace created');
-        return data;
+        return workspace;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to create workspace';
         useToastStore().error(this.error);
@@ -41,10 +42,11 @@ export const useWorkspacesStore = defineStore('workspaces', {
       this.error = null;
       try {
         const { data } = await axios.put(`/api/workspaces/${id}`, { name });
+        const workspace = data.data ?? data;
         const i = this.list.findIndex((w) => w.id === id);
-        if (i !== -1) this.list[i] = data;
+        if (i !== -1) this.list[i] = workspace;
         useToastStore().success('Workspace updated');
-        return data;
+        return workspace;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to update workspace';
         useToastStore().error(this.error);
