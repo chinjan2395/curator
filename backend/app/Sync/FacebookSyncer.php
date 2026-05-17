@@ -16,28 +16,31 @@ class FacebookSyncer
 
     public function pages(SocialCredential $credential): array|JsonResponse
     {
-        $userToken = $credential->access_token;
+        $expiresAt = $credential->expires_at;
+        if ($expiresAt && $expiresAt->isPast()) {
+            return response()->json(['message' => 'Facebook credential has expired. Reconnect Facebook in Credentials.'], 422);
+        }
+
+        $userToken = $credential->getValidAccessToken();
         if (! $userToken) {
             return response()->json(['message' => 'Facebook credential token missing. Reconnect Facebook.'], 422);
         }
 
-        $resp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [
-            'fields' => 'id,name',
-            'limit' => 100,
-            'access_token' => $userToken,
-        ]);
+        $pages = $this->listAccessibleFacebookPages($credential, $userToken);
 
-        if (! $resp->ok()) {
-            $err = $resp->json('error', []);
-            $msg = is_array($err) ? ($err['message'] ?? 'Failed to load accessible Pages.') : 'Failed to load accessible Pages.';
+        if ($pages === [] && $this->fetchFacebookPagesFromMeAccounts($userToken) === []) {
+            $resp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [
+                'fields' => 'id,name',
+                'limit' => 1,
+                'access_token' => $userToken,
+            ]);
+            if (! $resp->ok()) {
+                $err = $resp->json('error', []);
+                $msg = is_array($err) ? ($err['message'] ?? 'Failed to load accessible Pages.') : 'Failed to load accessible Pages.';
 
-            return response()->json(['message' => $msg, 'error' => $err], min(499, max(400, $resp->status())));
+                return response()->json(['message' => $msg, 'error' => $err], min(499, max(400, $resp->status())));
+            }
         }
-
-        $pages = array_values(array_filter(array_map(fn ($p) => [
-            'id' => (string) ($p['id'] ?? ''),
-            'name' => (string) ($p['name'] ?? ''),
-        ], $resp->json('data', [])), fn ($p) => $p['id'] !== ''));
 
         return ['pages' => $pages];
     }

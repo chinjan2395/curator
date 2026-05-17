@@ -34,7 +34,7 @@ class SocialConnectController extends Controller
      * Scopes for managed Pages: /me/accounts → page access token → /{page-id}/feed.
      * pages_read_user_content is commonly required alongside pages_read_engagement (Graph dependency / review).
      */
-    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_user_content', 'pages_read_engagement'];
+    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_user_content', 'pages_read_engagement', 'business_management'];
 
     /**
      * Instagram Graph API (Professional account linked to a Page): list Pages via /me/accounts,
@@ -46,6 +46,7 @@ class SocialConnectController extends Controller
         'pages_show_list',
         'pages_read_user_content',
         'pages_read_engagement',
+        'business_management',
     ];
 
     /** X / Twitter OAuth 2: tweet.read + users.read + offline.access for refresh_token. */
@@ -192,14 +193,18 @@ class SocialConnectController extends Controller
         );
         $this->setFacebookConfig($oauth, $redirectUrl);
 
-        $authUrl = Socialite::driver('facebook')
+        $driver = Socialite::driver('facebook')
             ->stateless()
-            // Use explicit scope set to avoid Socialite default `email` scope.
-            ->setScopes(self::FACEBOOK_SCOPES)
             ->redirectUrl($redirectUrl)
-            ->with(['state' => $state])
-            ->redirect()
-            ->getTargetUrl();
+            ->with(['state' => $state]);
+
+        $configId = trim((string) config('services.facebook.login_config_id'));
+        if ($configId !== '') {
+            $authUrl = $driver->with(['config_id' => $configId])->redirect()->getTargetUrl();
+        } else {
+            // Use explicit scope set to avoid Socialite default `email` scope.
+            $authUrl = $driver->setScopes(self::FACEBOOK_SCOPES)->redirect()->getTargetUrl();
+        }
 
         return response()->json(['provider' => 'facebook', 'auth_url' => $authUrl]);
     }
@@ -217,14 +222,18 @@ class SocialConnectController extends Controller
         );
         $this->setFacebookConfig($oauth, $redirectUrl);
 
-        $authUrl = Socialite::driver('facebook')
+        $driver = Socialite::driver('facebook')
             ->stateless()
-            // Use explicit scope set to avoid Socialite default `email` scope.
-            ->setScopes(self::INSTAGRAM_SCOPES)
             ->redirectUrl($redirectUrl)
-            ->with(['state' => $state])
-            ->redirect()
-            ->getTargetUrl();
+            ->with(['state' => $state]);
+
+        $configId = trim((string) config('services.facebook.login_config_id'));
+        if ($configId !== '') {
+            $authUrl = $driver->with(['config_id' => $configId])->redirect()->getTargetUrl();
+        } else {
+            // Use explicit scope set to avoid Socialite default `email` scope.
+            $authUrl = $driver->setScopes(self::INSTAGRAM_SCOPES)->redirect()->getTargetUrl();
+        }
 
         return response()->json(['provider' => 'instagram', 'auth_url' => $authUrl]);
     }
