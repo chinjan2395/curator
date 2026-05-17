@@ -4,8 +4,6 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Jobs\SyncFeedJob;
-use App\Models\Feed;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,13 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->call(function (): void {
-            Feed::query()->select('id')->chunkById(50, function ($feeds): void {
-                foreach ($feeds as $feed) {
-                    SyncFeedJob::dispatch($feed->id);
-                }
-            });
-        })->everyFifteenMinutes()->name('sync-all-feeds')->withoutOverlapping();
+        // Runs inline so cron-only hosts (e.g. Railway) do not need a queue worker.
+        $schedule->command('feeds:sync-scheduled')
+            ->everyFifteenMinutes()
+            ->name('sync-all-feeds')
+            ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

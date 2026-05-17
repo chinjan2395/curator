@@ -179,10 +179,12 @@ Implemented feed types:
 
 Synced posts are upserted by `external_id`. Content fields refresh on every sync; `status`, `pinned`, and `published_at` are set **only on first insert** so manual curation is preserved. New inserts default to `pending` unless the feed has `auto_publish_new_posts` enabled (then they are `approved` with `published_at` set and the workspace `public_key` is ensured for embed URLs).
 
-## Scheduler and queues
+## Scheduler (background sync)
 
-- `bootstrap/app.php` schedules **sync-all-feeds** every fifteen minutes. Each run dispatches a queued `SyncFeedJob` per feed (see `App\Jobs\SyncFeedJob`).
-- Production and staging need **both**: cron running `php artisan schedule:run` (typically every minute) and a worker running `php artisan queue:work` (or Horizon) so jobs execute. Without a worker, periodic sync will queue but not run.
+- `bootstrap/app.php` schedules `php artisan feeds:sync-scheduled` every fifteen minutes. Sync runs **inline** in the scheduler process (no queue worker required).
+- Production needs a process that runs `php artisan schedule:run` often enough for Laravel to fire due tasks — **every minute** is recommended (`* * * * *`). A cron that only runs every fifteen minutes also works but is less precise.
+- **Railway:** add a Cron service with command `php artisan schedule:run` (every minute) or `php artisan feeds:sync-scheduled` (every fifteen minutes). The main web service does not need `queue:work` for scheduled feed sync.
+- **Docker Compose:** the `scheduler` service runs `php artisan schedule:work` continuously. The `queue` service is optional unless you dispatch `SyncFeedJob` manually.
 
 ## Curation + Publish Rules
 
