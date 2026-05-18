@@ -32,11 +32,14 @@ export const usePostsStore = defineStore('posts', {
           `/api/workspaces/${workspaceId}/feeds/${feedId}/posts/${postId}`,
           patch,
         );
+        const body = data?.data ?? data;
         const i = this.list.findIndex((p) => p.id === postId);
+        const previous = i !== -1 ? this.list[i] : null;
         const normalized = {
-          ...data,
+          ...previous,
+          ...body,
           // Preserve local link used by Curate grouping when API payload omits it.
-          _feedId: data?._feedId ?? data?.feed_id ?? this.list[i]?._feedId ?? feedId,
+          _feedId: body?._feedId ?? body?.feed_id ?? previous?._feedId ?? feedId,
         };
         if (i !== -1) this.list[i] = normalized;
         return normalized;
