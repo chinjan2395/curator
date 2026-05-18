@@ -138,6 +138,9 @@
     <AppCard v-else-if="!posts.list.length" class="p-6 text-center text-sm-pro text-slate-500">
       No posts yet. Click <span class="font-medium text-slate-700">Sync now</span> to pull content from your feeds.
     </AppCard>
+    <AppCard v-else-if="!visiblePosts.length" class="p-6 text-center text-sm-pro text-slate-500">
+      No posts match the current filters.
+    </AppCard>
     <div v-else class="space-y-6">
       <section v-for="[platform, platformPosts] in postsByPlatform" :key="platform">
         <!-- Platform section header -->
@@ -151,7 +154,7 @@
         </div>
 
         <!-- Posts grid -->
-        <div :class="['grid gap-3', sectionGridClass(platformPosts.length)]">
+        <div :class="['grid gap-3', sectionGridClass()]">
           <AppCard
             v-for="p in platformPosts"
             :key="p.id"
@@ -380,16 +383,20 @@ const filteredPosts = computed(() => {
 
 const platformOrder = ['youtube', 'instagram', 'facebook', 'twitter', 'tiktok', 'threads', 'rss'];
 
-const activeFilteredPosts = computed(() => filteredPosts.value.filter((p) => p.status !== 'rejected'));
+/** Posts shown in the grid and bulk actions; hide rejected only on the default "all statuses" view. */
+const visiblePosts = computed(() => {
+  if (filterStatus.value) return filteredPosts.value;
+  return filteredPosts.value.filter((p) => p.status !== 'rejected');
+});
 
 const allVisibleSelected = computed(() => {
-  const ids = activeFilteredPosts.value.map(p => p.id);
+  const ids = visiblePosts.value.map(p => p.id);
   return ids.length > 0 && ids.every(id => selectedPostIds.value.has(id));
 });
 
 const postsByPlatform = computed(() => {
   const groups = {};
-  for (const p of activeFilteredPosts.value) {
+  for (const p of visiblePosts.value) {
     const type = getPostFeedType(p) || 'unknown';
     if (!groups[type]) groups[type] = [];
     groups[type].push(p);
@@ -459,12 +466,12 @@ function toggleSelectAll() {
   if (allVisibleSelected.value) {
     selectedPostIds.value = new Set();
   } else {
-    selectedPostIds.value = new Set(activeFilteredPosts.value.map(p => p.id));
+    selectedPostIds.value = new Set(visiblePosts.value.map(p => p.id));
   }
 }
 
 async function bulkApprove() {
-  const toUpdate = activeFilteredPosts.value.filter(p => selectedPostIds.value.has(p.id));
+  const toUpdate = visiblePosts.value.filter(p => selectedPostIds.value.has(p.id));
   if (!toUpdate.length) return;
   await Promise.all(toUpdate.map(p => posts.update(workspaceId.value, getPostFeedId(p), p.id, { status: 'approved' })));
   toast.success(`Approved ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
@@ -472,7 +479,7 @@ async function bulkApprove() {
 }
 
 async function bulkReject() {
-  const toUpdate = activeFilteredPosts.value.filter(p => selectedPostIds.value.has(p.id));
+  const toUpdate = visiblePosts.value.filter(p => selectedPostIds.value.has(p.id));
   if (!toUpdate.length) return;
   await Promise.all(toUpdate.map(p => posts.update(workspaceId.value, getPostFeedId(p), p.id, { status: 'rejected' })));
   toast.success(`Rejected ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
@@ -531,7 +538,12 @@ onBeforeUnmount(() => {
   }
 });
 
-watch([filterStatus, filterPlatform], () => {
+watch(filterStatus, () => {
+  clearSelection();
+  refresh();
+});
+
+watch(filterPlatform, () => {
   clearSelection();
 });
 
@@ -610,13 +622,9 @@ function platformIconClass(type) { return platformStyles[type]?.icon ?? 'text-sl
 function platformLabelClass(type) { return platformStyles[type]?.label ?? 'text-slate-700'; }
 function platformDividerClass(type) { return platformStyles[type]?.divider ?? 'bg-slate-200'; }
 
-function sectionGridClass(count) {
+function sectionGridClass() {
   if (viewMode.value === 'compact') return 'grid-cols-1';
-  if (count === 1) return 'grid-cols-1';
-  if (count === 2) return 'grid-cols-2';
-  if (count === 3) return 'grid-cols-2 sm:grid-cols-3';
-  if (count === 4) return 'grid-cols-2 sm:grid-cols-4';
-  return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+  return 'curate-posts-grid';
 }
 function platformPlaceholderBg(type) { return platformStyles[type]?.placeholder ?? 'bg-slate-100'; }
 
@@ -640,6 +648,12 @@ function cardBorderClass(status) {
 .feed-icon-threads { color: rgb(15 23 42); }
 .feed-icon-rss { color: rgb(234 88 12); }
 .feed-icon-twitter { color: rgb(15 23 42); }
+
+/* Fixed card width: do not stretch 1–2 posts to full row width */
+.curate-posts-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
+  justify-content: start;
+}
 
 .curate-toolbar {
   display: grid;

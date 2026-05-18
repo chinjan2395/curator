@@ -401,11 +401,11 @@
 
         <div class="lg:sticky lg:top-5 self-start max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
           <AppCard class="p-4">
-            <div class="flex items-start justify-between gap-2 mb-3">
-              <div class="text-sm-pro text-slate-700">
+            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-3 mb-3">
+              <div class="text-sm-pro text-slate-700 min-w-0">
                 Publishing will make all <span class="font-medium">approved</span> posts live in the public feed.
               </div>
-              <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+              <div class="flex flex-wrap items-center gap-2 shrink-0">
                 <AppButton
                   variant="secondary"
                   size="sm"
