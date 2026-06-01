@@ -3,6 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use App\Support\OAuthAppConfigResolver;
@@ -132,7 +133,7 @@ class FacebookSyncer
         }
 
         $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId.'/feed', [
-            'fields' => 'id,message,story,created_time,permalink_url,full_picture,attachments{media,subattachments}',
+            'fields' => 'id,message,story,created_time,permalink_url,full_picture,attachments{media,subattachments},reactions.summary(true),comments.summary(true),shares',
             'limit' => 25,
             'access_token' => $pageToken,
         ]);
@@ -156,13 +157,19 @@ class FacebookSyncer
             $body = $message !== '' ? $message : $story;
             $title = $body !== '' ? mb_substr($body, 0, 120) : 'Facebook post';
 
-            PostSyncUpsert::apply($feed, (string) $externalId, [
+            $metrics = FeedItemMetricsMapper::fromFacebook(
+                $post,
+                (string) $externalId,
+                (string) ($post['permalink_url'] ?? ''),
+            );
+
+            PostSyncUpsert::apply($feed, (string) $externalId, array_merge([
                 'title' => $title,
                 'content' => $body,
                 'thumbnail_url' => $this->thumbnail($post),
                 'video_url' => $post['permalink_url'] ?? null,
                 'posted_at' => $post['created_time'] ?? null,
-            ]);
+            ], $metrics, FeedItemMetricsMapper::hashtagsFromText($body)));
             $created++;
         }
 

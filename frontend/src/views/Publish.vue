@@ -274,6 +274,75 @@
               </div>
             </div>
 
+            <!-- Widget settings -->
+            <div v-if="appearance?.widget" class="space-y-4 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-900">Embed widget</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Theme</label>
+                  <AppSelect v-model="appearance.widget.theme" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </AppSelect>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Columns</label>
+                  <AppInput v-model.number="appearance.widget.columns" type="number" min="1" max="6" input-class="w-full py-2" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Gap (px)</label>
+                  <AppInput v-model.number="appearance.widget.gap" type="number" min="0" max="48" input-class="w-full py-2" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Border radius</label>
+                  <AppInput v-model.number="appearance.widget.border_radius" type="number" min="0" max="32" input-class="w-full py-2" />
+                </div>
+                <div class="col-span-2">
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Font family</label>
+                  <AppInput v-model="appearance.widget.font_family" input-class="w-full py-2" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Animation</label>
+                  <AppSelect v-model="appearance.widget.animation" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="none">None</option>
+                    <option value="fade">Fade</option>
+                    <option value="slide">Slide</option>
+                  </AppSelect>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Click action</label>
+                  <AppSelect v-model="appearance.widget.click_action" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="new_tab">Open in new tab</option>
+                    <option value="modal">Open in modal</option>
+                    <option value="same_tab">Same tab</option>
+                  </AppSelect>
+                </div>
+              </div>
+              <label class="flex items-center gap-2 text-sm">
+                <AppCheckbox v-model="appearance.widget.auto_refresh" />
+                Auto-refresh feed every 5 minutes
+              </label>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-2">Platform filters</label>
+                <div class="flex flex-wrap gap-2">
+                  <label v-for="p in platformFilterOptions" :key="p" class="inline-flex items-center gap-1 text-xs">
+                    <input type="checkbox" :value="p" v-model="appearance.widget.platform_filters" />
+                    {{ p }}
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-2">Content type filters</label>
+                <div class="flex flex-wrap gap-2">
+                  <label v-for="t in contentTypeFilterOptions" :key="t" class="inline-flex items-center gap-1 text-xs">
+                    <input type="checkbox" :value="t" v-model="appearance.widget.content_type_filters" />
+                    {{ t }}
+                  </label>
+                </div>
+              </div>
+              <p class="text-xs text-slate-500">WordPress: paste the embed snippet in a Custom HTML block. Squarespace: use a Code block with the same snippet.</p>
+            </div>
+
             <!-- Branding Section -->
             <div v-if="appearance?.branding" class="space-y-4 pt-4 border-t border-slate-200">
               <div>
@@ -1117,9 +1186,23 @@ const POST_DEFAULTS = {
   showcase_share_icon_color: '#e2e8f0',
 };
 
+const WIDGET_DEFAULTS = {
+  theme: 'light',
+  columns: 3,
+  gap: 16,
+  border_radius: 12,
+  font_family: 'inherit',
+  animation: 'fade',
+  click_action: 'new_tab',
+  auto_refresh: false,
+  platform_filters: [],
+  content_type_filters: [],
+};
+
 function mergePublishAppearance(raw) {
   const clone = JSON.parse(JSON.stringify(raw));
   clone.post = { ...POST_DEFAULTS, ...(clone.post || {}) };
+  clone.widget = { ...WIDGET_DEFAULTS, ...(clone.widget || {}) };
   const b = clone.branding || {};
   clone.branding = {
     media_badge: { ...BRANDING_DEFAULTS.media_badge, ...(b.media_badge || {}) },
@@ -1128,6 +1211,9 @@ function mergePublishAppearance(raw) {
   };
   return clone;
 }
+
+const platformFilterOptions = ['youtube', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads', 'rss'];
+const contentTypeFilterOptions = ['video', 'image', 'post', 'article'];
 
 const showCode = ref(false);
 const copied = ref(false);

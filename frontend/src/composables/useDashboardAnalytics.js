@@ -51,9 +51,10 @@ export function useDashboardAnalytics() {
     scheduler_unread_count: 0,
     broken_credentials: [],
   })
+  const socialOverview = ref(null)
 
   const { loading: analyticsLoading, execute: loadAnalytics } = useAsync(async () => {
-    const [, summaryResponse] = await Promise.all([
+    const [, summaryResponse, analyticsResponse] = await Promise.all([
       workspaces.fetchAll(),
       axios.get('/api/user/sync-summary').catch(() => ({
         data: {
@@ -63,7 +64,9 @@ export function useDashboardAnalytics() {
           broken_credentials: [],
         },
       })),
+      axios.get('/api/analytics/overview').catch(() => ({ data: { data: null } })),
     ])
+    socialOverview.value = analyticsResponse?.data?.data || analyticsResponse?.data || null
     userSyncSummary.value = summaryResponse?.data || {
       new_post_count: 0,
       scheduler_synced_post_count: 0,
@@ -293,20 +296,29 @@ export function useDashboardAnalytics() {
       .sort((a, b) => (b.score - a.score) || (b.count - a.count) || a.name.localeCompare(b.name))
       .slice(0, 6),
   )
-  const headlineStats = computed(() => [
-    {
-      label: 'Dominant source',
-      value: dominantFeedType.value ? `${dominantFeedType.value.share}% ${dominantFeedType.value.type}` : 'No feeds yet',
-    },
-    {
-      label: 'Healthy sync rate',
-      value: totalFeeds.value ? `${healthySyncRate.value}% of feeds` : 'No sync history',
-    },
-    {
-      label: 'Scheduler synced',
-      value: `${newPostCount.value} posts since login`,
-    },
-  ])
+  const headlineStats = computed(() => {
+    const stats = [
+      {
+        label: 'Dominant source',
+        value: dominantFeedType.value ? `${dominantFeedType.value.share}% ${dominantFeedType.value.type}` : 'No feeds yet',
+      },
+      {
+        label: 'Healthy sync rate',
+        value: totalFeeds.value ? `${healthySyncRate.value}% of feeds` : 'No sync history',
+      },
+      {
+        label: 'Scheduler synced',
+        value: `${newPostCount.value} posts since login`,
+      },
+    ]
+    if (socialOverview.value) {
+      stats.push({
+        label: 'Social engagement',
+        value: `${socialOverview.value.engagement_rate || 0}% · ${socialOverview.value.total_likes || 0} likes`,
+      })
+    }
+    return stats
+  })
   const attentionItems = computed(() => {
     const items = []
 
@@ -374,5 +386,6 @@ export function useDashboardAnalytics() {
     attentionItems,
     topWorkspaces,
     feedTypeDistribution,
+    socialOverview,
   }
 }

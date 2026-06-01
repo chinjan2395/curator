@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
+    public const ROLE_SUPERADMIN = 'superadmin';
     public const ROLE_ADMIN = 'admin';
     public const ROLE_USER = 'user';
 
@@ -27,6 +28,12 @@ class User extends Authenticatable
         'email',
         'role',
         'password',
+        'avatar_url',
+        'industry',
+        'target_audience',
+        'brand_voice',
+        'ai_prompt_overrides',
+        'is_onboarded',
         'social_provider',
         'social_provider_id',
         'deactivated_at',
@@ -57,12 +64,24 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'sync_notifications_seen_at' => 'datetime',
             'password' => 'hashed',
+            'is_onboarded' => 'boolean',
+            'ai_prompt_overrides' => 'array',
         ];
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === self::ROLE_SUPERADMIN;
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPERADMIN], true);
+    }
+
+    public function needsOnboarding(): bool
+    {
+        return ! $this->is_onboarded;
     }
 
     public function isDeactivated(): bool

@@ -114,4 +114,23 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | When false, users are treated as verified without sending mail. Defaults
+    | to false when MAIL_MAILER is log or array (typical local/dev setup).
+    | Set REQUIRE_EMAIL_VERIFICATION=true once SMTP is configured.
+    |
+    */
+
+    'require_email_verification' => filter_var(
+        env(
+            'REQUIRE_EMAIL_VERIFICATION',
+            ! in_array(env('MAIL_MAILER', 'log'), ['log', 'array'], true)
+        ),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
 ];

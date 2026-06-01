@@ -3,6 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 class TikTokSyncer
 {
     private const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
-    private const VIDEO_FIELDS = 'id,title,video_description,create_time,cover_image_url,share_url';
+    private const VIDEO_FIELDS = 'id,title,video_description,create_time,cover_image_url,share_url,like_count,comment_count,share_count,view_count';
 
     public function account(SocialCredential $credential): array|JsonResponse
     {
@@ -116,13 +117,15 @@ class TikTokSyncer
             $body = trim($title."\n\n".$description) ?: 'TikTok video';
             $resolvedTitle = $title !== '' ? $title : (mb_substr($description, 0, 120) ?: 'TikTok video');
 
-            PostSyncUpsert::apply($feed, $externalId, [
+            $metrics = FeedItemMetricsMapper::fromTikTok($video);
+
+            PostSyncUpsert::apply($feed, $externalId, array_merge([
                 'title' => $resolvedTitle,
                 'content' => $body,
                 'thumbnail_url' => $video['cover_image_url'] ?? null,
                 'video_url' => $video['share_url'] ?? null,
                 'posted_at' => $this->normalizePostedAt($video['create_time'] ?? null),
-            ]);
+            ], $metrics));
             $created++;
         }
 

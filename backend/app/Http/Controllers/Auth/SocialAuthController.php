@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\EmailVerification;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -366,7 +367,7 @@ class SocialAuthController extends Controller
             ->first();
 
         if ($user) {
-            return $user;
+            return EmailVerification::ensureVerified($user);
         }
 
         // Find existing account by email and link it
@@ -376,16 +377,16 @@ class SocialAuthController extends Controller
                 $user->update(['social_provider' => $provider, 'social_provider_id' => $providerId]);
             }
 
-            return $user;
+            return EmailVerification::ensureVerified($user);
         }
 
-        return User::create([
+        return EmailVerification::ensureVerified(User::create([
             'name' => $name,
             'email' => $email,
             'password' => null,
             'social_provider' => $provider,
             'social_provider_id' => $providerId,
-        ]);
+        ]));
     }
 
     private function callbackUrl(string $provider): string

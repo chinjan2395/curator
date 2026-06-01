@@ -60,12 +60,13 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { inject, onMounted } from 'vue'
 import { useWorkspacesStore } from '../stores/workspaces'
 import { AppAlert, AppEmptyState, AppButton, AppIcon, AppLoader, AppTable } from '../components/ui/index.js'
 import { AppPageHeader, AppSection, AppStack } from '../components/layout/index.js'
 
 const workspaces = useWorkspacesStore()
+const { confirm } = inject('confirm')
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -77,7 +78,7 @@ onMounted(async () => {
 })
 
 async function confirmDelete(w) {
-  if (window.confirm(`Delete workspace "${w.name}"?`)) {
+  if (await confirm({ title: 'Delete workspace?', message: `Delete workspace "${w.name}"?`, confirmLabel: 'Delete' })) {
     await workspaces.remove(w.id)
   }
 }

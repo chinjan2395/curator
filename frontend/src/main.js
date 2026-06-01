@@ -6,10 +6,13 @@ import router from './router/index.js';
 import { createPinia } from 'pinia';
 import { useAuthStore } from './stores/auth';
 import { apiBrowserBaseUrl } from './config/api.js';
+import { setupAxiosInterceptors } from './plugins/axios.js';
 
 if (apiBrowserBaseUrl) {
   axios.defaults.baseURL = apiBrowserBaseUrl;
 }
+
+setupAxiosInterceptors();
 
 const app = createApp(App);
 app.use(router);

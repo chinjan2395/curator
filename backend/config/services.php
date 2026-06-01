@@ -62,4 +62,16 @@ return [
         'redirect' => env('GITHUB_REDIRECT_URI'),
     ],
 
+    'ai' => [
+        'driver' => env('AI_DRIVER', 'stub'),
+        'groq' => [
+            'api_key' => env('GROQ_API_KEY'),
+            'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+        ],
+        'ollama' => [
+            'url' => env('OLLAMA_URL', 'http://127.0.0.1:11434'),
+            'model' => env('OLLAMA_MODEL', 'llama3.2'),
+        ],
+    ],
+
 ];

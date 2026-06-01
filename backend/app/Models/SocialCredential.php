@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\OAuthAppConfigResolver;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 
 class SocialCredential extends Model
@@ -16,6 +17,11 @@ class SocialCredential extends Model
         'provider',
         'account_id',
         'account_label',
+        'profile_image_url',
+        'follower_count',
+        'scopes',
+        'token_health',
+        'last_metadata_synced_at',
         'access_token',
         'refresh_token',
         'expires_at',
@@ -25,11 +31,84 @@ class SocialCredential extends Model
     protected $hidden = [
         'access_token',
         'refresh_token',
+        'access_token_encrypted',
+        'refresh_token_encrypted',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'last_metadata_synced_at' => 'datetime',
+        'scopes' => 'array',
+        'follower_count' => 'integer',
     ];
+
+    public function setAccessTokenAttribute(?string $value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['access_token'] = null;
+            $this->attributes['access_token_encrypted'] = null;
+
+            return;
+        }
+        $this->attributes['access_token_encrypted'] = Crypt::encryptString($value);
+        $this->attributes['access_token'] = '';
+    }
+
+    public function getAccessTokenAttribute(): ?string
+    {
+        if (! empty($this->attributes['access_token_encrypted'])) {
+            try {
+                return Crypt::decryptString((string) $this->attributes['access_token_encrypted']);
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return $this->attributes['access_token'] ?? null;
+    }
+
+    public function setRefreshTokenAttribute(?string $value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['refresh_token'] = null;
+            $this->attributes['refresh_token_encrypted'] = null;
+
+            return;
+        }
+        $this->attributes['refresh_token_encrypted'] = Crypt::encryptString($value);
+        $this->attributes['refresh_token'] = '';
+    }
+
+    public function getRefreshTokenAttribute(): ?string
+    {
+        if (! empty($this->attributes['refresh_token_encrypted'])) {
+            try {
+                return Crypt::decryptString((string) $this->attributes['refresh_token_encrypted']);
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return $this->attributes['refresh_token'] ?? null;
+    }
+
+    public function refreshTokenHealth(): void
+    {
+        if ($this->status === 'disconnected') {
+            $this->token_health = 'disconnected';
+
+            return;
+        }
+
+        $token = $this->getValidAccessToken();
+        if ($token) {
+            $this->token_health = 'valid';
+        } elseif ($this->refresh_token || $this->provider === 'threads') {
+            $this->token_health = 'needs_reauth';
+        } else {
+            $this->token_health = 'expired';
+        }
+    }
 
     protected static function booted(): void
     {

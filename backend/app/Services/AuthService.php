@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\AuthData;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\EmailVerification;
 use Illuminate\Support\Facades\Auth;
 
 class AuthService
@@ -16,7 +17,7 @@ class AuthService
         }
 
         /** @var User $user */
-        $user = Auth::user();
+        $user = EmailVerification::ensureVerified(Auth::user());
 
         if ($user->isDeactivated()) {
             Auth::logout();
@@ -35,7 +36,17 @@ class AuthService
 
     public function registerUser(AuthData $dto): array
     {
-        $user  = User::create(['name' => $dto->name, 'email' => $dto->email, 'password' => $dto->password]);
+        $user = User::create([
+            'name' => $dto->name,
+            'email' => $dto->email,
+            'password' => $dto->password,
+            'is_onboarded' => false,
+        ]);
+        if (EmailVerification::required()) {
+            $user->sendEmailVerificationNotification();
+        } else {
+            $user = EmailVerification::ensureVerified($user);
+        }
         $token = $user->createToken('auth')->plainTextToken;
 
         return ['user' => $user, 'token' => $token];

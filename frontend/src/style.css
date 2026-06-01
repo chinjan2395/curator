@@ -384,6 +384,10 @@
   color: rgba(148, 193, 255, 0.45);
 }
 
+.sidebar-section-label-first {
+  @apply pt-1;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   .btn-primary,

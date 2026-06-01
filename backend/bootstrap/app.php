@@ -23,6 +23,22 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyFifteenMinutes()
             ->name('sync-all-feeds')
             ->withoutOverlapping();
+
+        $schedule->command('social:refresh-tokens')
+            ->cron('*/45 * * * *')
+            ->withoutOverlapping();
+
+        $schedule->command('social:sync-metadata')
+            ->dailyAt('03:00')
+            ->withoutOverlapping();
+
+        $schedule->command('social:publish-scheduled')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        $schedule->command('ai:scrape-trends')
+            ->hourly()
+            ->withoutOverlapping();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

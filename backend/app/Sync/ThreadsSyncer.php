@@ -3,6 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 class ThreadsSyncer
 {
     private const THREADS_API_BASE = 'https://graph.threads.net/v1.0';
-    private const THREAD_FIELDS = 'id,media_type,media_url,permalink,text,timestamp,thumbnail_url,username';
+    private const THREAD_FIELDS = 'id,media_type,media_url,permalink,text,timestamp,thumbnail_url,username,like_count,reply_count,views';
 
     public function account(SocialCredential $credential): array|JsonResponse
     {
@@ -110,13 +111,15 @@ class ThreadsSyncer
             $mediaUrl = $item['media_url'] ?? null;
             $link = is_string($permalink) && $permalink !== '' ? $permalink : (is_string($mediaUrl) ? $mediaUrl : null);
 
-            PostSyncUpsert::apply($feed, (string) $externalId, [
+            $metrics = FeedItemMetricsMapper::fromThreads($item);
+
+            PostSyncUpsert::apply($feed, (string) $externalId, array_merge([
                 'title' => $title,
                 'content' => $body,
                 'thumbnail_url' => $thumb,
                 'video_url' => $link,
                 'posted_at' => $item['timestamp'] ?? null,
-            ]);
+            ], $metrics, FeedItemMetricsMapper::hashtagsFromText($body)));
             $created++;
         }
 

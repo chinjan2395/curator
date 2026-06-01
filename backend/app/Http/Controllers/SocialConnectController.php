@@ -34,7 +34,7 @@ class SocialConnectController extends Controller
      * Scopes for managed Pages: /me/accounts → page access token → /{page-id}/feed.
      * pages_read_user_content is commonly required alongside pages_read_engagement (Graph dependency / review).
      */
-    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_user_content', 'pages_read_engagement', 'business_management'];
+    private const FACEBOOK_SCOPES = ['public_profile', 'pages_show_list', 'pages_read_user_content', 'pages_read_engagement', 'pages_manage_posts', 'business_management'];
 
     /**
      * Instagram Graph API (Professional account linked to a Page): list Pages via /me/accounts,
@@ -43,14 +43,16 @@ class SocialConnectController extends Controller
     private const INSTAGRAM_SCOPES = [
         'public_profile',
         'instagram_basic',
+        'instagram_content_publish',
         'pages_show_list',
         'pages_read_user_content',
         'pages_read_engagement',
+        'pages_manage_posts',
         'business_management',
     ];
 
-    /** X / Twitter OAuth 2: tweet.read + users.read + offline.access for refresh_token. */
-    private const TWITTER_SCOPES = ['users.read', 'users.email', 'tweet.read', 'offline.access'];
+    /** X / Twitter OAuth 2: read + write + offline refresh for native scheduling. */
+    private const TWITTER_SCOPES = ['users.read', 'users.email', 'tweet.read', 'tweet.write', 'offline.access'];
 
     private const X_OAUTH_AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
 

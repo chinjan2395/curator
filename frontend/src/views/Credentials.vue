@@ -115,6 +115,8 @@
                   </div>
                   <p class="text-2xs text-slate-400 mt-0.5">
                     {{ c.last_synced_at ? formatSynced(c.last_synced_at) : 'Never synced' }}
+                    <span v-if="c.follower_count"> · {{ c.follower_count }} followers</span>
+                    <span v-if="c.token_health && c.token_health !== 'valid'"> · {{ c.token_health }}</span>
                   </p>
                 </div>
                 <div class="text-right shrink-0">
@@ -181,7 +183,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, inject, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCredentialsStore } from '../stores/credentials';
 import { useOAuthAppsStore } from '../stores/oauthApps';
@@ -195,6 +197,7 @@ defineOptions({ name: 'CredentialsView' });
 
 const route = useRoute();
 const creds = useCredentialsStore();
+const { confirm } = inject('confirm');
 const oauthApps = useOAuthAppsStore();
 const toast = useToastStore();
 const auth = useAuthStore();
@@ -340,7 +343,7 @@ async function saveRename(id) {
 
 async function disconnect(c) {
   const label = c.account_label || c.account_id || c.provider;
-  if (window.confirm(`Disconnect "${label}"?`)) {
+  if (await confirm({ title: 'Disconnect account?', message: `Disconnect "${label}"?`, confirmLabel: 'Disconnect' })) {
     await creds.disconnect(c.id);
   }
 }

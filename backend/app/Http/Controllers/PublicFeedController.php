@@ -7,12 +7,23 @@ use App\Models\Workspace;
 use App\Support\FeedAccountDisplay;
 use App\Support\PublishSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PublicFeedController extends Controller
 {
     public function posts(Request $request, string $publicKey)
     {
+        $cacheKey = 'public_feed:'.$publicKey.':'.md5($request->getQueryString() ?? '');
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($request, $publicKey) {
+            return $this->buildPostsResponse($request, $publicKey);
+        });
+    }
+
+    private function buildPostsResponse(Request $request, string $publicKey)
+    {
         $workspace = Workspace::query()->where('public_key', $publicKey)->firstOrFail();
+        $settings = PublishSettings::merge($workspace->publish_settings);
 
         $limit = (int) $request->query('limit', 25);
         $limit = max(1, min($limit, 100));
@@ -24,9 +35,18 @@ class PublicFeedController extends Controller
         $baseQuery = Post::query()
             ->whereIn('feed_id', $workspaceFeedIds)
             ->where('status', 'approved')
-            ->whereNotNull('published_at')
-            ->orderByDesc('pinned')
-            ->orderByDesc('posted_at');
+            ->whereNotNull('published_at');
+
+        if (! empty($settings['widget']['platform_filters'])) {
+            $platforms = $settings['widget']['platform_filters'];
+            $baseQuery->whereHas('feed', fn ($q) => $q->whereIn('type', $platforms));
+        }
+
+        if (! empty($settings['widget']['content_type_filters'])) {
+            $baseQuery->whereIn('content_type', $settings['widget']['content_type_filters']);
+        }
+
+        $baseQuery->orderByDesc('pinned')->orderByDesc('posted_at');
 
         $totalMatching = (clone $baseQuery)->count();
 
@@ -34,7 +54,11 @@ class PublicFeedController extends Controller
             ->with(['feed'])
             ->offset($offset)
             ->limit($limit)
-            ->get(['id', 'feed_id', 'title', 'content', 'thumbnail_url', 'video_url', 'posted_at', 'external_id', 'pinned']);
+            ->get([
+                'id', 'feed_id', 'title', 'content', 'thumbnail_url', 'video_url', 'post_url',
+                'posted_at', 'external_id', 'pinned', 'content_type',
+                'likes', 'comments', 'shares', 'views',
+            ]);
 
         $serialized = $posts->map(static function (Post $post): array {
             $feed = $post->feed;
@@ -45,6 +69,12 @@ class PublicFeedController extends Controller
                 'content' => $post->content,
                 'thumbnail_url' => $post->thumbnail_url,
                 'video_url' => $post->video_url,
+                'post_url' => $post->post_url ?? $post->video_url,
+                'content_type' => $post->content_type,
+                'likes' => (int) $post->likes,
+                'comments' => (int) $post->comments,
+                'shares' => (int) $post->shares,
+                'views' => (int) $post->views,
                 'posted_at' => $post->posted_at,
                 'external_id' => $post->external_id,
                 'pinned' => (bool) $post->pinned,

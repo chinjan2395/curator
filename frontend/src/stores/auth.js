@@ -67,11 +67,20 @@ export const useAuthStore = defineStore('auth', {
       if (!this.token) return;
       try {
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
-        const response = await axios.get('/api/user');
-        this.user = response.data;
+        const response = await axios.get('/api/auth/me');
+        this.user = response.data.data || response.data;
       } catch (err) {
         await this.logout();
       }
+    },
+    async refreshToken() {
+      if (!this.token) return;
+      const { data } = await axios.post('/api/auth/refresh');
+      const payload = data.data || data;
+      this.token = payload.token;
+      this.user = payload.user;
+      localStorage.setItem('token', this.token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
     },
     async fetchSyncSummary() {
       try {

@@ -210,7 +210,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
 import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useCredentialsStore } from '../stores/credentials';
 import SocialIcon from '../components/SocialIcon.vue';
@@ -218,6 +218,7 @@ import { AppPageHeader } from '../components/layout/index.js';
 import { AppAlert, AppButton, AppCard, AppFormField, AppInput } from '../components/ui';
 
 const oauthApps = useOAuthAppsStore();
+const { confirm } = inject('confirm');
 const creds = useCredentialsStore();
 const provider = ref('youtube');
 const socialProviders = [
@@ -313,7 +314,7 @@ async function saveOauth() {
 
 async function removeOauth() {
   if (!supportsOAuthApp.value) return;
-  if (window.confirm('Remove OAuth app settings?')) {
+  if (await confirm({ title: 'Remove OAuth settings?', message: 'Remove OAuth app settings?', confirmLabel: 'Remove' })) {
     await oauthApps.remove(oauthProviderKey.value, oauthScope.value);
     hydrateOauthForm();
   }
@@ -323,7 +324,7 @@ async function promoteToShared(overwrite) {
   const message = overwrite
     ? 'Overwrite existing shared configs with your user configs?'
     : 'Promote your user configs to shared defaults? Existing shared configs will be kept.';
-  if (!window.confirm(message)) return;
+  if (!await confirm({ title: 'Promote configs?', message, confirmLabel: 'Continue' })) return;
   await oauthApps.promoteMyUserConfigsToShared({ overwrite });
 }
 

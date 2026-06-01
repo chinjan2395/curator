@@ -59,6 +59,18 @@ class PublishSettings
                     'color' => '#ffffff',
                 ],
             ],
+            'widget' => [
+                'theme' => 'light',
+                'columns' => 3,
+                'gap' => 16,
+                'border_radius' => 12,
+                'font_family' => 'inherit',
+                'animation' => 'fade',
+                'click_action' => 'new_tab',
+                'auto_refresh' => false,
+                'platform_filters' => [],
+                'content_type_filters' => [],
+            ],
             'branding' => [
                 'media_badge' => [
                     'show' => true,
@@ -161,6 +173,36 @@ class PublishSettings
             (string) ($out['colors']['post_bg']['color'] ?? $defaults['colors']['post_bg']['color']),
             (string) $defaults['colors']['post_bg']['color'],
         );
+
+        $out['widget']['theme'] = self::enumOrFallback(
+            (string) ($out['widget']['theme'] ?? 'light'),
+            ['light', 'dark', 'auto', 'custom'],
+            'light',
+        );
+        $cols = (int) ($out['widget']['columns'] ?? 3);
+        $out['widget']['columns'] = in_array($cols, [2, 3, 4, 5], true) ? $cols : 3;
+        $out['widget']['gap'] = max(0, min((int) ($out['widget']['gap'] ?? 16), 64));
+        $out['widget']['border_radius'] = max(0, min((int) ($out['widget']['border_radius'] ?? 12), 48));
+        $out['widget']['font_family'] = mb_substr((string) ($out['widget']['font_family'] ?? 'inherit'), 0, 120);
+        $out['widget']['animation'] = self::enumOrFallback(
+            (string) ($out['widget']['animation'] ?? 'fade'),
+            ['fade', 'slide', 'none'],
+            'fade',
+        );
+        $out['widget']['click_action'] = self::enumOrFallback(
+            (string) ($out['widget']['click_action'] ?? 'new_tab'),
+            ['modal', 'new_tab', 'none'],
+            'new_tab',
+        );
+        $out['widget']['auto_refresh'] = (bool) ($out['widget']['auto_refresh'] ?? false);
+        $out['widget']['platform_filters'] = array_values(array_filter(
+            (array) ($out['widget']['platform_filters'] ?? []),
+            static fn ($v) => is_string($v) && $v !== '',
+        ));
+        $out['widget']['content_type_filters'] = array_values(array_filter(
+            (array) ($out['widget']['content_type_filters'] ?? []),
+            static fn ($v) => is_string($v) && $v !== '',
+        ));
 
         $out['branding'] = self::normalizeBranding($out['branding'] ?? [], $defaults['branding']);
 

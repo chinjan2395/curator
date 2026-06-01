@@ -3,6 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use Illuminate\Http\JsonResponse;
@@ -85,7 +86,7 @@ class TwitterSyncer
 
         $resp = Http::withToken($token)->timeout(20)->get(self::X_API_BASE.'/users/'.$resolved['id'].'/tweets', [
             'max_results' => 25,
-            'tweet.fields' => 'created_at,text,note_tweet,attachments',
+            'tweet.fields' => 'created_at,text,note_tweet,attachments,public_metrics',
             'expansions' => 'attachments.media_keys',
             'media.fields' => 'preview_image_url,type,url',
             'exclude' => 'retweets',
@@ -125,13 +126,18 @@ class TwitterSyncer
                 }
             }
 
-            PostSyncUpsert::apply($feed, (string) $externalId, [
+            $metrics = FeedItemMetricsMapper::fromTwitter(
+                $tweet['public_metrics'] ?? [],
+                (string) $externalId,
+            );
+
+            PostSyncUpsert::apply($feed, (string) $externalId, array_merge([
                 'title' => $title,
                 'content' => $body,
                 'thumbnail_url' => $thumb,
                 'video_url' => 'https://x.com/i/web/status/'.rawurlencode((string) $externalId),
                 'posted_at' => $tweet['created_at'] ?? null,
-            ]);
+            ], $metrics, FeedItemMetricsMapper::hashtagsFromText($body)));
             $created++;
         }
 

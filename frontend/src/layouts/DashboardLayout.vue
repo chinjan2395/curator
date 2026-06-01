@@ -36,75 +36,59 @@
 
       <!-- Main navigation -->
       <nav class="flex-1 px-2 py-3 overflow-y-auto">
-        <ul class="space-y-0.5">
-          <li>
-            <router-link
-              to="/"
-              class="sidebar-nav-item"
-              :class="[
-                { 'sidebar-nav-item-active': $route.path === '/' },
-                sidebarCollapsed ? 'justify-center px-2' : ''
-              ]"
-              :title="sidebarCollapsed ? 'Dashboard' : ''"
-            >
-              <AppIcon name="dashboard" class="w-5 h-5 flex-shrink-0" />
-              <span v-if="!sidebarCollapsed">Dashboard</span>
-            </router-link>
-          </li>
-          <li>
-            <router-link
-              to="/workspaces"
-              class="sidebar-nav-item"
-              :class="[
-                { 'sidebar-nav-item-active': $route.path.startsWith('/workspaces') && !$route.params.workspaceId },
-                sidebarCollapsed ? 'justify-center px-2' : ''
-              ]"
-              :title="sidebarCollapsed ? 'Workspaces' : ''"
-            >
-              <AppIcon name="workspaces" class="w-5 h-5 flex-shrink-0" />
-              <span v-if="!sidebarCollapsed">Workspaces</span>
-            </router-link>
-          </li>
-          <!-- Workspace sub-items -->
-          <li v-if="$route.path.startsWith('/workspaces') && !sidebarCollapsed">
-            <ul class="mt-0.5 space-y-0.5">
-              <li v-for="w in workspaces.list" :key="w.id">
-                <router-link
-                  :to="`/workspaces/${w.id}/feeds`"
-                  class="sidebar-nav-item pl-9 text-xs"
-                  :class="{ 'sidebar-nav-item-active': Number($route.params.workspaceId) === w.id }"
-                >
-                  <AppIcon name="feeds" class="w-3.5 h-3.5 flex-shrink-0" />
-                  <span class="truncate">{{ w.name }}</span>
-                </router-link>
-              </li>
-              <li v-if="!workspaces.list.length">
-                <div class="px-9 py-1.5 text-xs text-slate-500">No workspaces</div>
-              </li>
-            </ul>
-          </li>
-          <li>
-            <router-link
-              to="/credentials"
-              class="sidebar-nav-item"
-              :class="[
-                { 'sidebar-nav-item-active': $route.path.startsWith('/credentials') },
-                sidebarCollapsed ? 'justify-center px-2' : ''
-              ]"
-              :title="sidebarCollapsed ? 'Credentials' : ''"
-            >
-              <AppIcon name="credentials" class="w-5 h-5 flex-shrink-0" />
-              <span v-if="!sidebarCollapsed">Credentials</span>
-            </router-link>
-          </li>
-        </ul>
+        <template v-for="(section, sectionIndex) in mainNavSections" :key="section.id">
+          <div
+            v-if="!sidebarCollapsed"
+            class="sidebar-section-label"
+            :class="{ 'sidebar-section-label-first': sectionIndex === 0 }"
+          >
+            {{ section.label }}
+          </div>
+          <div v-else-if="sectionIndex > 0" class="my-3 mx-2 border-t border-white/10" />
 
+          <ul class="space-y-0.5">
+            <li v-for="item in section.items" :key="item.id">
+              <router-link
+                :to="item.to"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': isMainNavActive(item) },
+                  sidebarCollapsed ? 'justify-center px-2' : '',
+                ]"
+                :title="sidebarCollapsed ? item.label : ''"
+              >
+                <AppIcon :name="item.icon" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">{{ item.label }}</span>
+              </router-link>
+
+              <!-- Workspace quick links when expanded -->
+              <ul
+                v-if="item.id === 'workspaces' && $route.path.startsWith('/workspaces') && !sidebarCollapsed"
+                class="mt-0.5 space-y-0.5"
+              >
+                <li v-for="w in workspaces.list" :key="w.id">
+                  <router-link
+                    :to="`/workspaces/${w.id}/feeds`"
+                    class="sidebar-nav-item pl-9 text-xs"
+                    :class="{ 'sidebar-nav-item-active': Number($route.params.workspaceId) === w.id }"
+                  >
+                    <AppIcon name="feeds" class="w-3.5 h-3.5 flex-shrink-0" />
+                    <span class="truncate">{{ w.name }}</span>
+                  </router-link>
+                </li>
+                <li v-if="!workspaces.list.length">
+                  <div class="px-9 py-1.5 text-xs text-blue-200/40">No workspaces</div>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </template>
       </nav>
 
       <!-- Sidebar footer -->
       <div class="px-2 pb-3 pt-2 border-t border-white/10 shrink-0">
         <!-- Admin section -->
-        <div v-if="auth.user?.role === 'admin'" class="sidebar-admin-section mb-2">
+        <div v-if="auth.user?.role === 'admin' || auth.user?.role === 'superadmin'" class="sidebar-admin-section mb-2">
           <div v-if="!sidebarCollapsed" class="sidebar-section-label">Administration</div>
           <div v-else class="my-3 mx-2 border-t border-white/10" />
           <ul class="mt-0.5 space-y-0.5">
@@ -148,6 +132,48 @@
               >
                 <AppIcon name="sync" class="w-5 h-5 flex-shrink-0" />
                 <span v-if="!sidebarCollapsed">Sync Ops</span>
+              </router-link>
+            </li>
+            <li>
+              <router-link
+                to="/admin/system"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': $route.path.startsWith('/admin/system') },
+                  sidebarCollapsed ? 'justify-center px-2' : ''
+                ]"
+                :title="sidebarCollapsed ? 'System' : ''"
+              >
+                <AppIcon name="settings" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">System</span>
+              </router-link>
+            </li>
+            <li>
+              <router-link
+                to="/admin/trends"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': $route.path.startsWith('/admin/trends') },
+                  sidebarCollapsed ? 'justify-center px-2' : ''
+                ]"
+                :title="sidebarCollapsed ? 'Trends' : ''"
+              >
+                <AppIcon name="trending" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">Trends</span>
+              </router-link>
+            </li>
+            <li>
+              <router-link
+                to="/admin/moderation"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': $route.path.startsWith('/admin/moderation') },
+                  sidebarCollapsed ? 'justify-center px-2' : ''
+                ]"
+                :title="sidebarCollapsed ? 'Moderation' : ''"
+              >
+                <AppIcon name="shield" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">Moderation</span>
               </router-link>
             </li>
             <li>
@@ -278,6 +304,13 @@
 
       <!-- Page content -->
       <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+        <div
+          v-if="auth.user?.email_verification_required && !auth.user.email_verified_at"
+          class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <span>Please verify your email to unlock all features.</span>
+          <button type="button" class="text-amber-800 underline font-medium" @click="resendVerification">Resend verification email</button>
+        </div>
         <router-view />
       </main>
     </div>
@@ -378,6 +411,7 @@
 
 <script setup>
 import { ref, computed, watch, provide, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router';
 import { AppIcon } from '../components/ui';
 import { useAuthStore } from '../stores/auth';
@@ -479,6 +513,77 @@ const userInitials = computed(() => {
   return parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('') || 'U';
 });
 
+const mainNavSections = [
+  {
+    id: 'overview',
+    label: 'Overview',
+    items: [
+      { id: 'dashboard', to: '/', label: 'Dashboard', icon: 'dashboard', match: 'exact' },
+    ],
+  },
+  {
+    id: 'workspace',
+    label: 'Workspace',
+    items: [
+      { id: 'workspaces', to: '/workspaces', label: 'Workspaces', icon: 'workspaces', match: 'workspaces-root' },
+    ],
+  },
+  {
+    id: 'connect',
+    label: 'Connect',
+    items: [
+      { id: 'integrations', to: '/credentials', label: 'Integrations', icon: 'link', match: 'integrations' },
+    ],
+  },
+  {
+    id: 'content',
+    label: 'Content',
+    items: [
+      { id: 'curator', to: '/curator', label: 'Curator', icon: 'grid', match: 'curator' },
+      { id: 'campaigns', to: '/campaigns', label: 'Campaigns', icon: 'megaphone', match: 'campaigns' },
+      { id: 'schedule', to: '/calendar', label: 'Schedule', icon: 'calendar', match: 'schedule' },
+      { id: 'content-library', to: '/content', label: 'Content Library', icon: 'library', match: 'content' },
+    ],
+  },
+  {
+    id: 'insights',
+    label: 'Insights',
+    items: [
+      { id: 'analytics', to: '/analytics', label: 'Analytics', icon: 'chart', match: 'analytics' },
+      { id: 'inbox', to: '/inbox', label: 'Inbox', icon: 'inbox', match: 'inbox' },
+      { id: 'notifications', to: '/notifications', label: 'Notifications', icon: 'bell', match: 'notifications' },
+    ],
+  },
+];
+
+function isMainNavActive(item) {
+  const path = route.path;
+  switch (item.match) {
+    case 'exact':
+      return path === '/';
+    case 'workspaces-root':
+      return path.startsWith('/workspaces') && !route.params.workspaceId;
+    case 'integrations':
+      return path.startsWith('/credentials') || path.startsWith('/integrations');
+    case 'curator':
+      return path.startsWith('/curator') && !path.includes('embed-builder');
+    case 'campaigns':
+      return path.startsWith('/campaigns');
+    case 'schedule':
+      return path.startsWith('/calendar') || path.startsWith('/publisher');
+    case 'content':
+      return path.startsWith('/content');
+    case 'analytics':
+      return path.startsWith('/analytics');
+    case 'inbox':
+      return path.startsWith('/inbox');
+    case 'notifications':
+      return path.startsWith('/notifications');
+    default:
+      return path.startsWith(item.to);
+  }
+}
+
 onMounted(async () => {
   await workspaces.fetchAll();
   await auth.fetchSyncSummary();
@@ -508,6 +613,15 @@ async function logoutFromProfile() {
 function onClickOutside(e) {
   if (profileDropdownRef.value && !profileDropdownRef.value.contains(e.target)) {
     showProfileDropdown.value = false;
+  }
+}
+
+async function resendVerification() {
+  try {
+    await axios.post('/api/auth/resend-verification');
+    toast.info('Verification email sent.');
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Could not send verification email.');
   }
 }
 

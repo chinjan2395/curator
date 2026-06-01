@@ -209,7 +209,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUsersStore } from '../../stores/users';
 import SocialIcon from '../../components/SocialIcon.vue';
@@ -242,6 +242,7 @@ const providerLabels = {
 const route = useRoute();
 const router = useRouter();
 const users = useUsersStore();
+const { confirm } = inject('confirm');
 
 const saving = ref(false);
 const actionLoading = ref(false);
@@ -321,7 +322,7 @@ async function doResetPassword() {
 }
 
 async function doDeactivate() {
-  if (!window.confirm(`Deactivate this account? The user will be logged out and cannot sign in.`)) return;
+  if (!await confirm({ title: 'Deactivate user?', message: 'Deactivate this account? The user will be logged out and cannot sign in.', confirmLabel: 'Deactivate' })) return;
   actionLoading.value = true;
   const result = await users.deactivate(route.params.id);
   actionLoading.value = false;
@@ -336,7 +337,7 @@ async function doActivate() {
 }
 
 async function doDelete() {
-  if (!window.confirm(`Permanently delete this account? This cannot be undone.`)) return;
+  if (!await confirm({ title: 'Delete user?', message: 'Permanently delete this account? This cannot be undone.', confirmLabel: 'Delete' })) return;
   actionLoading.value = true;
   const result = await users.deleteUser(route.params.id);
   actionLoading.value = false;

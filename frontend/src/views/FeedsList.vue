@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, inject, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
@@ -98,6 +98,7 @@ import { AppButton, AppCard, AppEmptyState, AppIcon, AppLoader, AppTable } from 
 
 const route = useRoute();
 const feeds = useFeedsStore();
+const { confirm } = inject('confirm');
 const workspaces = useWorkspacesStore();
 
 const workspaceId = computed(() => route.params.workspaceId);
@@ -163,7 +164,7 @@ function handleEditClick(f) {
 }
 
 async function handleDeleteClick(f) {
-  if (!window.confirm(`Delete feed "${f.name}"?`)) return;
+  if (!await confirm({ title: 'Delete feed?', message: `Delete feed "${f.name}"?`, confirmLabel: 'Delete' })) return;
 
   try {
     await feeds.remove(workspaceId.value, f.id);

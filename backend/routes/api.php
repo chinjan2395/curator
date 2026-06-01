@@ -24,6 +24,26 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Admin\ActivityController as AdminActivityController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\SyncController as AdminSyncController;
+use App\Http\Controllers\Admin\SystemController as AdminSystemController;
+use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\AccountController;
+use App\Http\Controllers\Auth\TokenRefreshController;
+use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\ContentPackageController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\InboxController;
+use App\Http\Controllers\CuratorFeedController;
+use App\Http\Controllers\BrandKitController;
+use App\Http\Controllers\ContentTemplateController;
+use App\Http\Controllers\ContentBlockController;
+use App\Http\Controllers\Admin\TrendsController;
+use App\Http\Controllers\Admin\ModerationController;
+use App\Http\Controllers\CapabilitiesController;
+use App\Http\Controllers\SetupStatusController;
 
 // OAuth callbacks (public, no auth)
 Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
@@ -33,8 +53,9 @@ Route::get('social/callback/twitter', [SocialConnectController::class, 'callback
 Route::get('social/callback/tiktok', [SocialConnectController::class, 'callbackTikTok']);
 Route::get('social/callback/threads', [SocialConnectController::class, 'callbackThreads']);
 
-// Public publish endpoints (no auth)
+// Public embed endpoints (no auth)
 Route::get('public/feeds/{publicKey}/posts', [PublicFeedController::class, 'posts']);
+Route::get('embed/{publicToken}/feed', [PublicFeedController::class, 'posts']);
 Route::get('embed/{publicKey}.js', [EmbedController::class, 'js']);
 Route::get('embed/{publicKey}.css', [EmbedController::class, 'css']);
 
@@ -82,11 +103,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('oauth-app-configs/{provider}', [OAuthAppConfigController::class, 'destroy']);
 });
 
-// Public routes
-Route::post('/register', [RegisterController::class, 'register']);
-Route::post('/login', [LoginController::class, 'login']);
-Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
-Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
+// Public routes (legacy + spec aliases)
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/register', [RegisterController::class, 'register']);
+    Route::post('/login', [LoginController::class, 'login']);
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
+
+    Route::prefix('auth')->group(function () {
+        Route::post('register', [RegisterController::class, 'register']);
+        Route::post('login', [LoginController::class, 'login']);
+        Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+        Route::post('reset-password', [ResetPasswordController::class, 'reset']);
+    });
+});
 
 // Social login (public, browser redirect flow)
 Route::get('auth/social/providers', [SocialAuthController::class, 'providers']);
@@ -95,6 +125,66 @@ Route::get('auth/social/{provider}/callback', [SocialAuthController::class, 'cal
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [LogoutController::class, 'logout']);
+    Route::post('auth/logout', [LogoutController::class, 'logout']);
+    Route::get('auth/me', [ProfileController::class, 'me']);
+    Route::put('auth/profile', [ProfileController::class, 'update']);
+    Route::post('auth/refresh', [TokenRefreshController::class, 'refresh']);
+    Route::post('auth/resend-verification', [EmailVerificationController::class, 'resend']);
+    Route::post('auth/email/verify', [EmailVerificationController::class, 'verify']);
+    Route::get('auth/export', [AccountController::class, 'export']);
+    Route::delete('auth/account', [AccountController::class, 'destroy']);
+
+    Route::get('setup/status', [SetupStatusController::class, 'show']);
+    Route::get('capabilities', [CapabilitiesController::class, 'show']);
+
+    Route::get('curator/feed', [CuratorFeedController::class, 'index']);
+
+    Route::apiResource('campaigns', CampaignController::class);
+    Route::post('campaigns/{campaign}/generate', [CampaignController::class, 'generate']);
+    Route::get('content-packages', [ContentPackageController::class, 'index']);
+    Route::post('content-packages/{contentPackage}/refine', [ContentPackageController::class, 'refine']);
+    Route::patch('content-packages/{contentPackage}/status', [ContentPackageController::class, 'updateStatus']);
+    Route::patch('content-packages/{contentPackage}/media', [ContentPackageController::class, 'updateMedia']);
+    Route::get('content-packages/{contentPackage}/versions', [ContentPackageController::class, 'versions']);
+
+    Route::get('content/brand-kits', [BrandKitController::class, 'index']);
+    Route::post('content/brand-kits', [BrandKitController::class, 'store']);
+    Route::put('content/brand-kits/{brandKit}', [BrandKitController::class, 'update']);
+    Route::delete('content/brand-kits/{brandKit}', [BrandKitController::class, 'destroy']);
+
+    Route::get('content/templates', [ContentTemplateController::class, 'index']);
+    Route::post('content/templates', [ContentTemplateController::class, 'store']);
+    Route::put('content/templates/{contentTemplate}', [ContentTemplateController::class, 'update']);
+    Route::delete('content/templates/{contentTemplate}', [ContentTemplateController::class, 'destroy']);
+
+    Route::get('content/blocks', [ContentBlockController::class, 'index']);
+    Route::post('content/blocks', [ContentBlockController::class, 'store']);
+    Route::put('content/blocks/{contentBlock}', [ContentBlockController::class, 'update']);
+    Route::delete('content/blocks/{contentBlock}', [ContentBlockController::class, 'destroy']);
+
+    Route::post('inbox/sync', [InboxController::class, 'sync']);
+
+    Route::get('content/assets', [AssetController::class, 'index']);
+    Route::post('content/assets', [AssetController::class, 'store']);
+    Route::delete('content/assets/{asset}', [AssetController::class, 'destroy']);
+
+    Route::get('schedule/calendar', [ScheduleController::class, 'calendar']);
+    Route::post('schedule', [ScheduleController::class, 'store']);
+    Route::delete('schedule/{scheduledPost}', [ScheduleController::class, 'cancel']);
+    Route::get('publisher/queue', [ScheduleController::class, 'queue']);
+
+    Route::get('analytics/overview', [AnalyticsController::class, 'overview']);
+    Route::get('analytics/platforms/{platform}', [AnalyticsController::class, 'platform']);
+    Route::get('analytics/insights', [AnalyticsController::class, 'insights']);
+
+    Route::get('notifications', [NotificationController::class, 'index']);
+    Route::post('notifications/{id}/read', [NotificationController::class, 'markRead']);
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::get('notifications/preferences', [NotificationController::class, 'preferences']);
+    Route::put('notifications/preferences', [NotificationController::class, 'updatePreferences']);
+
+    Route::get('inbox', [InboxController::class, 'index']);
+    Route::post('inbox', [InboxController::class, 'store']);
 });
 
 // Admin routes
@@ -114,4 +204,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::post('credentials/{credential}/resync', [AdminSyncController::class, 'resyncCredential']);
         Route::post('feeds/{feed}', [AdminSyncController::class, 'syncFeed']);
     });
+
+    Route::get('system/overview', [AdminSystemController::class, 'overview']);
+    Route::get('integrations/health', [AdminSystemController::class, 'integrationHealth']);
+    Route::get('trends', [TrendsController::class, 'index']);
+    Route::get('posts/pending', [ModerationController::class, 'pending']);
 });

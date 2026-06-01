@@ -4,6 +4,7 @@ namespace App\Sync;
 
 use App\Models\Feed;
 use App\Models\SocialCredential;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -98,8 +99,19 @@ class YouTubeSyncer
             return response()->json(['message' => 'Failed to load uploads from YouTube.', 'error' => $response->json()], $response->status());
         }
 
+        $items = $response->json('items', []);
+        $videoIds = [];
+        foreach ($items as $item) {
+            $vid = $item['contentDetails']['videoId'] ?? null;
+            if ($vid) {
+                $videoIds[] = $vid;
+            }
+        }
+
+        $statsById = $this->fetchVideoStatistics($token, $videoIds);
+
         $created = 0;
-        foreach ($response->json('items', []) as $item) {
+        foreach ($items as $item) {
             $videoId = $item['contentDetails']['videoId'] ?? null;
             if (! $videoId) {
                 continue;
@@ -114,13 +126,18 @@ class YouTubeSyncer
                 ?? $snippet['thumbnails']['default']['url']
                 ?? null;
 
-            PostSyncUpsert::apply($feed, (string) $videoId, [
+            $metrics = FeedItemMetricsMapper::fromYouTube(
+                $statsById[$videoId] ?? [],
+                (string) $videoId,
+            );
+
+            PostSyncUpsert::apply($feed, (string) $videoId, array_merge([
                 'title' => $title,
                 'content' => trim($title."\n\n".$description),
                 'thumbnail_url' => $thumb,
                 'video_url' => 'https://www.youtube.com/watch?v='.$videoId,
                 'posted_at' => $publishedAt,
-            ]);
+            ], $metrics, FeedItemMetricsMapper::hashtagsFromText($description)));
             $created++;
         }
 
@@ -268,5 +285,35 @@ class YouTubeSyncer
         if ($feed->isDirty()) {
             $feed->save();
         }
+    }
+
+    /**
+     * @param  list<string>  $videoIds
+     * @return array<string, array<string, mixed>>
+     */
+    private function fetchVideoStatistics(string $token, array $videoIds): array
+    {
+        if ($videoIds === []) {
+            return [];
+        }
+
+        $response = Http::withToken($token)->get('https://www.googleapis.com/youtube/v3/videos', [
+            'part' => 'statistics',
+            'id' => implode(',', array_slice($videoIds, 0, 50)),
+        ]);
+
+        if (! $response->ok()) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($response->json('items', []) as $video) {
+            $id = $video['id'] ?? null;
+            if ($id) {
+                $map[$id] = $video['statistics'] ?? [];
+            }
+        }
+
+        return $map;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -57,13 +58,13 @@ class RssSyncer
                 continue;
             }
 
-            PostSyncUpsert::apply($feed, (string) $item['external_id'], [
+            PostSyncUpsert::apply($feed, (string) $item['external_id'], array_merge([
                 'title' => $item['title'] ?? null,
                 'content' => $item['content'] ?? '',
                 'thumbnail_url' => $item['thumbnail_url'] ?? null,
                 'video_url' => $item['url'] ?? null,
                 'posted_at' => $item['posted_at'] ?? null,
-            ]);
+            ], FeedItemMetricsMapper::fromRss()));
             $created++;
         }
 

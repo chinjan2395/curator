@@ -199,7 +199,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, inject } from 'vue';
 import { useUsersStore } from '../../stores/users';
 import SocialIcon from '../../components/SocialIcon.vue';
 import { AppButton, AppCard, AppDropdown, AppIcon, AppInput, AppLoader, AppSelect, AppTable } from '../../components/ui';
@@ -229,6 +229,7 @@ const providerLabels = {
 };
 
 const users = useUsersStore();
+const { confirm } = inject('confirm');
 const filters = ref({ search: '', role: '', status: '' });
 const currentPage = ref(1);
 const actionLoading = ref({});
@@ -316,7 +317,7 @@ async function doResetPassword(user) {
 }
 
 async function doDeactivate(user) {
-  if (!window.confirm(`Deactivate "${user.name}"? They will be logged out and cannot sign in.`)) return;
+  if (!await confirm({ title: 'Deactivate user?', message: `Deactivate "${user.name}"? They will be logged out and cannot sign in.`, confirmLabel: 'Deactivate' })) return;
   actionLoading.value[user.id] = true;
   const result = await users.deactivate(user.id);
   actionLoading.value[user.id] = false;
@@ -331,7 +332,7 @@ async function doActivate(user) {
 }
 
 async function doDelete(user) {
-  if (!window.confirm(`Permanently delete "${user.name}"? This cannot be undone.`)) return;
+  if (!await confirm({ title: 'Delete user?', message: `Permanently delete "${user.name}"? This cannot be undone.`, confirmLabel: 'Delete' })) return;
   actionLoading.value[user.id] = true;
   const result = await users.deleteUser(user.id);
   actionLoading.value[user.id] = false;

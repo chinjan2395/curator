@@ -12,17 +12,29 @@ class Post extends Model
         'content',
         'thumbnail_url',
         'video_url',
+        'post_url',
         'posted_at',
         'external_id',
+        'content_type',
         'status',
         'pinned',
         'published_at',
+        'likes',
+        'comments',
+        'shares',
+        'views',
+        'saves',
+        'reach',
+        'hashtags',
+        'raw_data',
     ];
 
     protected $casts = [
         'posted_at' => 'datetime',
         'pinned' => 'boolean',
         'published_at' => 'datetime',
+        'hashtags' => 'array',
+        'raw_data' => 'array',
     ];
 
     public function feed()

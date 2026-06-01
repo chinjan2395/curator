@@ -3,6 +3,7 @@
 namespace App\Sync;
 
 use App\Models\Feed;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
 use App\Support\OAuthAppConfigResolver;
@@ -161,7 +162,7 @@ class InstagramSyncer
         }
 
         $response = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId.'/media', [
-            'fields' => 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp',
+            'fields' => 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,like_count,comments_count',
             'limit' => 25,
             'access_token' => $pageToken,
         ]);
@@ -187,13 +188,15 @@ class InstagramSyncer
             $mediaUrl = $item['media_url'] ?? null;
             $link = is_string($permalink) && $permalink !== '' ? $permalink : (is_string($mediaUrl) ? $mediaUrl : null);
 
-            PostSyncUpsert::apply($feed, (string) $externalId, [
+            $metrics = FeedItemMetricsMapper::fromInstagram($item);
+
+            PostSyncUpsert::apply($feed, (string) $externalId, array_merge([
                 'title' => $title,
                 'content' => $caption,
                 'thumbnail_url' => $thumb,
                 'video_url' => $link,
                 'posted_at' => $item['timestamp'] ?? null,
-            ]);
+            ], $metrics, FeedItemMetricsMapper::hashtagsFromText($caption)));
             $created++;
         }
 
