@@ -54,7 +54,7 @@ const message = computed(() => {
     .filter(([, v]) => !v.enabled)
     .map(([k, v]) => `${k}: ${v.reason}`)
     .join('; ');
-  return `Native publish is available for X, Facebook, and Instagram. Other platforms: ${disabled}. Reconnect integrations after scope changes.`;
+  return `Native publish is available for X, Facebook, Instagram, TikTok, Threads, and LinkedIn. Other platforms: ${disabled}. Reconnect integrations after scope changes.`;
 });
 
 const linkTo = computed(() => (props.context === 'ai' ? null : '/credentials'));

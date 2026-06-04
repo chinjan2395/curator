@@ -13,7 +13,13 @@ defineProps({
   wrapperClass: { type: String, default: '' },
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'change'])
+
+function onChange(event) {
+  const value = event.target.value
+  emit('update:modelValue', value)
+  emit('change', value)
+}
 </script>
 
 <template>
@@ -28,7 +34,7 @@ defineEmits(['update:modelValue'])
         disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : '',
         selectClass,
       ]"
-      @change="$emit('update:modelValue', $event.target.value)"
+      @change="onChange"
     >
       <option v-if="showPlaceholder" value="" disabled>{{ placeholder }}</option>
       <slot>
