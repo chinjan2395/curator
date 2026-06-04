@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
 use App\Models\Asset;
+use App\Services\Content\AssetTaggingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class AssetController extends Controller
 {
@@ -23,10 +23,12 @@ class AssetController extends Controller
             $query->where('file_name', 'like', '%'.$search.'%');
         }
 
-        return ApiResponse::success($query->orderByDesc('created_at')->paginate(24));
+        $perPage = min(100, max(1, (int) $request->query('per_page', 24)));
+
+        return ApiResponse::success($query->orderByDesc('created_at')->paginate($perPage));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AssetTaggingService $tagging): JsonResponse
     {
         $validated = $request->validate([
             'file' => ['required', 'file', 'max:51200'],
@@ -45,13 +47,12 @@ class AssetController extends Controller
             'file_size' => $file->getSize(),
             'mime_type' => $file->getMimeType(),
             'storage_path' => $path,
-            'ai_tags' => [Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))],
+            'ai_tags' => [],
         ]);
 
-        return ApiResponse::success([
-            ...$asset->toArray(),
-            'url' => Storage::disk('public')->url($path),
-        ], 'Asset uploaded.', 201);
+        $asset->update(['ai_tags' => $tagging->suggestTags($asset)]);
+
+        return ApiResponse::success($asset->fresh(), 'Asset uploaded.', 201);
     }
 
     public function destroy(Request $request, Asset $asset): JsonResponse

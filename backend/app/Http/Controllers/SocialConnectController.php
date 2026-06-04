@@ -59,13 +59,20 @@ class SocialConnectController extends Controller
     private const X_OAUTH_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
     private const TIKTOK_OAUTH_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/';
     private const TIKTOK_OAUTH_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
-    private const TIKTOK_SCOPES = ['user.info.basic', 'video.list'];
+    private const TIKTOK_SCOPES = ['user.info.basic', 'video.list', 'video.publish'];
 
     private const THREADS_OAUTH_AUTHORIZE_URL = 'https://threads.net/oauth/authorize';
     private const THREADS_OAUTH_TOKEN_URL = 'https://graph.threads.net/oauth/access_token';
     private const THREADS_LONG_LIVED_TOKEN_URL = 'https://graph.threads.net/access_token';
     private const THREADS_API_BASE = 'https://graph.threads.net/v1.0';
-    private const THREADS_SCOPES = ['threads_basic'];
+    private const THREADS_SCOPES = ['threads_basic', 'threads_content_publish'];
+
+    private const LINKEDIN_OAUTH_AUTHORIZE_URL = 'https://www.linkedin.com/oauth/v2/authorization';
+
+    private const LINKEDIN_OAUTH_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
+
+    private const LINKEDIN_SCOPES = ['openid', 'profile', 'email', 'w_member_social'];
+
     private function normalizeAbsoluteUrl(string $url): string
     {
         $trimmed = trim($url);
@@ -109,6 +116,7 @@ class SocialConnectController extends Controller
             'twitter' => $this->connectTwitter($request),
             'tiktok' => $this->connectTikTok($request),
             'threads' => $this->connectThreads($request),
+            'linkedin' => $this->connectLinkedIn($request),
             default => response()->json([
                 'provider' => $provider,
                 'auth_url' => null,
@@ -326,6 +334,32 @@ class SocialConnectController extends Controller
         return response()->json([
             'provider' => 'threads',
             'auth_url' => self::THREADS_OAUTH_AUTHORIZE_URL.'?'.$query,
+        ]);
+    }
+
+    private function connectLinkedIn(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'linkedin');
+        if (! $oauth) {
+            return response()->json(['message' => 'LinkedIn connect is not configured. Add LinkedIn OAuth client ID/secret in OAuth Apps.'], 503);
+        }
+
+        $redirectUrl = $this->normalizeAbsoluteUrl(
+            $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/linkedin')
+        );
+        $state = $this->encryptState($request->user()->id, 'linkedin');
+
+        $query = http_build_query([
+            'response_type' => 'code',
+            'client_id' => $oauth->client_id,
+            'redirect_uri' => $redirectUrl,
+            'state' => $state,
+            'scope' => implode(' ', self::LINKEDIN_SCOPES),
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        return response()->json([
+            'provider' => 'linkedin',
+            'auth_url' => self::LINKEDIN_OAUTH_AUTHORIZE_URL.'?'.$query,
         ]);
     }
 
@@ -832,6 +866,101 @@ class SocialConnectController extends Controller
             return $this->redirectSuccess('threads');
         } catch (\Throwable $e) {
             Log::error('Threads OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return $this->redirectError($e->getMessage());
+        }
+    }
+
+    public function callbackLinkedIn(Request $request)
+    {
+        try {
+            if ($request->query('error')) {
+                return $this->redirectError((string) $request->query('error', 'oauth_denied'));
+            }
+
+            $payload = $this->decodeState($request);
+            if (! $payload || $payload['provider'] !== 'linkedin') {
+                return $this->redirectError('invalid_state');
+            }
+
+            $code = $request->query('code');
+            if (! $code || ! is_string($code)) {
+                return $this->redirectError('missing_code');
+            }
+
+            $oauth = $this->oauthConfigForUser((int) $payload['user_id'], 'linkedin');
+            if (! $oauth) {
+                return $this->redirectError('missing_linkedin_oauth_config');
+            }
+
+            $redirectUrl = $this->normalizeAbsoluteUrl(
+                $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/linkedin')
+            );
+
+            $tokenResp = Http::asForm()
+                ->acceptJson()
+                ->timeout(30)
+                ->post(self::LINKEDIN_OAUTH_TOKEN_URL, [
+                    'grant_type' => 'authorization_code',
+                    'code' => $code,
+                    'client_id' => $oauth->client_id,
+                    'client_secret' => $oauth->client_secret,
+                    'redirect_uri' => $redirectUrl,
+                ]);
+
+            if (! $tokenResp->ok()) {
+                Log::warning('LinkedIn token exchange failed', [
+                    'status' => $tokenResp->status(),
+                    'body' => $tokenResp->body(),
+                ]);
+
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $accessToken = $tokenResp->json('access_token');
+            if (! is_string($accessToken) || $accessToken === '') {
+                return $this->redirectError('token_exchange_failed');
+            }
+
+            $refreshToken = $tokenResp->json('refresh_token');
+            $expiresIn = $tokenResp->json('expires_in');
+
+            $personId = null;
+            $accountLabel = null;
+            $userResp = Http::withToken($accessToken)
+                ->acceptJson()
+                ->timeout(20)
+                ->get('https://api.linkedin.com/v2/userinfo');
+
+            if ($userResp->ok()) {
+                $personId = $userResp->json('sub');
+                $name = trim((string) ($userResp->json('name') ?? ''));
+                $email = trim((string) ($userResp->json('email') ?? ''));
+                $accountLabel = $name !== '' ? $name : ($email !== '' ? $email : null);
+            }
+
+            $credential = $this->saveCredential(
+                (int) $payload['user_id'],
+                'linkedin',
+                $accessToken,
+                is_string($refreshToken) && $refreshToken !== '' ? $refreshToken : null,
+                is_numeric($expiresIn) ? (int) $expiresIn : null,
+                is_string($personId) || is_numeric($personId) ? (string) $personId : null,
+                $accountLabel,
+            );
+
+            $credential->scopes = self::LINKEDIN_SCOPES;
+            $credential->status = 'active';
+            $credential->token_health = 'valid';
+            $credential->save();
+
+            if ($user = User::find((int) $payload['user_id'])) {
+                ActivityLogger::log($user, 'credential.connected', 'Connected LinkedIn', 'credential', $credential->id, $credential->account_label ?? 'LinkedIn');
+            }
+
+            return $this->redirectSuccess('linkedin');
+        } catch (\Throwable $e) {
+            Log::error('LinkedIn OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
             return $this->redirectError($e->getMessage());
         }

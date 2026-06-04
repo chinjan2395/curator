@@ -6,8 +6,10 @@ use App\Http\Resources\ApiResponse;
 use App\Models\ContentPackage;
 use App\Services\AI\AiContentService;
 use App\Services\LearningPromptService;
+use App\Support\ContentPackageMediaResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 class ContentPackageController extends Controller
 {
@@ -30,18 +32,40 @@ class ContentPackageController extends Controller
         return ApiResponse::success($packages);
     }
 
-    public function updateMedia(Request $request, ContentPackage $contentPackage): JsonResponse
-    {
+    public function updateMedia(
+        Request $request,
+        ContentPackage $contentPackage,
+        ContentPackageMediaResolver $mediaResolver,
+    ): JsonResponse {
         abort_if($contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
-            'media_urls' => ['required', 'array', 'max:4'],
-            'media_urls.*' => ['required', 'url', 'max:2048'],
+            'media_urls' => ['sometimes', 'array', 'max:4'],
+            'media_urls.*' => ['required_with:media_urls', 'url', 'max:2048'],
+            'asset_ids' => ['sometimes', 'array', 'max:4'],
+            'asset_ids.*' => ['integer'],
+            'replace' => ['sometimes', 'boolean'],
         ]);
 
-        $contentPackage->update(['media_urls' => $validated['media_urls']]);
+        if (! isset($validated['media_urls']) && ! isset($validated['asset_ids'])) {
+            return ApiResponse::error('Provide media_urls and/or asset_ids.', null, 422);
+        }
 
-        return ApiResponse::success($contentPackage->fresh(), 'Media URLs updated.');
+        try {
+            $existing = ($validated['replace'] ?? false) ? [] : ($contentPackage->media_urls ?? []);
+            $urls = $mediaResolver->merge(
+                $existing,
+                $validated['media_urls'] ?? null,
+                $validated['asset_ids'] ?? null,
+                (int) $request->user()->id,
+            );
+        } catch (RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), null, 422);
+        }
+
+        $contentPackage->update(['media_urls' => $urls]);
+
+        return ApiResponse::success($contentPackage->fresh(), 'Media updated.');
     }
 
     public function refine(Request $request, ContentPackage $contentPackage, AiContentService $ai, LearningPromptService $learning): JsonResponse

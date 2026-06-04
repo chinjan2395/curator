@@ -23,8 +23,9 @@ class CapabilitiesController extends Controller
                     'facebook' => ['enabled' => true, 'reason' => null],
                     'instagram' => ['enabled' => true, 'reason' => 'Requires public HTTPS image URL on content package'],
                     'youtube' => ['enabled' => false, 'reason' => 'Embed publishing only — use workspace publish'],
-                    'tiktok' => ['enabled' => false, 'reason' => 'Native publisher not configured yet'],
-                    'threads' => ['enabled' => false, 'reason' => 'Native publisher not configured yet'],
+                    'tiktok' => ['enabled' => true, 'reason' => 'Requires public HTTPS video URL; video.publish scope; verify URL domain in TikTok developer portal'],
+                    'threads' => ['enabled' => true, 'reason' => 'Text, image, or HTTPS video via content package; threads_content_publish scope'],
+                    'linkedin' => ['enabled' => true, 'reason' => 'Text or article URL in media_urls; w_member_social scope'],
                 ],
             ],
             'inbox' => [
