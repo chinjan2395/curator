@@ -1,6 +1,7 @@
 <template>
   <div class="space-y-4">
-    <AppPageHeader :title="platform + ' analytics'" subtitle="Platform-specific metrics." icon="chart" />
+    <AppPageHeader title="Platform analytics" subtitle="Platform-specific metrics." icon="chart" />
+    <SocialPlatformLabel :type="platform" size="md" class="-mt-3 mb-2" />
 
     <AppLoader v-if="loading" label="Loading…" />
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
@@ -20,6 +21,7 @@ import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { AppAlert, AppCard, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 
 const route = useRoute();
 const platform = computed(() => route.params.platform);

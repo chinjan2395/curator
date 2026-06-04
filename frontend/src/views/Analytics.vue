@@ -17,7 +17,9 @@
         <AppTitle size="sm">Engagement by platform (30d)</AppTitle>
         <div class="mt-4 space-y-2">
           <div v-for="bar in chartBars" :key="bar.platform" class="flex items-center gap-3 text-sm">
-            <router-link :to="`/analytics/platforms/${bar.platform}`" class="w-20 text-blue-600 hover:underline">{{ bar.platform }}</router-link>
+            <router-link :to="`/analytics/platforms/${bar.platform}`" class="min-w-[7.5rem] shrink-0 hover:opacity-80">
+              <SocialPlatformLabel :type="bar.platform" size="sm" />
+            </router-link>
             <div class="flex-1 h-4 bg-slate-100 rounded overflow-hidden">
               <div class="h-full bg-blue-500 rounded" :style="{ width: bar.pct + '%' }" />
             </div>
@@ -59,6 +61,7 @@ import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 import { AppAlert, AppCard, AppLoader, AppTitle } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 
 const overview = ref(null);
 const insights = ref([]);
