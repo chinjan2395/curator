@@ -13,6 +13,7 @@ use App\Repositories\WorkspaceRepository;
 use App\Services\AI\AiContentService;
 use App\Services\AI\AiInsightsService;
 use App\Services\AI\AiProviderInterface;
+use App\Services\Content\AssetTaggingService;
 use App\Services\AI\GroqAiProvider;
 use App\Services\AI\OllamaAiProvider;
 use App\Services\AI\StubAiProvider;
@@ -43,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(AiInsightsService::class, function ($app) {
             return new AiInsightsService($app->make(AiProviderInterface::class));
+        });
+        $this->app->singleton(AssetTaggingService::class, function ($app) {
+            return new AssetTaggingService($app->make(AiProviderInterface::class));
         });
     }
 
