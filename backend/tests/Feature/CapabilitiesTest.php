@@ -20,7 +20,9 @@ class CapabilitiesTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.ai.driver', config('services.ai.driver', 'stub'))
             ->assertJsonPath('data.publish.native.twitter.enabled', true)
-            ->assertJsonPath('data.publish.native.tiktok.enabled', false)
+            ->assertJsonPath('data.publish.native.tiktok.enabled', true)
+            ->assertJsonPath('data.publish.native.threads.enabled', true)
+            ->assertJsonPath('data.publish.native.linkedin.enabled', true)
             ->assertJsonPath('data.inbox.sync_mode', 'stub');
     }
 
