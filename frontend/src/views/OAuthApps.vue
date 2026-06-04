@@ -43,11 +43,8 @@
           :class="provider === item.type ? 'credentials-provider-card--active' : ''"
           @click="provider = item.type"
         >
-          <div class="credentials-provider-icon" :style="{ background: item.softBg, color: item.color }">
-            <SocialIcon :type="item.type" class="w-4 h-4" />
-          </div>
+          <SocialPlatformLabel :type="item.type" variant="badge" size="sm" class="flex-shrink-0" />
           <div class="text-left min-w-0 flex-1">
-            <div class="text-sm-pro font-medium text-slate-800 truncate">{{ item.label }}</div>
             <div class="text-2xs text-slate-500 truncate">{{ item.tagline }}</div>
           </div>
           <span
@@ -64,12 +61,9 @@
       <div class="oauth-config-layout">
         <aside class="oauth-overview-panel">
           <div class="oauth-provider-hero">
-            <div class="oauth-provider-hero__icon" :style="{ background: currentProviderMeta.softBg, color: currentProviderMeta.color }">
-              <SocialIcon :type="provider" class="w-5 h-5" />
-            </div>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <p class="oauth-section-kicker">Step 2</p>
-              <h2 class="text-base font-semibold text-slate-900">{{ providerLabels[provider] || provider }}</h2>
+              <SocialPlatformLabel :type="provider" variant="badge" size="md" class="mt-1" />
               <p class="text-2xs text-slate-500 mt-1">{{ currentProviderMeta.tagline }}</p>
             </div>
           </div>
@@ -213,7 +207,7 @@
 import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
 import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useCredentialsStore } from '../stores/credentials';
-import SocialIcon from '../components/SocialIcon.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { AppPageHeader } from '../components/layout/index.js';
 import { AppAlert, AppButton, AppCard, AppFormField, AppInput } from '../components/ui';
 
@@ -229,6 +223,7 @@ const socialProviders = [
   { type: 'twitter', label: 'Twitter / X', tagline: 'API tokens', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'tiktok', label: 'TikTok', tagline: 'Creator access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'threads', label: 'Threads', tagline: 'Meta Threads access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
+  { type: 'linkedin', label: 'LinkedIn', tagline: 'Share on LinkedIn', color: '#0a66c2', softBg: 'rgba(10,102,194,0.12)' },
   { type: 'other', label: 'Other', tagline: 'Custom provider', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
 const providerUi = Object.fromEntries(socialProviders.map((item) => [item.type, item]));
@@ -240,6 +235,7 @@ const providerLabels = {
   twitter: 'Twitter / X',
   tiktok: 'TikTok',
   threads: 'Threads',
+  linkedin: 'LinkedIn',
   other: 'Other',
 };
 const oauthProviderByProvider = {
@@ -250,6 +246,7 @@ const oauthProviderByProvider = {
   twitter: 'twitter',
   tiktok: 'tiktok',
   threads: 'threads',
+  linkedin: 'linkedin',
 };
 const oauthProviderKey = computed(() => oauthProviderByProvider[provider.value] || provider.value);
 const supportsOAuthApp = computed(() => Boolean(oauthProviderByProvider[provider.value]));

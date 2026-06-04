@@ -63,11 +63,8 @@
             :class="card.hasBroken ? 'border-rose-100' : 'border-slate-100/95'"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <div class="connected-provider-icon" :style="{ background: providerUi[card.type]?.softBg || 'rgba(148,163,184,0.14)', color: providerUi[card.type]?.color || '#475569' }">
-                <SocialIcon :type="card.type" />
-              </div>
+              <SocialPlatformLabel :type="card.type" variant="badge" size="sm" class="flex-shrink-0" />
               <div class="min-w-0">
-                <p class="text-xs-pro font-semibold text-slate-800 truncate">{{ providerLabels[card.type] || card.type }}</p>
                 <p class="text-2xs text-slate-500 truncate">{{ providerUi[card.type]?.tagline || 'Connected accounts' }}</p>
               </div>
               <span class="connected-provider-count" :class="{ 'connected-provider-count--broken': card.hasBroken }">
@@ -89,7 +86,7 @@
           <div v-if="!card.credentials.length" class="p-2.5">
             <div class="connected-account-empty">
               <p class="text-xs-pro text-slate-500 font-medium">No account connected yet</p>
-              <p class="text-2xs text-slate-400 mt-0.5">Click <strong>Add</strong> above to connect your {{ providerLabels[card.type] }} account.</p>
+              <p class="text-2xs text-slate-400 mt-0.5">Click <strong>Add</strong> above to connect your {{ getPlatformLabel(card.type) }} account.</p>
             </div>
           </div>
           <!-- Credential rows -->
@@ -189,7 +186,8 @@ import { useCredentialsStore } from '../stores/credentials';
 import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useToastStore } from '../stores/toast';
 import { useAuthStore } from '../stores/auth';
-import SocialIcon from '../components/SocialIcon.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import { getPlatformLabel } from '../constants/socialPlatforms';
 import { AppPageHeader } from '../components/layout/index.js';
 import { AppButton, AppCard, AppIcon, AppInput, AppLoader } from '../components/ui';
 
@@ -211,6 +209,7 @@ const socialProviders = [
   { type: 'twitter', label: 'Twitter / X', tagline: 'API tokens', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'tiktok', label: 'TikTok', tagline: 'Creator access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
   { type: 'threads', label: 'Threads', tagline: 'Meta Threads access', color: '#111827', softBg: 'rgba(17,24,39,0.10)' },
+  { type: 'linkedin', label: 'LinkedIn', tagline: 'Member posts', color: '#0a66c2', softBg: 'rgba(10,102,194,0.12)' },
   { type: 'other', label: 'Other', tagline: 'Custom provider', color: '#475569', softBg: 'rgba(71,85,105,0.12)' },
 ];
 const providerUi = Object.fromEntries(socialProviders.map((item) => [item.type, item]));
@@ -223,9 +222,10 @@ const providerLabels = {
   twitter: 'Twitter / X',
   tiktok: 'TikTok',
   threads: 'Threads',
+  linkedin: 'LinkedIn',
   other: 'Other',
 };
-const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'];
+const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads', 'linkedin'];
 const oauthProviderByProvider = {
   youtube: 'google',
   google: 'google',
@@ -234,6 +234,7 @@ const oauthProviderByProvider = {
   twitter: 'twitter',
   tiktok: 'tiktok',
   threads: 'threads',
+  linkedin: 'linkedin',
 };
 const connectableProviders = computed(() => socialProviders.filter((item) => isProviderConnectable(item.type)));
 const providerCards = computed(() => connectableProviders.value.map((item) => {
@@ -263,7 +264,7 @@ onMounted(async () => {
   const error = route.query.error;
   const message = route.query.message;
   if (connected && implementedProviders.includes(connected)) {
-    const label = providerLabels[connected] || connected;
+    const label = getPlatformLabel(connected);
     toast.success(`${label} connected successfully`);
     await creds.fetchAll();
     if (window.history.replaceState) {
