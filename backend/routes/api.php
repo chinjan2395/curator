@@ -52,6 +52,7 @@ Route::get('social/callback/facebook', [SocialConnectController::class, 'callbac
 Route::get('social/callback/twitter', [SocialConnectController::class, 'callbackTwitter']);
 Route::get('social/callback/tiktok', [SocialConnectController::class, 'callbackTikTok']);
 Route::get('social/callback/threads', [SocialConnectController::class, 'callbackThreads']);
+Route::get('social/callback/linkedin', [SocialConnectController::class, 'callbackLinkedIn']);
 
 // Public embed endpoints (no auth)
 Route::get('public/feeds/{publicKey}/posts', [PublicFeedController::class, 'posts']);
@@ -148,6 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('content-packages/{contentPackage}/versions', [ContentPackageController::class, 'versions']);
 
     Route::get('content/brand-kits', [BrandKitController::class, 'index']);
+    Route::get('content/brand-kits/{brandKit}', [BrandKitController::class, 'show']);
     Route::post('content/brand-kits', [BrandKitController::class, 'store']);
     Route::put('content/brand-kits/{brandKit}', [BrandKitController::class, 'update']);
     Route::delete('content/brand-kits/{brandKit}', [BrandKitController::class, 'destroy']);
