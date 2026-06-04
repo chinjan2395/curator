@@ -8,6 +8,9 @@ use App\Services\Social\Publishers\PublisherInterface;
 use App\Services\Social\Publishers\FacebookPublisher;
 use App\Services\Social\Publishers\InstagramPublisher;
 use App\Services\Social\Publishers\StubPublisher;
+use App\Services\Social\Publishers\LinkedInPublisher;
+use App\Services\Social\Publishers\ThreadsPublisher;
+use App\Services\Social\Publishers\TikTokPublisher;
 use App\Services\Social\Publishers\TwitterPublisher;
 
 class SocialPublisherService
@@ -21,6 +24,9 @@ class SocialPublisherService
         $this->publishers['twitter'] = new TwitterPublisher;
         $this->publishers['facebook'] = new FacebookPublisher;
         $this->publishers['instagram'] = new InstagramPublisher;
+        $this->publishers['tiktok'] = new TikTokPublisher;
+        $this->publishers['threads'] = new ThreadsPublisher;
+        $this->publishers['linkedin'] = new LinkedInPublisher;
     }
 
     public function publish(ScheduledPost $scheduledPost, ?NotificationService $notifications = null): void
