@@ -62,6 +62,10 @@ return [
         'redirect' => env('GITHUB_REDIRECT_URI'),
     ],
 
+    'linkedin' => [
+        'api_version' => env('LINKEDIN_API_VERSION', '202505'),
+    ],
+
     'ai' => [
         'driver' => env('AI_DRIVER', 'stub'),
         'groq' => [
