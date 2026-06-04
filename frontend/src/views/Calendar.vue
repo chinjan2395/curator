@@ -15,7 +15,7 @@
       <AppCard v-if="showForm" class="p-4 space-y-3 max-w-lg">
         <AppSelect v-model="form.social_credential_id" select-class="w-full" :show-placeholder="false">
           <option value="">Select account</option>
-          <option v-for="c in credentials" :key="c.id" :value="String(c.id)">{{ c.provider }} — {{ c.account_label || c.account_id }}</option>
+          <option v-for="c in credentials" :key="c.id" :value="String(c.id)">{{ platformOptionLabel(c) }}</option>
         </AppSelect>
         <AppSelect v-model="form.content_package_id" select-class="w-full" :show-placeholder="false">
           <option value="">Content package (optional)</option>
@@ -42,7 +42,14 @@
           <div v-for="group in grouped" :key="group.day" class="mb-4">
             <div class="text-xs font-semibold text-slate-500 mb-2">{{ group.day }}</div>
             <div v-for="post in group.items" :key="post.id" class="flex justify-between text-sm border-b border-slate-100 py-2">
-              <span>{{ post.scheduled_at }} · {{ post.social_credential?.provider }}</span>
+              <span class="flex flex-wrap items-center gap-2">
+                <span>{{ post.scheduled_at }}</span>
+                <SocialPlatformLabel
+                  v-if="post.social_credential?.provider"
+                  :type="post.social_credential.provider"
+                  size="sm"
+                />
+              </span>
               <span class="flex items-center gap-2">
                 <span :class="statusClass(post.status)">{{ post.status }}</span>
                 <button v-if="post.status === 'scheduled'" class="text-xs text-red-600" @click="cancel(post)">Cancel</button>
@@ -63,6 +70,8 @@ import { useToastStore } from '../stores/toast';
 import { AppAlert, AppButton, AppCard, AppEmptyState, AppInput, AppLoader, AppSelect } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import { getPlatformLabel } from '../constants/socialPlatforms';
 
 const route = useRoute();
 const toast = useToastStore();
@@ -102,7 +111,14 @@ const grouped = computed(() => {
 function packageLabel(pkg) {
   const name = pkg.campaign?.name || 'Campaign';
   const cap = (pkg.caption || '').slice(0, 40);
-  return `${name} · ${pkg.platform} · ${cap}${cap.length >= 40 ? '…' : ''}`;
+  const platform = getPlatformLabel(pkg.platform);
+  return `${name} · ${platform} · ${cap}${cap.length >= 40 ? '…' : ''}`;
+}
+
+function platformOptionLabel(credential) {
+  const platform = getPlatformLabel(credential.provider);
+  const account = credential.account_label || credential.account_id;
+  return `${platform} — ${account}`;
 }
 
 function statusClass(status) {
