@@ -3,10 +3,12 @@
 namespace App\Services\AI;
 
 use App\Services\AI\Concerns\CallsLlmApi;
+use App\Services\AI\Concerns\FormatsAiPromptContext;
 
 class OllamaAiProvider implements AiProviderInterface
 {
     use CallsLlmApi;
+    use FormatsAiPromptContext;
 
     public function name(): string
     {
@@ -36,13 +38,15 @@ class OllamaAiProvider implements AiProviderInterface
         $parts = ['You are a social media copywriter.'];
 
         foreach (['brand_voice', 'target_audience', 'tone', 'goals', 'campaign_name', 'platform'] as $key) {
-            if (! empty($context[$key])) {
-                $parts[] = str_replace('_', ' ', $key).': '.$context[$key];
+            $formatted = $this->formatPromptContextValue($context[$key] ?? null);
+            if ($formatted !== '') {
+                $parts[] = str_replace('_', ' ', $key).': '.$formatted;
             }
         }
 
-        if (! empty($context['prompt_overrides'])) {
-            $parts[] = 'User style preferences: '.$context['prompt_overrides'];
+        $overrides = $this->formatPromptContextValue($context['prompt_overrides'] ?? null);
+        if ($overrides !== '') {
+            $parts[] = 'User style preferences: '.$overrides;
         }
 
         return implode("\n", $parts);

@@ -3,10 +3,12 @@
 namespace App\Services\AI;
 
 use App\Services\AI\Concerns\CallsLlmApi;
+use App\Services\AI\Concerns\FormatsAiPromptContext;
 
 class GroqAiProvider implements AiProviderInterface
 {
     use CallsLlmApi;
+    use FormatsAiPromptContext;
 
     public function name(): string
     {
@@ -39,14 +41,16 @@ class GroqAiProvider implements AiProviderInterface
         $parts = ['You are a social media copywriter. Write concise, platform-appropriate captions.'];
 
         foreach (['brand_voice', 'target_audience', 'tone', 'goals', 'campaign_name', 'platform'] as $key) {
-            if (! empty($context[$key])) {
+            $formatted = $this->formatPromptContextValue($context[$key] ?? null);
+            if ($formatted !== '') {
                 $label = str_replace('_', ' ', $key);
-                $parts[] = ucfirst($label).': '.$context[$key];
+                $parts[] = ucfirst($label).': '.$formatted;
             }
         }
 
-        if (! empty($context['prompt_overrides'])) {
-            $parts[] = 'User style preferences: '.$context['prompt_overrides'];
+        $overrides = $this->formatPromptContextValue($context['prompt_overrides'] ?? null);
+        if ($overrides !== '') {
+            $parts[] = 'User style preferences: '.$overrides;
         }
 
         return implode("\n", $parts);
