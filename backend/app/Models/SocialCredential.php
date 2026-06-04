@@ -140,6 +140,7 @@ class SocialCredential extends Model
             'twitter' => $this->getValidTwitterAccessToken(),
             'tiktok' => $this->getValidTikTokAccessToken(),
             'threads' => $this->getValidThreadsAccessToken(),
+            'linkedin' => $this->getValidLinkedInAccessToken(),
             default => $this->access_token,
         };
     }
@@ -329,6 +330,62 @@ class SocialCredential extends Model
         $expiresIn = (int) $response->json('expires_in', 86400);
         if (! $accessToken) {
             throw new \RuntimeException('TikTok token refresh returned no access_token.');
+        }
+
+        $this->access_token = $accessToken;
+        $this->expires_at = $now->copy()->addSeconds($expiresIn);
+        $newRefresh = $response->json('refresh_token');
+        if (is_string($newRefresh) && $newRefresh !== '') {
+            $this->refresh_token = $newRefresh;
+        }
+        $this->save();
+
+        return $this->access_token;
+    }
+
+    private function getValidLinkedInAccessToken(): ?string
+    {
+        $expiresAt = $this->expires_at;
+        $now = now();
+        $expired = ! $expiresAt || $expiresAt->copy()->subSeconds(self::EXPIRY_BUFFER_SECONDS)->isPast();
+
+        if (! $expired) {
+            return $this->access_token;
+        }
+
+        if (empty($this->refresh_token)) {
+            return null;
+        }
+
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'linkedin');
+
+        $clientId = $oauth?->client_id;
+        $clientSecret = $oauth?->client_secret;
+        if (! $clientId || ! $clientSecret) {
+            throw new \RuntimeException('LinkedIn OAuth app credentials are not configured.');
+        }
+
+        $response = Http::asForm()
+            ->acceptJson()
+            ->timeout(20)
+            ->post('https://www.linkedin.com/oauth/v2/accessToken', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $this->refresh_token,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+            ]);
+
+        if (! $response->successful()) {
+            if ($response->status() === 400 || $response->status() === 401) {
+                return null;
+            }
+            throw new \RuntimeException('LinkedIn token refresh failed: '.($response->json('error_description') ?? $response->status()));
+        }
+
+        $accessToken = $response->json('access_token');
+        $expiresIn = (int) $response->json('expires_in', 5184000);
+        if (! $accessToken) {
+            throw new \RuntimeException('LinkedIn token refresh returned no access_token.');
         }
 
         $this->access_token = $accessToken;

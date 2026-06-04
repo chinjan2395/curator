@@ -10,6 +10,7 @@ class BrandKit extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'is_default',
         'logo_url',
         'colors',
         'fonts',
@@ -17,6 +18,7 @@ class BrandKit extends Model
     ];
 
     protected $casts = [
+        'is_default' => 'boolean',
         'colors' => 'array',
         'fonts' => 'array',
         'watermark' => 'array',

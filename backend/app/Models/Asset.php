@@ -39,6 +39,11 @@ class Asset extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->storage_path);
+        $url = Storage::disk('public')->url($this->storage_path);
+        if (preg_match('#^https?://#i', $url)) {
+            return $url;
+        }
+
+        return rtrim((string) config('app.url'), '/').'/'.ltrim($url, '/');
     }
 }
