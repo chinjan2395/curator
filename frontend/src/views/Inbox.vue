@@ -27,7 +27,10 @@
       </AppEmptyState>
       <div v-else>
         <div v-for="msg in messages" :key="msg.id" class="border-b py-2 text-sm">
-          <div class="font-medium">{{ msg.author_name || 'Unknown' }} · {{ msg.platform }}</div>
+          <div class="font-medium flex flex-wrap items-center gap-2">
+            <span>{{ msg.author_name || 'Unknown' }}</span>
+            <SocialPlatformLabel v-if="msg.platform" :type="msg.platform" size="sm" />
+          </div>
           <p class="text-slate-600">{{ msg.body }}</p>
         </div>
       </div>
@@ -41,6 +44,7 @@ import axios from 'axios';
 import { useToastStore } from '../stores/toast';
 import { AppAlert, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 
 const AUTO_SYNC_KEY = 'curator_inbox_auto_synced';
 
