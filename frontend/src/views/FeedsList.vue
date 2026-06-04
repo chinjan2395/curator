@@ -48,12 +48,7 @@
           </div>
         </template>
         <template #cell-type="{ row }">
-          <span class="type-pill" :class="`type-pill--${String(row.type || 'other')}`">
-            <span class="type-pill__icon">
-              <SocialIcon :type="row.type" />
-            </span>
-            {{ feedTypeLabel(row.type) }}
-          </span>
+          <SocialPlatformLabel :type="row.type" variant="pill" size="sm" />
         </template>
         <template #cell-source_url="{ row }">
           <span v-if="row.source_url" class="source-chip">{{ row.source_url }}</span>
@@ -92,7 +87,8 @@ import { computed, inject, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
-import SocialIcon from '../components/SocialIcon.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import { getPlatformLabel } from '../constants/socialPlatforms';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import { AppButton, AppCard, AppEmptyState, AppIcon, AppLoader, AppTable } from '../components/ui';
 
@@ -147,14 +143,7 @@ watch(workspaceId, async (id) => {
 }, { immediate: false });
 
 function feedTypeLabel(type) {
-  if (type === 'youtube') return 'YouTube';
-  if (type === 'facebook') return 'Facebook';
-  if (type === 'instagram') return 'Instagram';
-  if (type === 'tiktok') return 'TikTok';
-  if (type === 'threads') return 'Threads';
-  if (type === 'rss') return 'RSS / Atom';
-  if (type === 'twitter') return 'X / Twitter';
-  return type || '—';
+  return getPlatformLabel(type) || '—';
 }
 
 function handleEditClick(f) {

@@ -51,11 +51,8 @@
           :class="form.type === t.type ? 'feed-type-card--active' : ''"
           @click="form.type = t.type"
         >
-          <div class="feed-type-icon-wrap" :style="{ background: t.softBg, color: t.color }">
-            <SocialIcon :type="t.type" class="w-4 h-4" />
-          </div>
+          <SocialPlatformLabel :type="t.type" variant="badge" size="sm" class="flex-shrink-0" />
           <div class="text-left min-w-0">
-            <div class="text-xs-pro font-medium text-slate-700 truncate">{{ t.label }}</div>
             <div class="text-2xs text-slate-500 truncate">{{ t.tagline }}</div>
           </div>
         </AppButton>
@@ -81,12 +78,9 @@
     <div class="feed-form-layout">
       <aside class="feed-overview-panel">
         <div class="feed-overview-hero">
-          <div class="feed-overview-hero__icon" :style="{ background: selectedTypeMeta.softBg, color: selectedTypeMeta.color }">
-            <SocialIcon :type="selectedTypeMeta.type" class="w-5 h-5" />
-          </div>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <p class="feed-section-kicker">Step 2</p>
-            <h2 class="text-base font-semibold text-slate-900">{{ selectedTypeMeta.label }}</h2>
+            <SocialPlatformLabel :type="selectedTypeMeta.type" variant="badge" size="md" class="mt-1" />
             <p class="text-2xs text-slate-500 mt-1">{{ selectedTypeMeta.tagline }}</p>
           </div>
         </div>
@@ -722,7 +716,7 @@ import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
-import SocialIcon from '../components/SocialIcon.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { AppAlert, AppButton, AppCard, AppCheckbox, AppFormField, AppInput, AppSelect } from '../components/ui/index.js';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import {
