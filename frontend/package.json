@@ -10,6 +10,7 @@
     "lint:fix": "eslint src --ext .vue,.js --fix"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
     "axios": "^1.13.6",
     "pinia": "^2.1.3",
     "vue": "^3.4.0",
