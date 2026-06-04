@@ -542,7 +542,7 @@ const mainNavSections = [
       { id: 'curator', to: '/curator', label: 'Curator', icon: 'grid', match: 'curator' },
       { id: 'campaigns', to: '/campaigns', label: 'Campaigns', icon: 'megaphone', match: 'campaigns' },
       { id: 'schedule', to: '/calendar', label: 'Schedule', icon: 'calendar', match: 'schedule' },
-      { id: 'content-library', to: '/content', label: 'Content Library', icon: 'library', match: 'content' },
+      { id: 'content-library', to: '/content-library', label: 'Content Library', icon: 'library', match: 'content' },
     ],
   },
   {
@@ -572,7 +572,7 @@ function isMainNavActive(item) {
     case 'schedule':
       return path.startsWith('/calendar') || path.startsWith('/publisher');
     case 'content':
-      return path.startsWith('/content');
+      return path.startsWith('/content-library') || path === '/content';
     case 'analytics':
       return path.startsWith('/analytics');
     case 'inbox':
