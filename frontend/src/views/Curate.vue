@@ -145,10 +145,7 @@
       <section v-for="[platform, platformPosts] in postsByPlatform" :key="platform">
         <!-- Platform section header -->
         <div class="flex items-center gap-2 mb-3">
-          <div class="w-5 h-5 flex-shrink-0 flex items-center justify-center" :class="platformIconClass(platform)">
-            <SocialIcon :type="platform" />
-          </div>
-          <h2 class="text-sm font-semibold" :class="platformLabelClass(platform)">{{ feedTypeLabel(platform) }}</h2>
+          <SocialPlatformLabel :type="platform" size="md" :label-class="platformLabelClass(platform)" />
           <span class="text-2xs text-slate-400 font-medium">{{ platformPosts.length }} post{{ platformPosts.length !== 1 ? 's' : '' }}</span>
           <div class="flex-1 h-px" :class="platformDividerClass(platform)" />
         </div>
@@ -329,6 +326,8 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { useToastStore } from '../stores/toast';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import SocialIcon from '../components/SocialIcon.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import { getPlatformLabel } from '../constants/socialPlatforms';
 import { AppBadge, AppButton, AppCard, AppIcon, AppLoader, AppModal, AppSelect } from '../components/ui';
 
 defineOptions({ name: 'CurateView' });
@@ -441,14 +440,7 @@ function getPostFeedId(post) {
 }
 
 function feedTypeLabel(type) {
-  if (type === 'rss') return 'RSS / Atom';
-  if (type === 'twitter') return 'X / Twitter';
-  if (type === 'tiktok') return 'TikTok';
-  if (type === 'threads') return 'Threads';
-  if (type === 'youtube') return 'YouTube';
-  if (type === 'facebook') return 'Facebook';
-  if (type === 'instagram') return 'Instagram';
-  return type || '—';
+  return getPlatformLabel(type) || '—';
 }
 
 function clearSelection() {

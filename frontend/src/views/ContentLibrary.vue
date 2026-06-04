@@ -17,26 +17,32 @@
       </div>
       <AppEmptyState v-if="!assets.length" title="No assets" description="Upload images or videos to attach to content packages." icon="library" />
       <div v-else class="grid gap-3 md:grid-cols-3">
-        <AppCard v-for="asset in assets" :key="asset.id" class="p-3 text-sm">
+        <AppCard v-for="asset in assets" :key="asset.id" class="p-3 text-sm space-y-1">
           <div class="font-medium truncate">{{ asset.file_name }}</div>
-          <div class="text-xs text-slate-500">{{ asset.type }}</div>
+          <div class="text-xs text-slate-500">{{ asset.type }} · {{ formatSize(asset.file_size) }}</div>
+          <div v-if="(asset.ai_tags || []).length" class="flex flex-wrap gap-1">
+            <span
+              v-for="tag in asset.ai_tags"
+              :key="tag"
+              class="text-2xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600"
+            >{{ tag }}</span>
+          </div>
+          <a v-if="asset.url" :href="asset.url" target="_blank" rel="noopener" class="text-2xs text-blue-600 truncate block">{{ asset.url }}</a>
         </AppCard>
       </div>
     </AppCard>
 
-    <AppCard v-else-if="tab === 'brand'" class="p-4 space-y-3">
-      <AppButton size="sm" @click="createBrandKit">New brand kit</AppButton>
-      <AppEmptyState v-if="!brandKits.length" title="No brand kits" icon="library" />
-      <div v-for="kit in brandKits" :key="kit.id" class="border rounded p-3 text-sm">
-        <div class="font-medium">{{ kit.name }}</div>
-        <pre class="text-xs mt-1 text-slate-500">{{ JSON.stringify(kit.colors) }}</pre>
-      </div>
+    <AppCard v-else-if="tab === 'brand'" class="p-4">
+      <BrandKitPanel ref="brandKitPanelRef" :active="tab === 'brand'" />
     </AppCard>
 
     <AppCard v-else-if="tab === 'templates'" class="p-4 space-y-3">
       <AppButton size="sm" @click="createTemplate">New template</AppButton>
       <AppEmptyState v-if="!templates.length" title="No templates" icon="library" />
-      <div v-for="tpl in templates" :key="tpl.id" class="border rounded p-3 text-sm">{{ tpl.name }} · {{ tpl.platform }}</div>
+      <div v-for="tpl in templates" :key="tpl.id" class="border rounded p-3 text-sm flex flex-wrap items-center gap-2">
+        <span class="font-medium">{{ tpl.name }}</span>
+        <SocialPlatformLabel v-if="tpl.platform" :type="tpl.platform" size="sm" />
+      </div>
     </AppCard>
 
     <AppCard v-else class="p-4 space-y-3">
@@ -56,6 +62,8 @@ import axios from 'axios';
 import { useToastStore } from '../stores/toast';
 import { AppAlert, AppButton, AppCard, AppEmptyState, AppInput, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import BrandKitPanel from '../components/content/BrandKitPanel.vue';
 
 const toast = useToastStore();
 const tabs = [
@@ -66,7 +74,7 @@ const tabs = [
 ];
 const tab = ref('assets');
 const assets = ref([]);
-const brandKits = ref([]);
+const brandKitPanelRef = ref(null);
 const templates = ref([]);
 const blocks = ref([]);
 const assetQuery = ref('');
@@ -84,19 +92,6 @@ async function loadAssets() {
     assets.value = data.data?.data || data.data || [];
   } catch (e) {
     error.value = e.response?.data?.message || 'Failed to load assets';
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function loadBrand() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const { data } = await axios.get('/api/content/brand-kits', { skipErrorToast: true });
-    brandKits.value = data.data || data || [];
-  } catch (e) {
-    error.value = e.response?.data?.message || 'Failed to load brand kits';
   } finally {
     loading.value = false;
   }
@@ -130,10 +125,17 @@ async function loadBlocks() {
 
 watch(tab, (t) => {
   if (t === 'assets') loadAssets();
-  if (t === 'brand') loadBrand();
+  if (t === 'brand') brandKitPanelRef.value?.load();
   if (t === 'templates') loadTemplates();
   if (t === 'blocks') loadBlocks();
 });
+
+function formatSize(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 async function onUpload(e) {
   const file = e.target.files?.[0];
@@ -145,18 +147,6 @@ async function onUpload(e) {
     await axios.post('/api/content/assets', form);
     toast.success('Asset uploaded');
     await loadAssets();
-  } catch {
-    // interceptor
-  }
-}
-
-async function createBrandKit() {
-  const name = prompt('Brand kit name');
-  if (!name) return;
-  try {
-    await axios.post('/api/content/brand-kits', { name, colors: { primary: '#2563eb' } });
-    toast.success('Brand kit created');
-    await loadBrand();
   } catch {
     // interceptor
   }

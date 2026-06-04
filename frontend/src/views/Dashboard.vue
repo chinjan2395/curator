@@ -256,12 +256,7 @@
           <div class="space-y-3 max-h-[280px] overflow-y-auto pr-1">
             <div v-for="type in feedTypeDistribution" :key="type.type" class="space-y-1.5">
               <div class="flex items-center justify-between gap-3 text-xs text-slate-600">
-                <span class="inline-flex items-center gap-2 min-w-0">
-                  <span class="type-dot" :class="`type-dot--${String(type.type || 'other')}`">
-                    <SocialIcon :type="type.type" />
-                  </span>
-                  <span class="truncate">{{ feedTypeLabel(type.type) }}</span>
-                </span>
+                <SocialPlatformLabel :type="type.type" size="sm" class="min-w-0 truncate" />
                 <span class="font-semibold text-slate-700 whitespace-nowrap">{{ type.count }} · {{ type.share }}%</span>
               </div>
               <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -340,7 +335,8 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import SocialIcon from '../components/SocialIcon.vue'
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue'
+import { getPlatformLabel } from '../constants/socialPlatforms'
 import { AppCard, AppEmptyState, AppIcon, AppLoader } from '../components/ui/index.js'
 import { AppSection, AppPageHeader } from '../components/layout/index.js'
 import { useDashboardAnalytics } from '../composables/useDashboardAnalytics.js'
@@ -383,17 +379,7 @@ const {
 } = useDashboardAnalytics()
 
 function feedTypeLabel(type) {
-  const labels = {
-    youtube: 'YouTube',
-    facebook: 'Facebook',
-    instagram: 'Instagram',
-    tiktok: 'TikTok',
-    threads: 'Threads',
-    rss: 'RSS / Atom',
-    twitter: 'X / Twitter',
-  }
-
-  return labels[type] || type || 'Other'
+  return getPlatformLabel(type) || 'Other'
 }
 
 onMounted(() => loadAnalytics())
