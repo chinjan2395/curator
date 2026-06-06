@@ -85,9 +85,13 @@ Recommended:
 Use your backend public domain exactly:
 
 - YouTube: `https://<your-backend-domain>/api/social/callback/youtube`
-- Google: `https://<your-backend-domain>/api/social/callback/google`
+- Google (feed connect): `https://<your-backend-domain>/api/social/callback/google`
+- Google (login): `https://<your-backend-domain>/api/auth/social/google/callback`
 - Facebook + Instagram: `https://<your-backend-domain>/api/social/callback/facebook`
-- X/Twitter: `https://<your-backend-domain>/api/social/callback/twitter`
+- Facebook (login): `https://<your-backend-domain>/api/auth/social/facebook/callback`
+- GitHub (login): `https://<your-backend-domain>/api/auth/social/github/callback`
+- X/Twitter (feed connect): `https://<your-backend-domain>/api/social/callback/twitter`
+- X/Twitter (login): `https://<your-backend-domain>/api/auth/social/twitter/callback`
 - TikTok: `https://<your-backend-domain>/api/social/callback/tiktok`
 
 ### Frontend/CORS alignment

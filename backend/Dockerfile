@@ -11,6 +11,9 @@ RUN apt-get update && \
 # Install PHP Imagick extension.
 RUN pecl install imagick && docker-php-ext-enable imagick
 
+# Raise PHP upload limits (default 2M breaks content-library uploads).
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # Install Composer.
 COPY --from=composer:2.5 /usr/bin/composer /usr/bin/composer
 

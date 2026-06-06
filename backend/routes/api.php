@@ -60,6 +60,11 @@ Route::get('embed/{publicToken}/feed', [PublicFeedController::class, 'posts']);
 Route::get('embed/{publicKey}.js', [EmbedController::class, 'js']);
 Route::get('embed/{publicKey}.css', [EmbedController::class, 'css']);
 
+// Signed asset preview (no Bearer token; used by <img src> via Vite /api proxy)
+Route::get('content/assets/{asset}/file', [AssetController::class, 'file'])
+    ->name('content.assets.file')
+    ->middleware('signed');
+
 // Sanctum authentication routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {

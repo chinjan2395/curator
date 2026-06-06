@@ -108,15 +108,16 @@ class ContentPackageMediaTest extends TestCase
             'ai_tags' => ['hero', 'image'],
         ]);
 
-        $expectedUrl = 'https://curator.test/storage/'.$path;
-
-        $this->patchJson("/api/content-packages/{$package->id}/media", [
+        $response = $this->patchJson("/api/content-packages/{$package->id}/media", [
             'asset_ids' => [$asset->id],
-        ])
-            ->assertOk()
-            ->assertJsonPath('data.media_urls.0', $expectedUrl);
+        ])->assertOk();
 
-        $this->assertSame([$expectedUrl], $package->fresh()->media_urls);
+        $mediaUrl = $response->json('data.media_urls.0');
+        $this->assertIsString($mediaUrl);
+        $this->assertStringContainsString('/api/content/assets/'.$asset->id.'/file', $mediaUrl);
+        $this->assertStringContainsString('signature=', $mediaUrl);
+
+        $this->assertSame([$mediaUrl], $package->fresh()->media_urls);
     }
 
     public function test_asset_upload_stores_ai_tags(): void
