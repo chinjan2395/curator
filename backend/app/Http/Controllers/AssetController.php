@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ApiResponse;
 use App\Models\Asset;
 use App\Services\Content\AssetTaggingService;
+use App\Support\GoogleDriveConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssetController extends Controller
 {
@@ -37,7 +40,9 @@ class AssetController extends Controller
         ]);
 
         $file = $request->file('file');
-        $path = $file->store('assets/'.$request->user()->id, 'public');
+        $userId = (int) auth()->id();
+        $disk = $this->assetDisk();
+        $path = $this->storeAssetFile($file, $userId, $disk);
 
         $asset = Asset::create([
             'user_id' => $request->user()->id,
@@ -47,6 +52,7 @@ class AssetController extends Controller
             'file_size' => $file->getSize(),
             'mime_type' => $file->getMimeType(),
             'storage_path' => $path,
+            'storage_disk' => $disk,
             'ai_tags' => [],
         ]);
 
@@ -58,9 +64,80 @@ class AssetController extends Controller
     public function destroy(Request $request, Asset $asset): JsonResponse
     {
         abort_if($asset->user_id !== $request->user()->id, 403);
-        Storage::disk('public')->delete($asset->storage_path);
+
+        if ($asset->storage_path) {
+            $this->deleteAssetFile($asset);
+        }
         $asset->delete();
 
         return ApiResponse::success(null, 'Asset deleted.');
+    }
+
+    public function file(Asset $asset): StreamedResponse
+    {
+        foreach ($asset->candidateStorageDisks() as $disk) {
+            $storage = Storage::disk($disk);
+
+            if (! $storage->exists($asset->storage_path)) {
+                continue;
+            }
+
+            $stream = $storage->readStream($asset->storage_path);
+            $mime = $asset->mime_type ?: $storage->mimeType($asset->storage_path);
+
+            return response()->stream(function () use ($stream) {
+                if (is_resource($stream)) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }
+            }, 200, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'private, max-age=3600',
+            ]);
+        }
+
+        abort(404);
+    }
+
+    private function assetDisk(): string
+    {
+        return GoogleDriveConfig::isConfigured() ? 'googledrive' : 'public';
+    }
+
+    private function storeAssetFile($file, int $userId, string $disk): string
+    {
+        $directory = 'assets/'.$userId;
+
+        try {
+            return $file->store($directory, [
+                'disk' => $disk,
+                'visibility' => $disk === 'public' ? 'public' : 'private',
+            ]);
+        } catch (\Throwable $e) {
+            if ($disk === 'googledrive') {
+                Log::error('Google Drive upload failed.', [
+                    'user_id' => $userId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            throw $e;
+        }
+    }
+
+    private function deleteAssetFile(Asset $asset): void
+    {
+        foreach ($asset->candidateStorageDisks() as $disk) {
+            try {
+                $storage = Storage::disk($disk);
+                if ($storage->exists($asset->storage_path)) {
+                    $storage->delete($asset->storage_path);
+
+                    return;
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
     }
 }
