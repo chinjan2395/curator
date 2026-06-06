@@ -17,12 +17,19 @@ use App\Services\Content\AssetTaggingService;
 use App\Services\AI\GroqAiProvider;
 use App\Services\AI\OllamaAiProvider;
 use App\Services\AI\StubAiProvider;
+use App\Support\GoogleDriveConfig;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\ServiceProvider;
+use Google\Client as GoogleClient;
+use Google\Service\Drive as GoogleDrive;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\ServiceProvider;
+use League\Flysystem\Filesystem;
+use Masbug\Flysystem\GoogleDriveAdapter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -71,6 +78,44 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $base.'/reset-password?token='.$token.'&email='.urlencode($user->email);
+        });
+
+        Storage::extend('google', function ($app, array $config) {
+            $options = [];
+
+            if (! empty($config['teamDriveId'] ?? null)) {
+                $options['teamDriveId'] = $config['teamDriveId'];
+            }
+
+            if (! empty($config['sharedFolderId'] ?? null)) {
+                $options['sharedFolderId'] = $config['sharedFolderId'];
+            }
+
+            if (! GoogleDriveConfig::isConfigured()) {
+                throw new \RuntimeException('Google Drive disk is not configured with valid OAuth credentials.');
+            }
+
+            $client = new GoogleClient;
+            $client->setClientId($config['clientId']);
+            $client->setClientSecret($config['clientSecret']);
+            $client->setApplicationName(config('app.name', 'Curator'));
+            $client->setScopes([GoogleDrive::DRIVE_FILE]);
+            $client->setAccessType('offline');
+
+            $accessToken = $client->fetchAccessTokenWithRefreshToken($config['refreshToken']);
+            if (isset($accessToken['error'])) {
+                $message = $accessToken['error_description'] ?? $accessToken['error'];
+                throw new \RuntimeException('Google Drive authentication failed: '.$message);
+            }
+
+            $client->setAccessToken($accessToken);
+
+            $service = new GoogleDrive($client);
+            $rootFolder = trim((string) ($config['folder'] ?? '/'));
+            $adapter = new GoogleDriveAdapter($service, $rootFolder !== '' ? $rootFolder : '/', $options);
+            $driver = new Filesystem($adapter);
+
+            return new FilesystemAdapter($driver, $adapter, $config);
         });
     }
 }
