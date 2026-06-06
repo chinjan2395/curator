@@ -36,9 +36,17 @@ const sizeClasses = {
         />
 
         <!-- Panel -->
-        <div :class="['relative w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100', sizeClasses[size]]">
+        <div
+          :class="[
+            'relative flex w-full max-h-[calc(100vh-2rem)] flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100',
+            sizeClasses[size],
+          ]"
+        >
           <!-- Header -->
-          <div v-if="title || closable" class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div
+            v-if="title || closable"
+            class="flex shrink-0 items-center justify-between px-6 py-4 border-b border-slate-100"
+          >
             <h3 v-if="title" class="text-base font-semibold text-slate-800">{{ title }}</h3>
             <button
               v-if="closable"
@@ -52,12 +60,15 @@ const sizeClasses = {
           </div>
 
           <!-- Body -->
-          <div class="p-6">
+          <div class="min-h-0 flex-1 overflow-y-auto p-6">
             <slot />
           </div>
 
           <!-- Footer -->
-          <div v-if="$slots.footer" class="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-2">
+          <div
+            v-if="$slots.footer"
+            class="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4"
+          >
             <slot name="footer" />
           </div>
         </div>

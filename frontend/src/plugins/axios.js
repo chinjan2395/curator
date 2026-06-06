@@ -3,7 +3,16 @@ import router from '../router/index.js';
 import { useAuthStore } from '../stores/auth';
 import { useToastStore } from '../stores/toast';
 
-const AUTH_PATHS = ['/api/login', '/api/register', '/api/auth/login', '/api/auth/register'];
+const AUTH_PATHS = [
+  '/api/login',
+  '/api/register',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/logout',
+  '/api/auth/logout',
+];
+
+let handlingUnauthorized = false;
 
 function isAuthRequest(url = '') {
   return AUTH_PATHS.some((path) => String(url).includes(path));
@@ -27,14 +36,19 @@ export function setupAxiosInterceptors() {
       const status = error.response?.status;
       const url = config.url || '';
 
-      if (status === 401 && !isAuthRequest(url)) {
-        const auth = useAuthStore();
-        await auth.logout();
-        if (router.currentRoute.value.path !== '/login') {
-          router.push('/login');
-        }
-        if (!config.skipErrorToast) {
-          useToastStore().error('Your session has expired. Please sign in again.');
+      if (status === 401 && !isAuthRequest(url) && !config.skipAuthRedirect && !handlingUnauthorized) {
+        handlingUnauthorized = true;
+        try {
+          const auth = useAuthStore();
+          await auth.logout();
+          if (router.currentRoute.value.path !== '/login') {
+            router.push('/login');
+          }
+          if (!config.skipErrorToast) {
+            useToastStore().error('Your session has expired. Please sign in again.');
+          }
+        } finally {
+          handlingUnauthorized = false;
         }
         return Promise.reject(error);
       }

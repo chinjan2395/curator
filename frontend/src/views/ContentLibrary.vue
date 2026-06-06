@@ -19,7 +19,10 @@
       <div v-else class="grid gap-3 md:grid-cols-3">
         <AppCard v-for="asset in assets" :key="asset.id" class="p-3 text-sm space-y-1">
           <div class="font-medium truncate">{{ asset.file_name }}</div>
-          <div class="text-xs text-slate-500">{{ asset.type }} · {{ formatSize(asset.file_size) }}</div>
+          <div class="text-xs text-slate-500">
+            {{ asset.type }} · {{ formatSize(asset.file_size) }}
+            <span v-if="asset.storage_disk" class="text-slate-400"> · {{ asset.storage_disk }}</span>
+          </div>
           <div v-if="(asset.ai_tags || []).length" class="flex flex-wrap gap-1">
             <span
               v-for="tag in asset.ai_tags"

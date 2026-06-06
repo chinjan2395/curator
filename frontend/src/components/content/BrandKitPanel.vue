@@ -34,6 +34,7 @@
             v-if="kit.logo_url"
             :src="kit.logo_url"
             alt=""
+            referrerpolicy="no-referrer"
             class="h-10 w-10 rounded-lg border border-slate-200 object-contain bg-white shrink-0"
           />
         </div>
@@ -85,11 +86,11 @@
               <input type="file" accept="image/*" @change="onLogoUpload" />
             </label>
             <AppButton
-              v-if="form.logo_url"
+              v-if="form.logo_url || form.logo_asset_id"
               type="button"
               size="sm"
               variant="ghost"
-              @click="form.logo_url = ''"
+              @click="clearLogo"
             >
               Clear logo
             </AppButton>
@@ -183,6 +184,7 @@
                 v-if="form.logo_url"
                 :src="form.logo_url"
                 alt=""
+                referrerpolicy="no-referrer"
                 class="h-8 w-8 object-contain rounded"
               />
               <span class="font-semibold" :style="{ color: form.colors.primary }">{{ form.name || 'Brand name' }}</span>
@@ -258,6 +260,7 @@ const colorKeys = ['primary', 'secondary', 'accent', 'background', 'text'];
 const form = reactive({
   name: '',
   logo_url: '',
+  logo_asset_id: null,
   is_default: false,
   colors: { ...DEFAULT_COLORS },
   fonts: { ...DEFAULT_FONTS },
@@ -280,6 +283,7 @@ function onColorPicker(key, event) {
 function resetForm() {
   form.name = '';
   form.logo_url = '';
+  form.logo_asset_id = null;
   form.is_default = kits.value.length === 0;
   Object.assign(form.colors, DEFAULT_COLORS);
   Object.assign(form.fonts, DEFAULT_FONTS);
@@ -290,6 +294,7 @@ function resetForm() {
 function hydrateForm(kit) {
   form.name = kit.name || '';
   form.logo_url = kit.logo_url || '';
+  form.logo_asset_id = kit.logo_asset_id ?? null;
   form.is_default = Boolean(kit.is_default);
   Object.assign(form.colors, { ...DEFAULT_COLORS, ...(kit.colors || {}) });
   Object.assign(form.fonts, { ...DEFAULT_FONTS, ...(kit.fonts || {}) });
@@ -300,7 +305,8 @@ function hydrateForm(kit) {
 function payloadFromForm() {
   return {
     name: form.name.trim(),
-    logo_url: form.logo_url.trim() || null,
+    logo_url: form.logo_asset_id ? null : (form.logo_url.trim() || null),
+    logo_asset_id: form.logo_asset_id,
     is_default: form.is_default,
     colors: { ...form.colors },
     fonts: { ...form.fonts },
@@ -380,6 +386,11 @@ async function confirmDelete(kit) {
   }
 }
 
+function clearLogo() {
+  form.logo_url = '';
+  form.logo_asset_id = null;
+}
+
 async function onLogoUpload(e) {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -389,7 +400,8 @@ async function onLogoUpload(e) {
   try {
     const { data } = await axios.post('/api/content/assets', formData);
     const asset = data.data || data;
-    if (asset?.url) {
+    if (asset?.id && asset?.url) {
+      form.logo_asset_id = asset.id;
       form.logo_url = asset.url;
       toast.success('Logo uploaded');
     }

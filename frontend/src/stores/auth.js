@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     token: localStorage.getItem('token') || null,
+    loggingOut: false,
     error: null,
     brokenCredentials: [],
     syncSummary: {
@@ -50,20 +51,30 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async logout() {
-      try {
-        if (this.token) {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
-          await axios.post('/api/logout');
-        }
-      } catch {
-        // Ignore server-side logout errors; we still clear local state.
-      }
+      if (this.loggingOut) return;
+      this.loggingOut = true;
+
+      const token = this.token;
       this.user = null;
       this.token = null;
       this.error = null;
       this.brokenCredentials = [];
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
+
+      try {
+        if (token) {
+          await axios.post('/api/logout', {}, {
+            headers: { Authorization: `Bearer ${token}` },
+            skipAuthRedirect: true,
+            skipErrorToast: true,
+          });
+        }
+      } catch {
+        // Ignore server-side logout errors; local session is already cleared.
+      } finally {
+        this.loggingOut = false;
+      }
     },
     async fetchUser() {
       if (!this.token) return;
@@ -71,8 +82,10 @@ export const useAuthStore = defineStore('auth', {
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
         const response = await axios.get('/api/auth/me');
         this.user = response.data.data || response.data;
-      } catch (err) {
-        await this.logout();
+      } catch {
+        if (this.token) {
+          await this.logout();
+        }
       }
     },
     async refreshToken() {
