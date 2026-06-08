@@ -14,6 +14,7 @@
           form="campaign-form"
           :disabled="saving || !form.name.trim()"
         >
+          <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
           {{ saving ? 'Creating…' : 'Create campaign' }}
         </AppButton>
       </template>
@@ -21,32 +22,54 @@
 
     <CapabilityBanner context="ai" />
 
-    <AppCard padding="none" class="campaign-brief-card p-4">
-      <form id="campaign-form" class="space-y-3" @submit.prevent="submit">
-        <div class="campaign-form-panel">
-          <p class="text-sm-pro font-semibold text-slate-800">Basics</p>
+    <AppCard padding="none" class="cf-brief-card">
+      <form id="campaign-form" class="space-y-3 p-4" @submit.prevent="submit">
+
+        <!-- Basics -->
+        <div class="cf-panel">
+          <div class="cf-panel-header">
+            <div class="cf-panel-icon" style="background:#eff6ff;color:#3b82f6">
+              <AppIcon name="edit" class="w-3.5 h-3.5" />
+            </div>
+            <p class="text-sm font-semibold text-slate-800">Basics</p>
+          </div>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3">
             <AppFormField label="Campaign name" required>
               <AppInput v-model="form.name" type="text" placeholder="Summer product launch" required />
             </AppFormField>
             <AppFormField label="Tone">
-              <AppInput v-model="form.tone" type="text" placeholder="Professional" />
+              <AppInput v-model="form.tone" type="text" placeholder="Professional, playful, urgent…" />
             </AppFormField>
           </div>
           <AppFormField label="Platforms" hint="Comma-separated: instagram, linkedin, tiktok" class="mt-3">
             <AppInput v-model="platformsText" type="text" placeholder="instagram, twitter, facebook" />
           </AppFormField>
+          <div v-if="parsedPlatforms.length" class="flex flex-wrap gap-1.5 mt-2">
+            <SocialPlatformLabel
+              v-for="p in parsedPlatforms"
+              :key="p"
+              :type="p"
+              variant="pill"
+              size="sm"
+            />
+          </div>
         </div>
 
-        <div class="campaign-form-panel">
-          <p class="text-sm-pro font-semibold text-slate-800">Message</p>
+        <!-- Message -->
+        <div class="cf-panel">
+          <div class="cf-panel-header">
+            <div class="cf-panel-icon" style="background:#fdf4ff;color:#9333ea">
+              <AppIcon name="send" class="w-3.5 h-3.5" />
+            </div>
+            <p class="text-sm font-semibold text-slate-800">Message</p>
+          </div>
           <div class="grid grid-cols-1 gap-3 mt-3">
             <AppFormField label="Product / service">
               <AppInput
                 v-model="form.product_info"
                 type="textarea"
                 :rows="4"
-                placeholder="What are you promoting?"
+                placeholder="What are you promoting? Describe the product or service."
               />
             </AppFormField>
             <AppFormField label="Description (optional)">
@@ -54,35 +77,43 @@
                 v-model="form.description"
                 type="textarea"
                 :rows="3"
-                placeholder="Launch notes or extra context"
+                placeholder="Launch notes, context, or extra details for the AI."
               />
             </AppFormField>
           </div>
         </div>
 
-        <div class="campaign-form-panel">
-          <p class="text-sm-pro font-semibold text-slate-800">Audience & goals</p>
+        <!-- Audience & Goals -->
+        <div class="cf-panel">
+          <div class="cf-panel-header">
+            <div class="cf-panel-icon" style="background:#f0fdf4;color:#16a34a">
+              <AppIcon name="users" class="w-3.5 h-3.5" />
+            </div>
+            <p class="text-sm font-semibold text-slate-800">Audience &amp; goals</p>
+          </div>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3">
             <AppFormField label="Target audience" hint="One per line or comma-separated">
-              <AppInput v-model="targetAudienceText" type="textarea" :rows="4" />
+              <AppInput v-model="targetAudienceText" type="textarea" :rows="4" placeholder="e.g. Small business owners, marketers…" />
             </AppFormField>
             <AppFormField label="Goals" hint="One per line or comma-separated">
-              <AppInput v-model="goalsText" type="textarea" :rows="4" />
+              <AppInput v-model="goalsText" type="textarea" :rows="4" placeholder="e.g. Drive sign-ups, increase brand awareness…" />
             </AppFormField>
           </div>
         </div>
+
       </form>
     </AppCard>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCampaignsStore } from '../stores/campaigns';
-import { AppButton, AppCard, AppFormField, AppInput } from '../components/ui';
+import { AppButton, AppCard, AppFormField, AppIcon, AppInput } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 
 const router = useRouter();
 const store = useCampaignsStore();
@@ -96,6 +127,10 @@ const form = reactive({
   tone: 'professional',
   description: '',
 });
+
+const parsedPlatforms = computed(() =>
+  splitList(platformsText.value).filter(Boolean),
+);
 
 function splitList(value) {
   return String(value || '')
@@ -138,15 +173,31 @@ async function submit() {
 </script>
 
 <style scoped>
-.campaign-brief-card {
+.cf-brief-card {
   border: 1px solid #e6ebf2;
   background: #fff;
 }
 
-.campaign-form-panel {
+.cf-panel {
   border: 1px solid #e6ebf2;
   border-radius: 0.875rem;
   padding: 0.85rem;
   background: rgba(248, 250, 252, 0.5);
+}
+
+.cf-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cf-panel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  flex-shrink: 0;
 }
 </style>

@@ -21,6 +21,7 @@
               {{ savingCampaign ? 'Saving…' : 'Save brief' }}
             </AppButton>
             <AppButton variant="primary" :disabled="generating || savingCampaign" @click="generate">
+              <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
               {{ generating ? 'Generating…' : 'Generate content' }}
             </AppButton>
           </div>
@@ -36,6 +37,7 @@
           :class="activeTab === 'brief' ? 'campaign-mode-tab--active' : ''"
           @click="activeTab = 'brief'"
         >
+          <AppIcon name="edit" class="w-3.5 h-3.5" />
           Brief
         </button>
         <button
@@ -44,6 +46,7 @@
           :class="activeTab === 'drafts' ? 'campaign-mode-tab--active' : ''"
           @click="activeTab = 'drafts'"
         >
+          <AppIcon name="feeds" class="w-3.5 h-3.5" />
           Drafts
           <span v-if="packages.length" class="campaign-mode-tab__badge">{{ packages.length }}</span>
         </button>
@@ -54,7 +57,12 @@
         <AppCard padding="none" class="campaign-brief-card p-4">
           <form class="space-y-3" @submit.prevent="saveCampaign">
             <div class="campaign-form-panel">
-              <p class="text-sm-pro font-semibold text-slate-800">Basics</p>
+              <div class="cf-panel-header">
+                <div class="cf-panel-icon" style="background:#eff6ff;color:#3b82f6">
+                  <AppIcon name="edit" class="w-3.5 h-3.5" />
+                </div>
+                <p class="text-sm font-semibold text-slate-800">Basics</p>
+              </div>
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3">
                 <AppFormField label="Campaign name" required>
                   <AppInput v-model="campaignForm.name" type="text" placeholder="Summer product launch" />
@@ -69,8 +77,13 @@
             </div>
 
             <div class="campaign-form-panel">
-              <p class="text-sm-pro font-semibold text-slate-800">Brand & template</p>
-              <p class="text-2xs text-slate-500 mt-1 mb-3">
+              <div class="cf-panel-header">
+                <div class="cf-panel-icon" style="background:#fdf4ff;color:#9333ea">
+                  <AppIcon name="sparkles" class="w-3.5 h-3.5" />
+                </div>
+                <p class="text-sm font-semibold text-slate-800">Brand &amp; template</p>
+              </div>
+              <p class="text-2xs text-slate-500 mt-2 mb-3">
                 Optionally link a brand kit so AI uses your colors and identity, and a template to seed the caption structure.
               </p>
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -94,7 +107,12 @@
             </div>
 
             <div class="campaign-form-panel">
-              <p class="text-sm-pro font-semibold text-slate-800">Message</p>
+              <div class="cf-panel-header">
+                <div class="cf-panel-icon" style="background:#fffbeb;color:#d97706">
+                  <AppIcon name="send" class="w-3.5 h-3.5" />
+                </div>
+                <p class="text-sm font-semibold text-slate-800">Message</p>
+              </div>
               <div class="grid grid-cols-1 gap-3 mt-3">
                 <AppFormField label="Product / service">
                   <AppInput
@@ -116,7 +134,12 @@
             </div>
 
             <div class="campaign-form-panel">
-              <p class="text-sm-pro font-semibold text-slate-800">Audience & goals</p>
+              <div class="cf-panel-header">
+                <div class="cf-panel-icon" style="background:#f0fdf4;color:#16a34a">
+                  <AppIcon name="users" class="w-3.5 h-3.5" />
+                </div>
+                <p class="text-sm font-semibold text-slate-800">Audience &amp; goals</p>
+              </div>
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3">
                 <AppFormField label="Target audience" hint="One per line or comma-separated">
                   <AppInput v-model="campaignForm.targetAudienceText" type="textarea" :rows="4" />
@@ -135,11 +158,17 @@
       <!-- Drafts -->
       <div v-show="activeTab === 'drafts'" class="space-y-3">
         <div class="campaign-brief-summary">
+          <div class="cd-brief-summary-icon">
+            <AppIcon name="edit" class="w-3.5 h-3.5 text-slate-500" />
+          </div>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-slate-800">{{ briefSummaryLine }}</p>
-            <p v-if="briefProductPreview" class="text-2xs text-slate-500 mt-1 truncate">{{ briefProductPreview }}</p>
+            <p v-if="briefProductPreview" class="text-2xs text-slate-500 mt-0.5 truncate">{{ briefProductPreview }}</p>
           </div>
-          <AppButton variant="secondary" size="sm" @click="activeTab = 'brief'">Edit brief</AppButton>
+          <AppButton variant="secondary" size="sm" @click="activeTab = 'brief'">
+            <AppIcon name="edit" class="w-3 h-3 mr-1" />
+            Edit brief
+          </AppButton>
         </div>
 
         <AppEmptyState
@@ -148,7 +177,10 @@
           description="Generate platform captions from your campaign brief."
           icon="megaphone"
         >
-          <AppButton variant="primary" :disabled="generating" @click="generate">Generate content</AppButton>
+          <AppButton variant="primary" :disabled="generating" @click="generate">
+            <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
+            Generate content
+          </AppButton>
         </AppEmptyState>
 
         <template v-else>
@@ -190,11 +222,11 @@
                 <button type="button" class="campaign-draft-row__main" @click="toggleExpand(pkg.id)">
                   <div class="flex flex-wrap items-center gap-2 min-w-0">
                     <SocialPlatformLabel :type="pkg.platform" size="md" />
-                    <span class="text-2xs text-slate-500">v{{ pkg.version }}</span>
-                    <span class="campaign-draft-status-badge">{{ formatStatusLabel(pkg.status) }}</span>
+                    <span class="text-2xs text-slate-400 font-medium">v{{ pkg.version }}</span>
+                    <AppBadge :variant="draftStatusVariant(pkg.status)">{{ formatStatusLabel(pkg.status) }}</AppBadge>
                   </div>
                   <p class="campaign-draft-preview">{{ pkg.caption }}</p>
-                  <p v-if="pkg.hashtags?.length" class="text-2xs text-slate-500 truncate">{{ pkg.hashtags.join(' ') }}</p>
+                  <p v-if="pkg.hashtags?.length" class="text-2xs text-slate-400 truncate">{{ pkg.hashtags.join(' ') }}</p>
                 </button>
 
                 <div class="campaign-draft-row__side" @click.stop>
@@ -211,10 +243,20 @@
                   </AppSelect>
                   <div class="flex flex-wrap gap-1.5 justify-end">
                     <AppButton size="sm" variant="ghost" @click="toggleExpand(pkg.id)">
+                      <AppIcon
+                        name="chevron-down"
+                        :class="['w-3.5 h-3.5 mr-1 transition-transform duration-150', expandedPackageId === pkg.id ? 'rotate-180' : '']"
+                      />
                       {{ expandedPackageId === pkg.id ? 'Collapse' : 'Expand' }}
                     </AppButton>
-                    <AppButton size="sm" variant="secondary" @click="openRefine(pkg)">Refine</AppButton>
-                    <AppButton v-if="pkg.status === 'approved'" size="sm" @click="schedulePackage(pkg)">Schedule</AppButton>
+                    <AppButton size="sm" variant="secondary" @click="openRefine(pkg)">
+                      <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
+                      Refine
+                    </AppButton>
+                    <AppButton v-if="pkg.status === 'approved'" size="sm" @click="schedulePackage(pkg)">
+                      <AppIcon name="send" class="w-3.5 h-3.5 mr-1" />
+                      Schedule
+                    </AppButton>
                   </div>
                 </div>
               </div>
@@ -350,10 +392,16 @@
           </div>
 
           <div v-if="versions.length" class="mt-4 space-y-2">
-            <p class="text-xs font-semibold text-slate-500">Version history</p>
+            <div class="flex items-center gap-1.5 mb-2">
+              <AppIcon name="activity" class="w-3.5 h-3.5 text-slate-400" />
+              <p class="text-xs font-semibold text-slate-500">Version history</p>
+            </div>
             <div v-for="v in versions" :key="v.id" class="campaign-version-row">
-              <span class="font-medium text-slate-700">v{{ v.version }}</span>
-              <span class="text-slate-500">{{ formatStatusLabel(v.status) }}</span>
+              <div class="flex items-center gap-1.5">
+                <AppIcon name="layers" class="w-3.5 h-3.5 text-slate-400" />
+                <span class="font-medium text-slate-700">v{{ v.version }}</span>
+              </div>
+              <AppBadge :variant="draftStatusVariant(v.status)">{{ formatStatusLabel(v.status) }}</AppBadge>
             </div>
           </div>
         </template>
@@ -361,6 +409,7 @@
         <template #footer>
           <AppButton variant="secondary" @click="closeRefineModal">Close</AppButton>
           <AppButton :disabled="refining || !instruction.trim()" @click="refine">
+            <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
             {{ refining ? 'Refining…' : 'Refine with AI' }}
           </AppButton>
         </template>
@@ -377,10 +426,12 @@ import { useCampaignsStore } from '../stores/campaigns';
 import { useToastStore } from '../stores/toast';
 import {
   AppAlert,
+  AppBadge,
   AppButton,
   AppCard,
   AppEmptyState,
   AppFormField,
+  AppIcon,
   AppInput,
   AppLoader,
   AppModal,
@@ -742,6 +793,14 @@ function formatStatusLabel(status) {
   return labels[status] || 'Draft';
 }
 
+function draftStatusVariant(status) {
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'danger';
+  if (status === 'in_review') return 'info';
+  if (status === 'generated') return 'purple';
+  return 'default';
+}
+
 function assetsForPlatform(platform) {
   const list = assets.value;
   if (!list.length) return [];
@@ -911,6 +970,33 @@ function schedulePackage(pkg) {
   border-radius: 0.875rem;
   padding: 0.85rem;
   background: rgba(248, 250, 252, 0.5);
+}
+
+.cf-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cf-panel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  flex-shrink: 0;
+}
+
+.cd-brief-summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  background: #f1f5f9;
+  flex-shrink: 0;
 }
 
 .campaign-brief-summary {
