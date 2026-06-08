@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ApiResponse;
 use App\Models\ScheduledPost;
 use App\Models\SocialCredential;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,11 +13,15 @@ class ScheduleController extends Controller
 {
     public function calendar(Request $request): JsonResponse
     {
-        $from = $request->query('from', now()->startOfMonth()->toDateString());
-        $to = $request->query('to', now()->endOfMonth()->toDateString());
+        $from = $request->query('from')
+            ? Carbon::parse($request->query('from'))->utc()
+            : now()->utc()->startOfMonth();
+        $to = $request->query('to')
+            ? Carbon::parse($request->query('to'))->utc()
+            : now()->utc()->endOfMonth();
 
         $posts = ScheduledPost::where('user_id', $request->user()->id)
-            ->whereBetween('scheduled_at', [$from, $to.' 23:59:59'])
+            ->whereBetween('scheduled_at', [$from, $to])
             ->with(['socialCredential:id,provider,account_label', 'contentPackage:id,caption,platform'])
             ->orderBy('scheduled_at')
             ->get();
@@ -29,7 +34,7 @@ class ScheduleController extends Controller
         $validated = $request->validate([
             'social_credential_id' => ['required', 'exists:social_credentials,id'],
             'content_package_id' => ['nullable', 'exists:content_packages,id'],
-            'scheduled_at' => ['required', 'date'],
+            'scheduled_at' => ['required', 'date', 'after:now'],
         ]);
 
         $credential = SocialCredential::findOrFail($validated['social_credential_id']);
@@ -39,7 +44,7 @@ class ScheduleController extends Controller
             'user_id' => $request->user()->id,
             'social_credential_id' => $credential->id,
             'content_package_id' => $validated['content_package_id'] ?? null,
-            'scheduled_at' => $validated['scheduled_at'],
+            'scheduled_at' => Carbon::parse($validated['scheduled_at'])->utc(),
             'status' => 'scheduled',
         ]);
 

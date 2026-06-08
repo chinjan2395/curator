@@ -151,6 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('content-packages/{contentPackage}/refine', [ContentPackageController::class, 'refine']);
     Route::patch('content-packages/{contentPackage}/status', [ContentPackageController::class, 'updateStatus']);
     Route::patch('content-packages/{contentPackage}/media', [ContentPackageController::class, 'updateMedia']);
+    Route::patch('content-packages/{contentPackage}/caption', [ContentPackageController::class, 'updateCaption']);
     Route::get('content-packages/{contentPackage}/versions', [ContentPackageController::class, 'versions']);
 
     Route::get('content/brand-kits', [BrandKitController::class, 'index']);
