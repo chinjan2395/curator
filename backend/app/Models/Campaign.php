@@ -19,6 +19,8 @@ class Campaign extends Model
         'platforms',
         'status',
         'ai_strategy',
+        'brand_kit_id',
+        'template_id',
     ];
 
     protected $casts = [
@@ -36,5 +38,15 @@ class Campaign extends Model
     public function contentPackages(): HasMany
     {
         return $this->hasMany(ContentPackage::class);
+    }
+
+    public function brandKit(): BelongsTo
+    {
+        return $this->belongsTo(BrandKit::class);
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(ContentTemplate::class);
     }
 }
