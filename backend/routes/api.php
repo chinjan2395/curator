@@ -180,6 +180,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('schedule/calendar', [ScheduleController::class, 'calendar']);
     Route::post('schedule', [ScheduleController::class, 'store']);
     Route::delete('schedule/{scheduledPost}', [ScheduleController::class, 'cancel']);
+    Route::post('schedule/{scheduledPost}/retry', [ScheduleController::class, 'retry']);
     Route::get('publisher/queue', [ScheduleController::class, 'queue']);
 
     Route::get('analytics/overview', [AnalyticsController::class, 'overview']);

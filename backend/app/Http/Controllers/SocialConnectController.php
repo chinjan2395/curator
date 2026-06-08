@@ -51,8 +51,8 @@ class SocialConnectController extends Controller
         'business_management',
     ];
 
-    /** X / Twitter OAuth 2: read + write + offline refresh for native scheduling. */
-    private const TWITTER_SCOPES = ['users.read', 'users.email', 'tweet.read', 'tweet.write', 'offline.access'];
+    /** X / Twitter OAuth 2: read + write + media upload + offline refresh for native scheduling. users.email is not a valid X API v2 scope. */
+    private const TWITTER_SCOPES = ['users.read', 'tweet.read', 'tweet.write', 'media.write', 'offline.access'];
 
     private const X_OAUTH_AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
 

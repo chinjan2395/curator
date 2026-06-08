@@ -63,10 +63,29 @@ class ScheduleController extends Controller
     {
         $posts = ScheduledPost::where('user_id', $request->user()->id)
             ->whereIn('status', ['scheduled', 'failed', 'published'])
+            ->with(['socialCredential:id,provider,account_label', 'contentPackage:id,caption,platform'])
             ->orderByDesc('scheduled_at')
             ->limit(100)
             ->get();
 
         return ApiResponse::success($posts);
+    }
+
+    public function retry(Request $request, ScheduledPost $scheduledPost): JsonResponse
+    {
+        abort_if($scheduledPost->user_id !== $request->user()->id, 403);
+        abort_if($scheduledPost->status !== 'failed', 422, 'Only failed posts can be retried.');
+
+        $scheduledPost->update([
+            'status' => 'scheduled',
+            'retry_count' => 0,
+            'scheduled_at' => now()->addMinute(),
+            'error_message' => null,
+        ]);
+
+        return ApiResponse::success(
+            $scheduledPost->fresh(['socialCredential', 'contentPackage']),
+            'Post queued for retry. It will publish within a minute.'
+        );
     }
 }
