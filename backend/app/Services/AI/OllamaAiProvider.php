@@ -44,6 +44,16 @@ class OllamaAiProvider implements AiProviderInterface
             }
         }
 
+        if (!empty($context['brand_kit_name'])) {
+            $parts[] = 'Brand kit: '.$context['brand_kit_name'];
+        }
+        if (!empty($context['brand_primary_color'])) {
+            $parts[] = 'Brand primary color: '.$context['brand_primary_color'];
+        }
+        if (!empty($context['brand_font'])) {
+            $parts[] = 'Brand font style: '.$context['brand_font'];
+        }
+
         $overrides = $this->formatPromptContextValue($context['prompt_overrides'] ?? null);
         if ($overrides !== '') {
             $parts[] = 'User style preferences: '.$overrides;

@@ -2,8 +2,10 @@
 
 namespace App\Services\AI;
 
+use App\Models\BrandKit;
 use App\Models\Campaign;
 use App\Models\ContentPackage;
+use App\Models\ContentTemplate;
 use App\Models\LearningSignal;
 use App\Models\User;
 
@@ -15,14 +17,15 @@ class AiContentService
 
     public function generateForCampaign(Campaign $campaign): array
     {
-        $campaign->loadMissing('user');
+        $campaign->loadMissing(['user', 'brandKit', 'template']);
         $packages = [];
         $platforms = $campaign->platforms ?? ['instagram', 'twitter'];
         $context = $this->buildContext($campaign->user, $campaign);
 
         foreach ($platforms as $platform) {
+            $basePrompt = $this->buildGenerationPrompt($campaign, $platform);
             $caption = $this->provider->generateText(
-                "Create a {$campaign->tone} caption for: {$campaign->product_info}",
+                $basePrompt,
                 array_merge($context, ['platform' => $platform]),
             );
 
@@ -30,7 +33,7 @@ class AiContentService
                 'campaign_id' => $campaign->id,
                 'user_id' => $campaign->user_id,
                 'platform' => $platform,
-                'content_type' => 'post',
+                'content_type' => $campaign->template?->content_type ?? 'post',
                 'caption' => $caption,
                 'hashtags' => $this->suggestHashtags($campaign, $platform, $context),
                 'status' => 'draft',
@@ -81,6 +84,21 @@ class AiContentService
         ]);
     }
 
+    private function buildGenerationPrompt(Campaign $campaign, string $platform): string
+    {
+        $tone = $campaign->tone ? "{$campaign->tone} " : '';
+        $base = "Create a {$tone}caption for {$platform}: {$campaign->product_info}";
+
+        if ($campaign->template?->template_data) {
+            $starter = $campaign->template->template_data['caption'] ?? '';
+            if ($starter !== '') {
+                $base .= "\n\nUse this as a starting structure:\n{$starter}";
+            }
+        }
+
+        return $base;
+    }
+
     /** @return array<string, mixed> */
     private function buildContext(?User $user, ?Campaign $campaign = null, array $extra = []): array
     {
@@ -92,6 +110,18 @@ class AiContentService
             'campaign_name' => $campaign?->name,
             'prompt_overrides' => $user?->ai_prompt_overrides,
         ];
+
+        // Inject brand kit colors and fonts so providers can reference them in the system prompt
+        if ($campaign?->brandKit) {
+            $kit = $campaign->brandKit;
+            if (!empty($kit->colors['primary'])) {
+                $context['brand_primary_color'] = $kit->colors['primary'];
+            }
+            if (!empty($kit->fonts['heading']) && $kit->fonts['heading'] !== 'inherit') {
+                $context['brand_font'] = $kit->fonts['heading'];
+            }
+            $context['brand_kit_name'] = $kit->name;
+        }
 
         return array_filter(array_merge($context, $extra), static fn ($v) => $v !== null && $v !== '');
     }

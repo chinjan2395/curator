@@ -105,6 +105,19 @@ class ContentPackageController extends Controller
         return ApiResponse::success($contentPackage->fresh(), 'Status updated.');
     }
 
+    public function updateCaption(Request $request, ContentPackage $contentPackage): JsonResponse
+    {
+        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'caption' => ['required', 'string'],
+        ]);
+
+        $contentPackage->update(['caption' => $validated['caption']]);
+
+        return ApiResponse::success($contentPackage->fresh(), 'Caption updated.');
+    }
+
     public function versions(Request $request, ContentPackage $contentPackage): JsonResponse
     {
         abort_if($contentPackage->user_id !== $request->user()->id, 403);
