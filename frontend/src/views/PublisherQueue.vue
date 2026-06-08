@@ -20,7 +20,7 @@
         <div v-for="post in queue" :key="post.id" class="py-3 border-b text-sm">
           <div class="flex justify-between">
             <span>#{{ post.id }} · {{ post.social_credential?.provider }} · <span :class="statusClass(post.status)">{{ post.status }}</span></span>
-            <span class="text-slate-500">{{ post.scheduled_at }}</span>
+            <span class="text-slate-500">{{ formatScheduledAt(post.scheduled_at) }}</span>
           </div>
           <p v-if="post.error_message" class="text-xs text-red-600 mt-1">{{ post.error_message }}</p>
           <p v-if="post.retry_count" class="text-xs text-slate-500">Retries: {{ post.retry_count }}</p>
@@ -36,6 +36,7 @@ import axios from 'axios';
 import { AppAlert, AppCard, AppEmptyState, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import { formatScheduledAt } from '../utils/datetime';
 
 const queue = ref([]);
 const loading = ref(true);

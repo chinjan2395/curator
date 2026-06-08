@@ -12,21 +12,70 @@
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <template v-else>
-      <AppCard v-if="showForm" class="p-4 space-y-3 max-w-lg">
-        <AppSelect v-model="form.social_credential_id" select-class="w-full" :show-placeholder="false">
-          <option value="">Select account</option>
-          <option v-for="c in credentials" :key="c.id" :value="String(c.id)">{{ platformOptionLabel(c) }}</option>
-        </AppSelect>
-        <AppSelect v-model="form.content_package_id" select-class="w-full" :show-placeholder="false">
-          <option value="">Content package (optional)</option>
-          <option v-for="pkg in approvedPackages" :key="pkg.id" :value="String(pkg.id)">
-            {{ packageLabel(pkg) }}
-          </option>
-        </AppSelect>
-        <AppInput v-model="form.scheduled_at" type="datetime-local" input-class="w-full" />
-        <AppButton @click="submitSchedule" :disabled="scheduling || !form.social_credential_id || !form.scheduled_at">
-          {{ scheduling ? 'Scheduling…' : 'Schedule' }}
-        </AppButton>
+      <AppCard v-if="showForm">
+        <template #header>
+          <AppTitle size="sm">Schedule post</AppTitle>
+          <p class="text-sm text-slate-500 mt-1">Choose where to publish, optional content, and when it should go live.</p>
+        </template>
+
+        <form class="space-y-4" @submit.prevent="submitSchedule">
+          <AppFormField label="Social account" required id="schedule-credential">
+            <AppSelect
+              id="schedule-credential"
+              v-model="form.social_credential_id"
+              select-class="w-full"
+              :show-placeholder="false"
+            >
+              <option value="">Select account</option>
+              <option v-for="c in credentials" :key="c.id" :value="String(c.id)">{{ platformOptionLabel(c) }}</option>
+            </AppSelect>
+          </AppFormField>
+
+          <AppFormField
+            label="Content package"
+            hint="Optional — link an approved package from Campaigns."
+            id="schedule-package"
+          >
+            <AppSelect
+              id="schedule-package"
+              v-model="form.content_package_id"
+              select-class="w-full"
+              :show-placeholder="false"
+            >
+              <option value="">No content package</option>
+              <option v-for="pkg in approvedPackages" :key="pkg.id" :value="String(pkg.id)">
+                {{ packageLabel(pkg) }}
+              </option>
+            </AppSelect>
+          </AppFormField>
+
+          <AppFormField
+            label="Publish time"
+            required
+            hint="Shown and scheduled in your local timezone."
+            id="schedule-at"
+          >
+            <AppInput
+              id="schedule-at"
+              v-model="form.scheduled_at"
+              type="datetime-local"
+              input-class="w-full"
+              :min="minScheduleAt"
+            />
+          </AppFormField>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 pt-4 border-t border-slate-200">
+            <AppButton variant="secondary" type="button" @click="closeForm">Cancel</AppButton>
+            <AppButton
+              variant="primary"
+              type="submit"
+              :disabled="scheduling || !form.social_credential_id || !form.scheduled_at"
+              :loading="scheduling"
+            >
+              {{ scheduling ? 'Scheduling…' : 'Schedule post' }}
+            </AppButton>
+          </div>
+        </form>
       </AppCard>
 
       <AppCard class="p-4">
@@ -40,10 +89,10 @@
         </AppEmptyState>
         <div v-else>
           <div v-for="group in grouped" :key="group.day" class="mb-4">
-            <div class="text-xs font-semibold text-slate-500 mb-2">{{ group.day }}</div>
+            <div class="text-xs font-semibold text-slate-500 mb-2">{{ formatLocalDayLabel(group.day) }}</div>
             <div v-for="post in group.items" :key="post.id" class="flex justify-between text-sm border-b border-slate-100 py-2">
               <span class="flex flex-wrap items-center gap-2">
-                <span>{{ post.scheduled_at }}</span>
+                <span>{{ formatScheduledAt(post.scheduled_at) }}</span>
                 <SocialPlatformLabel
                   v-if="post.social_credential?.provider"
                   :type="post.social_credential.provider"
@@ -67,11 +116,19 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useToastStore } from '../stores/toast';
-import { AppAlert, AppButton, AppCard, AppEmptyState, AppInput, AppLoader, AppSelect } from '../components/ui';
+import { AppAlert, AppButton, AppCard, AppEmptyState, AppFormField, AppInput, AppLoader, AppSelect, AppTitle } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
+import {
+  formatLocalDayLabel,
+  formatScheduledAt,
+  localDatetimeInputToUtcIso,
+  localDayKeyFromUtcIso,
+  localMonthUtcRange,
+  minLocalDatetimeInputValue,
+} from '../utils/datetime';
 
 const route = useRoute();
 const toast = useToastStore();
@@ -82,6 +139,7 @@ const loading = ref(true);
 const error = ref(null);
 const showForm = ref(false);
 const scheduling = ref(false);
+const minScheduleAt = minLocalDatetimeInputValue();
 const form = ref({
   social_credential_id: '',
   content_package_id: route.query.content_package_id ? String(route.query.content_package_id) : '',
@@ -101,7 +159,7 @@ watch(
 const grouped = computed(() => {
   const map = {};
   for (const p of posts.value) {
-    const day = (p.scheduled_at || '').slice(0, 10);
+    const day = localDayKeyFromUtcIso(p.scheduled_at);
     if (!map[day]) map[day] = [];
     map[day].push(p);
   }
@@ -131,8 +189,12 @@ async function load() {
   loading.value = true;
   error.value = null;
   try {
+    const monthRange = localMonthUtcRange();
     const [cal, creds, pkgs] = await Promise.all([
-      axios.get('/api/schedule/calendar', { skipErrorToast: true }),
+      axios.get('/api/schedule/calendar', {
+        params: { from: monthRange.from, to: monthRange.to },
+        skipErrorToast: true,
+      }),
       axios.get('/api/social-credentials', { skipErrorToast: true }),
       axios.get('/api/content-packages', { params: { status: 'approved' }, skipErrorToast: true }),
     ]);
@@ -146,16 +208,20 @@ async function load() {
   }
 }
 
+function closeForm() {
+  showForm.value = false;
+}
+
 async function submitSchedule() {
   scheduling.value = true;
   try {
     await axios.post('/api/schedule', {
       social_credential_id: Number(form.value.social_credential_id),
       content_package_id: form.value.content_package_id ? Number(form.value.content_package_id) : null,
-      scheduled_at: form.value.scheduled_at,
+      scheduled_at: localDatetimeInputToUtcIso(form.value.scheduled_at),
     });
     toast.success('Post scheduled');
-    showForm.value = false;
+    closeForm();
     await load();
   } finally {
     scheduling.value = false;

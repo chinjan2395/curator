@@ -218,6 +218,30 @@
               </div>
             </div>
 
+            <!-- Import from brand kit -->
+            <div class="space-y-3 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-900">Import from brand kit</h3>
+              <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
+              <div class="flex flex-wrap items-end gap-2">
+                <div class="flex-1 min-w-[10rem]">
+                  <AppSelect v-model="brandKitImportId" :show-placeholder="false" select-class="w-full">
+                    <option value="">Select brand kit…</option>
+                    <option v-for="kit in brandKitsForImport" :key="kit.id" :value="String(kit.id)">
+                      {{ kit.name }}{{ kit.is_default ? ' (default)' : '' }}
+                    </option>
+                  </AppSelect>
+                </div>
+                <AppButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!brandKitImportId"
+                  @click="applyBrandKit"
+                >
+                  Apply
+                </AppButton>
+              </div>
+            </div>
+
             <!-- Colors Section -->
             <div class="space-y-4 pt-4 border-t border-slate-200">
               <h3 class="text-sm font-semibold text-slate-900">Colors</h3>
@@ -1231,6 +1255,10 @@ const autoPublishInFlight = ref(false);
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
 
+/** Brand kit import */
+const brandKitsForImport = ref([]);
+const brandKitImportId = ref('');
+
 const feedStyleOptions = [
   { value: 'waterfall', label: 'Waterfall' },
   { value: 'grid', label: 'Grid' },
@@ -1762,7 +1790,47 @@ onMounted(async () => {
     await loadPreview();
     await autoPublishIfNeeded();
   }
+  loadBrandKitsForImport();
 });
+
+async function loadBrandKitsForImport() {
+  try {
+    const axios = (await import('axios')).default;
+    const { data } = await axios.get('/api/content/brand-kits', { skipErrorToast: true });
+    brandKitsForImport.value = data.data || data || [];
+    // Pre-select default kit if available
+    const def = brandKitsForImport.value.find((k) => k.is_default);
+    if (def) brandKitImportId.value = String(def.id);
+  } catch {
+    brandKitsForImport.value = [];
+  }
+}
+
+function applyBrandKit() {
+  if (!appearance.value || !brandKitImportId.value) return;
+  const kit = brandKitsForImport.value.find((k) => String(k.id) === brandKitImportId.value);
+  if (!kit) return;
+
+  const colors = kit.colors || {};
+  if (colors.primary) appearance.value.colors.post_button = colors.primary;
+  if (colors.primary) appearance.value.colors.post_link = colors.primary;
+  if (colors.text) appearance.value.colors.post_text = colors.text;
+  if (colors.text) appearance.value.colors.post_icon = colors.text;
+  if (colors.background) {
+    appearance.value.colors.post_bg.enabled = true;
+    appearance.value.colors.post_bg.color = colors.background;
+  }
+  if (colors.secondary) appearance.value.colors.post_date = colors.secondary;
+
+  const fonts = kit.fonts || {};
+  if (fonts.body && fonts.body !== 'inherit') {
+    appearance.value.widget.font_family = fonts.body;
+  } else if (fonts.heading && fonts.heading !== 'inherit') {
+    appearance.value.widget.font_family = fonts.heading;
+  }
+
+  toast.success(`Brand kit "${kit.name}" applied — save to publish changes.`);
+}
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handlePreviewShareOutsideClick);
