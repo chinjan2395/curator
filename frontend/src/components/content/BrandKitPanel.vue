@@ -4,7 +4,10 @@
       <p class="text-sm text-slate-600">
         Store logo, colors, fonts, and watermark settings for consistent content.
       </p>
-      <AppButton size="sm" @click="openCreate">New brand kit</AppButton>
+      <div class="flex flex-wrap items-center gap-2">
+        <ContentViewToggle v-model="viewMode" />
+        <AppButton size="sm" @click="openCreate">New brand kit</AppButton>
+      </div>
     </div>
 
     <AppEmptyState
@@ -16,52 +19,102 @@
       <AppButton size="sm" @click="openCreate">Create brand kit</AppButton>
     </AppEmptyState>
 
-    <div v-else class="grid gap-3 md:grid-cols-2">
+    <div v-else-if="viewMode === 'grid'" class="brand-kit-grid">
       <AppCard
         v-for="kit in kits"
         :key="kit.id"
-        class="p-4 space-y-3 brand-kit-card"
+        padding="none"
+        class="brand-kit-card h-full"
         :class="kit.is_default ? 'brand-kit-card--default' : ''"
       >
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="font-semibold text-slate-800 truncate">{{ kit.name }}</h3>
-              <span v-if="kit.is_default" class="brand-kit-badge">Default</span>
+        <div class="brand-kit-card__inner">
+          <div class="brand-kit-card__header">
+            <div class="brand-kit-card__identity min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="font-semibold text-slate-800 truncate">{{ kit.name }}</h3>
+                <span v-if="kit.is_default" class="brand-kit-badge">Default</span>
+              </div>
+              <p v-if="kitSummary(kit)" class="brand-kit-card__meta">{{ kitSummary(kit) }}</p>
+            </div>
+            <div class="brand-kit-card__logo" :class="kit.logo_url ? '' : 'brand-kit-card__logo--empty'">
+              <img
+                v-if="kit.logo_url"
+                :src="kit.logo_url"
+                alt=""
+                referrerpolicy="no-referrer"
+                class="brand-kit-card__logo-image"
+              />
+              <span v-else class="brand-kit-card__logo-placeholder">No logo</span>
             </div>
           </div>
-          <img
-            v-if="kit.logo_url"
-            :src="kit.logo_url"
-            alt=""
-            referrerpolicy="no-referrer"
-            class="h-10 w-10 rounded-lg border border-slate-200 object-contain bg-white shrink-0"
-          />
-        </div>
 
-        <div class="flex flex-wrap gap-1.5">
+          <div class="brand-kit-card__section">
+            <p class="brand-kit-card__label">Palette</p>
+            <div class="brand-kit-card__swatches">
+              <span
+                v-for="(hex, key) in kit.colors || {}"
+                :key="key"
+                class="brand-kit-swatch"
+                :title="`${colorLabel(key)}: ${hex}`"
+                :style="{ backgroundColor: hex }"
+              />
+            </div>
+          </div>
+
+          <div class="brand-kit-card__actions">
+            <AppButton size="sm" variant="secondary" @click="openEdit(kit)">Edit</AppButton>
+            <AppButton
+              v-if="!kit.is_default"
+              size="sm"
+              variant="ghost"
+              @click="setDefault(kit)"
+            >
+              Set default
+            </AppButton>
+            <AppButton size="sm" variant="ghost" class="text-red-600" @click="confirmDelete(kit)">Delete</AppButton>
+          </div>
+        </div>
+      </AppCard>
+    </div>
+
+    <div v-else class="brand-kit-list">
+      <ContentLibraryRow v-for="kit in kits" :key="kit.id">
+        <template #leading>
+          <div class="brand-kit-row__logo" :class="kit.logo_url ? '' : 'brand-kit-row__logo--empty'">
+            <img
+              v-if="kit.logo_url"
+              :src="kit.logo_url"
+              alt=""
+              referrerpolicy="no-referrer"
+              class="brand-kit-row__logo-image"
+            />
+            <span v-else class="brand-kit-card__logo-placeholder">No logo</span>
+          </div>
+        </template>
+
+        <div class="flex flex-wrap items-center gap-2 min-w-0">
+          <p class="font-semibold text-slate-800 truncate">{{ kit.name }}</p>
+          <span v-if="kit.is_default" class="brand-kit-badge">Default</span>
+        </div>
+        <p v-if="kitSummary(kit)" class="text-2xs text-slate-500 mt-0.5">{{ kitSummary(kit) }}</p>
+        <div class="brand-kit-row__swatches">
           <span
             v-for="(hex, key) in kit.colors || {}"
             :key="key"
             class="brand-kit-swatch"
-            :title="`${key}: ${hex}`"
+            :title="`${colorLabel(key)}: ${hex}`"
             :style="{ backgroundColor: hex }"
           />
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        <template #actions>
           <AppButton size="sm" variant="secondary" @click="openEdit(kit)">Edit</AppButton>
-          <AppButton
-            v-if="!kit.is_default"
-            size="sm"
-            variant="ghost"
-            @click="setDefault(kit)"
-          >
+          <AppButton v-if="!kit.is_default" size="sm" variant="ghost" @click="setDefault(kit)">
             Set default
           </AppButton>
           <AppButton size="sm" variant="ghost" class="text-red-600" @click="confirmDelete(kit)">Delete</AppButton>
-        </div>
-      </AppCard>
+        </template>
+      </ContentLibraryRow>
     </div>
 
     <AppModal
@@ -225,6 +278,8 @@ import {
   AppModal,
   AppSelect,
 } from '../ui';
+import ContentLibraryRow from './ContentLibraryRow.vue';
+import ContentViewToggle from './ContentViewToggle.vue';
 
 const props = defineProps({
   active: { type: Boolean, default: true },
@@ -237,6 +292,7 @@ const editorOpen = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
 const formError = ref('');
+const viewMode = ref('grid');
 
 const DEFAULT_COLORS = {
   primary: '#2563eb',
@@ -274,6 +330,16 @@ const previewFont = computed(() => {
 
 function colorLabel(key) {
   return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function kitSummary(kit) {
+  const parts = [];
+  const heading = kit.fonts?.heading?.trim();
+  const body = kit.fonts?.body?.trim();
+  if (heading && heading !== 'inherit') parts.push(`Heading: ${heading}`);
+  if (body && body !== 'inherit') parts.push(`Body: ${body}`);
+  if (kit.watermark?.enabled) parts.push('Watermark on');
+  return parts.join(' · ');
 }
 
 function onColorPicker(key, event) {
@@ -420,9 +486,152 @@ defineExpose({ load });
 </script>
 
 <style scoped>
+.brand-kit-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.brand-kit-row__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.brand-kit-row__logo--empty {
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.brand-kit-row__logo-image {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+}
+
+.brand-kit-row__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.brand-kit-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .brand-kit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.brand-kit-card {
+  display: flex;
+  flex-direction: column;
+}
+
 .brand-kit-card--default {
   border-color: rgba(37, 99, 235, 0.35);
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+.brand-kit-card__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+  padding: 1rem;
+}
+
+.brand-kit-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.brand-kit-card__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.brand-kit-card__meta {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.brand-kit-card__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.brand-kit-card__logo--empty {
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.brand-kit-card__logo-image {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
+  border-radius: 0.35rem;
+}
+
+.brand-kit-card__logo-placeholder {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-align: center;
+  padding: 0 0.25rem;
+}
+
+.brand-kit-card__section {
+  display: grid;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+}
+
+.brand-kit-card__label {
+  font-size: 0.68rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.brand-kit-card__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.brand-kit-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e6ebf2;
 }
 
 .brand-kit-badge {
@@ -436,10 +645,11 @@ defineExpose({ load });
 
 .brand-kit-swatch {
   display: inline-block;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 0.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.4rem;
   border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .brand-kit-form-panel {
