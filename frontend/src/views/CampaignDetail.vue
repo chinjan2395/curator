@@ -69,6 +69,31 @@
             </div>
 
             <div class="campaign-form-panel">
+              <p class="text-sm-pro font-semibold text-slate-800">Brand & template</p>
+              <p class="text-2xs text-slate-500 mt-1 mb-3">
+                Optionally link a brand kit so AI uses your colors and identity, and a template to seed the caption structure.
+              </p>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <AppFormField label="Brand kit" hint="Colors, fonts, and logo passed to AI">
+                  <AppSelect v-model="campaignForm.brand_kit_id" :show-placeholder="false" select-class="w-full">
+                    <option value="">No brand kit</option>
+                    <option v-for="kit in brandKits" :key="kit.id" :value="String(kit.id)">
+                      {{ kit.name }}{{ kit.is_default ? ' (default)' : '' }}
+                    </option>
+                  </AppSelect>
+                </AppFormField>
+                <AppFormField label="Caption template" hint="Seeds the caption structure for generation">
+                  <AppSelect v-model="campaignForm.template_id" :show-placeholder="false" select-class="w-full">
+                    <option value="">No template</option>
+                    <option v-for="tpl in contentTemplates" :key="tpl.id" :value="String(tpl.id)">
+                      {{ tpl.name }}{{ tpl.platform ? ` · ${tpl.platform}` : '' }}
+                    </option>
+                  </AppSelect>
+                </AppFormField>
+              </div>
+            </div>
+
+            <div class="campaign-form-panel">
               <p class="text-sm-pro font-semibold text-slate-800">Message</p>
               <div class="grid grid-cols-1 gap-3 mt-3">
                 <AppFormField label="Product / service">
@@ -196,6 +221,31 @@
 
               <div v-if="expandedPackageId === pkg.id" class="campaign-draft-expanded">
                 <p class="text-sm text-slate-800 whitespace-pre-wrap leading-6">{{ pkg.caption }}</p>
+
+                <!-- Insert content block -->
+                <div v-if="contentBlocks.length" class="flex flex-wrap items-end gap-2 mt-2">
+                  <AppFormField label="Insert block" class="flex-1 min-w-[10rem]">
+                    <AppSelect
+                      :model-value="blockPickValue(pkg.id)"
+                      :show-placeholder="true"
+                      placeholder="Choose block…"
+                      select-class="!text-sm"
+                      @update:model-value="(v) => setBlockPick(pkg.id, v)"
+                    >
+                      <option v-for="b in contentBlocks" :key="b.id" :value="String(b.id)">
+                        {{ b.name }} ({{ b.type }})
+                      </option>
+                    </AppSelect>
+                  </AppFormField>
+                  <AppButton
+                    size="sm"
+                    variant="secondary"
+                    :disabled="!blockPickValue(pkg.id)"
+                    @click="appendBlock(pkg)"
+                  >
+                    Append
+                  </AppButton>
+                </div>
 
                 <div v-if="(pkg.media_urls || []).length" class="campaign-media-list">
                   <span class="text-xs font-medium text-slate-700">Media ({{ pkg.media_urls.length }}/4)</span>
@@ -364,7 +414,11 @@ const refining = ref(false);
 const refinedCaption = ref('');
 const versions = ref([]);
 const assets = ref([]);
+const brandKits = ref([]);
+const contentTemplates = ref([]);
+const contentBlocks = ref([]);
 const assetPick = reactive({});
+const blockPick = reactive({});
 const manualUrl = reactive({});
 const mediaMode = reactive({});
 
@@ -376,6 +430,8 @@ const campaignForm = reactive({
   targetAudienceText: '',
   goalsText: '',
   platformsText: '',
+  brand_kit_id: '',
+  template_id: '',
 });
 
 const packages = computed(() => campaign.value?.content_packages || []);
@@ -424,6 +480,8 @@ const campaignPayload = computed(() => ({
   target_audience: normalizedListValue(campaignForm.targetAudienceText),
   goals: normalizedListValue(campaignForm.goalsText),
   platforms: normalizedListValue(campaignForm.platformsText),
+  brand_kit_id: campaignForm.brand_kit_id ? Number(campaignForm.brand_kit_id) : null,
+  template_id: campaignForm.template_id ? Number(campaignForm.template_id) : null,
 }));
 
 const normalizedCampaignSnapshot = computed(() => {
@@ -436,6 +494,8 @@ const normalizedCampaignSnapshot = computed(() => {
     target_audience: normalizeExistingList(campaign.value.target_audience),
     goals: normalizeExistingList(campaign.value.goals),
     platforms: normalizeExistingList(campaign.value.platforms),
+    brand_kit_id: campaign.value.brand_kit_id || null,
+    template_id: campaign.value.template_id || null,
   });
 });
 
@@ -447,7 +507,7 @@ const canSaveCampaign = computed(
 );
 
 onMounted(async () => {
-  await Promise.all([load(), loadAssets()]);
+  await Promise.all([load(), loadAssets(), loadBrandKits(), loadContentTemplates(), loadContentBlocks()]);
 });
 
 watch(
@@ -498,6 +558,57 @@ async function loadAssets() {
   }
 }
 
+async function loadBrandKits() {
+  try {
+    const { data } = await axios.get('/api/content/brand-kits', { skipErrorToast: true });
+    brandKits.value = data.data || data || [];
+  } catch {
+    brandKits.value = [];
+  }
+}
+
+async function loadContentTemplates() {
+  try {
+    const { data } = await axios.get('/api/content/templates', { skipErrorToast: true });
+    contentTemplates.value = data.data || data || [];
+  } catch {
+    contentTemplates.value = [];
+  }
+}
+
+async function loadContentBlocks() {
+  try {
+    const { data } = await axios.get('/api/content/blocks', { skipErrorToast: true });
+    contentBlocks.value = data.data || data || [];
+  } catch {
+    contentBlocks.value = [];
+  }
+}
+
+function blockPickValue(packageId) {
+  return blockPick[packageKey(packageId)] ?? '';
+}
+
+function setBlockPick(packageId, value) {
+  blockPick[packageKey(packageId)] = value;
+}
+
+async function appendBlock(pkg) {
+  const blockId = blockPickValue(pkg.id);
+  if (!blockId) return;
+  const block = contentBlocks.value.find((b) => String(b.id) === blockId);
+  if (!block?.body) return;
+  const newCaption = [pkg.caption, block.body].filter(Boolean).join('\n\n');
+  try {
+    await axios.patch(`/api/content-packages/${pkg.id}/caption`, { caption: newCaption });
+    toast.success(`Block "${block.name}" appended`);
+    blockPick[packageKey(pkg.id)] = '';
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+  } catch {
+    // interceptor handles error toast
+  }
+}
+
 function hydrateCampaignForm(value) {
   campaignForm.name = value?.name || '';
   campaignForm.description = value?.description || '';
@@ -506,6 +617,8 @@ function hydrateCampaignForm(value) {
   campaignForm.targetAudienceText = joinList(value?.target_audience);
   campaignForm.goalsText = joinList(value?.goals);
   campaignForm.platformsText = joinList(value?.platforms, ', ');
+  campaignForm.brand_kit_id = value?.brand_kit_id ? String(value.brand_kit_id) : '';
+  campaignForm.template_id = value?.template_id ? String(value.template_id) : '';
 }
 
 function joinList(value, separator = '\n') {
