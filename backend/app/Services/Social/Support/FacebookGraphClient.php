@@ -19,9 +19,36 @@ class FacebookGraphClient
         }
 
         $pageId = $pageId ?: $this->resolvePageId($credential, $userToken);
-        $pageToken = $this->resolveFacebookPageAccessToken($credential, $pageId);
+        $diagnostic = $this->resolveFacebookPageAccessTokenWithPerms($credential, $pageId);
+        $pageToken = $diagnostic['access_token'] ?? null;
+
         if (! $pageToken) {
-            throw new RuntimeException('Could not resolve a Page access token. Link a Facebook Page feed or reconnect with pages_manage_posts.');
+            $accountsCount = $diagnostic['accounts_count'] ?? 0;
+            $accountsError = $diagnostic['accounts_error'] ?? null;
+            $accountsStatus = $diagnostic['accounts_status'] ?? null;
+
+            if ($accountsError) {
+                $msg = $accountsError['message'] ?? 'Unknown error';
+                $code = $accountsError['code'] ?? $accountsStatus;
+                throw new RuntimeException(
+                    "Facebook API error while fetching pages (code {$code}): {$msg}. "
+                    .'Your token may have expired — reconnect Facebook in Credentials.'
+                );
+            }
+
+            if ($accountsCount === 0) {
+                throw new RuntimeException(
+                    'No Facebook Pages are linked to this account. '
+                    .'During the Facebook login, you must select at least one Page when prompted. '
+                    .'Reconnect Facebook in Credentials and approve the Page access step.'
+                );
+            }
+
+            throw new RuntimeException(
+                "Found {$accountsCount} Facebook Page(s) but could not get a Page access token for page {$pageId}. "
+                .'Your token is missing the pages_manage_posts permission. '
+                .'Reconnect Facebook in Credentials — during login, accept all Page permissions.'
+            );
         }
 
         return ['page_id' => $pageId, 'page_token' => $pageToken];

@@ -2,7 +2,9 @@
   <div class="space-y-4">
     <AppPageHeader title="Publisher queue" subtitle="Track scheduled and published native posts." icon="send">
       <template #actions>
-        <AppButton size="sm" variant="secondary" :loading="loading" @click="load">Refresh</AppButton>
+        <AppButton size="sm" variant="secondary" :loading="loading && !!queue.length" @click="load">
+          Refresh
+        </AppButton>
       </template>
     </AppPageHeader>
 
@@ -12,101 +14,155 @@
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <template v-else>
-      <AppEmptyState
-        v-if="!queue.length"
-        title="Queue is empty"
-        description="Scheduled posts appear here after you add them from the calendar."
-        icon="send"
-      >
-        <router-link to="/calendar" class="text-sm text-blue-600 hover:underline">Open calendar</router-link>
-      </AppEmptyState>
+      <!-- Empty state -->
+      <AppCard v-if="!queue.length" class="p-6">
+        <AppEmptyState
+          title="Queue is empty"
+          description="Scheduled posts appear here once added from the calendar."
+          icon="send"
+        >
+          <router-link to="/calendar">
+            <AppButton size="sm" variant="secondary">Go to calendar</AppButton>
+          </router-link>
+        </AppEmptyState>
+      </AppCard>
 
       <template v-else>
-        <!-- Summary counts -->
-        <div class="grid grid-cols-3 gap-3">
-          <AppCard class="p-3 text-center">
-            <div class="text-xl font-bold text-sky-700">{{ counts.scheduled }}</div>
-            <div class="text-xs text-slate-500 mt-0.5">Scheduled</div>
-          </AppCard>
-          <AppCard class="p-3 text-center">
-            <div class="text-xl font-bold text-red-600">{{ counts.failed }}</div>
-            <div class="text-xs text-slate-500 mt-0.5">Failed</div>
-          </AppCard>
-          <AppCard class="p-3 text-center">
-            <div class="text-xl font-bold text-emerald-600">{{ counts.published }}</div>
-            <div class="text-xs text-slate-500 mt-0.5">Published</div>
-          </AppCard>
+        <!-- Summary bar -->
+        <div class="pq-stats">
+          <div class="pq-stat">
+            <span class="pq-stat__count pq-stat__count--info">{{ counts.scheduled }}</span>
+            <span class="pq-stat__label">Scheduled</span>
+          </div>
+          <div class="pq-stat-divider" />
+          <div class="pq-stat">
+            <span class="pq-stat__count pq-stat__count--warning">{{ counts.retrying }}</span>
+            <span class="pq-stat__label">Retrying</span>
+          </div>
+          <div class="pq-stat-divider" />
+          <div class="pq-stat">
+            <span class="pq-stat__count pq-stat__count--danger">{{ counts.failed }}</span>
+            <span class="pq-stat__label">Failed</span>
+          </div>
+          <div class="pq-stat-divider" />
+          <div class="pq-stat">
+            <span class="pq-stat__count pq-stat__count--success">{{ counts.published }}</span>
+            <span class="pq-stat__label">Published</span>
+          </div>
         </div>
 
-        <!-- Post rows -->
-        <AppCard class="divide-y divide-slate-100">
-          <div v-for="post in queue" :key="post.id" class="p-4 space-y-3">
+        <!-- Post cards -->
+        <div class="space-y-2">
+          <div
+            v-for="post in queue"
+            :key="post.id"
+            class="pq-card"
+            :class="`pq-card--${statusKey(post)}`"
+          >
+            <!-- Main grid: content | actions -->
+            <div class="pq-card__body">
 
-            <!-- Row 1: status badge + account + time -->
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <AppBadge :variant="statusBadgeVariant(post)">{{ statusLabel(post) }}</AppBadge>
-                <SocialPlatformLabel
-                  v-if="post.social_credential?.provider"
-                  :type="post.social_credential.provider"
-                  size="sm"
-                />
-                <span v-if="post.social_credential?.account_label" class="text-xs text-slate-500">
-                  {{ post.social_credential.account_label }}
-                </span>
+              <!-- Left: content -->
+              <div class="pq-card__main">
+
+                <!-- Row 1: platform + account + status -->
+                <div class="pq-card__header">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <SocialPlatformLabel
+                      v-if="post.social_credential?.provider"
+                      :type="post.social_credential.provider"
+                      variant="pill"
+                      size="sm"
+                      :show-label="true"
+                      :suffix="post.social_credential.account_label ? ` · ${post.social_credential.account_label}` : ''"
+                    />
+                    <span v-else class="pq-card__no-account">No account linked</span>
+                  </div>
+                  <span class="pq-status-badge" :class="`pq-status-badge--${statusKey(post)}`">
+                    {{ statusLabel(post) }}
+                  </span>
+                </div>
+
+                <!-- Caption preview -->
+                <p v-if="post.content_package?.caption" class="pq-card__caption">
+                  {{ post.content_package.caption }}
+                </p>
+                <p v-else class="pq-card__no-caption">No content package attached</p>
+
+                <!-- Meta row: time info -->
+                <div class="pq-card__meta">
+                  <span v-if="post.status === 'published' && post.published_at">
+                    <span class="pq-meta-icon">✓</span>
+                    Published {{ formatScheduledAt(post.published_at) }}
+                  </span>
+                  <span v-else-if="post.status === 'scheduled' && post.retry_count > 0">
+                    <span class="pq-meta-icon">↻</span>
+                    Next attempt {{ formatScheduledAt(post.scheduled_at) }}
+                  </span>
+                  <span v-else>
+                    <span class="pq-meta-icon">⏰</span>
+                    Scheduled for {{ formatScheduledAt(post.scheduled_at) }}
+                  </span>
+                  <span class="pq-meta-id">#{{ post.id }}</span>
+                </div>
+
+                <!-- Attempt counter -->
+                <div v-if="post.retry_count > 0" class="pq-attempt">
+                  <span class="pq-attempt__label">Attempt {{ post.retry_count }} of 3</span>
+                  <span v-if="post.status === 'failed'" class="pq-attempt__exhausted">— no more automatic retries</span>
+                  <span v-else class="pq-attempt__next">— retrying automatically</span>
+                </div>
+
+                <!-- Error reason -->
+                <div v-if="post.error_message" class="pq-error">
+                  <span class="pq-error__label">Failure reason</span>
+                  <span class="pq-error__message">{{ post.error_message }}</span>
+                </div>
+
               </div>
-              <span class="text-xs text-slate-400 shrink-0">
-                {{ formatScheduledAt(post.scheduled_at) }}
-              </span>
+
+              <!-- Right: actions -->
+              <div class="pq-card__actions">
+                <!-- Published: view link -->
+                <a
+                  v-if="post.status === 'published' && post.platform_post_url"
+                  :href="post.platform_post_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="pq-action-link"
+                >
+                  View post
+                  <svg class="pq-action-link__icon" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5m0 0v5m0-5L7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+
+                <!-- Failed: retry -->
+                <AppButton
+                  v-if="post.status === 'failed'"
+                  size="sm"
+                  variant="primary"
+                  :loading="retrying[post.id]"
+                  @click="retry(post)"
+                >
+                  Retry now
+                </AppButton>
+
+                <!-- Scheduled: cancel -->
+                <button
+                  v-if="post.status === 'scheduled'"
+                  type="button"
+                  class="pq-cancel-btn"
+                  :disabled="cancelling[post.id]"
+                  @click="cancel(post)"
+                >
+                  {{ cancelling[post.id] ? 'Cancelling…' : 'Cancel' }}
+                </button>
+              </div>
+
             </div>
-
-            <!-- Caption preview -->
-            <p v-if="post.content_package?.caption" class="text-sm text-slate-600 line-clamp-2">
-              {{ post.content_package.caption }}
-            </p>
-            <p v-else class="text-xs text-slate-400 italic">No content package attached</p>
-
-            <!-- Retry info (failed or retrying) -->
-            <div v-if="post.retry_count > 0" class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded px-3 py-1.5">
-              <span class="font-medium">Attempt {{ post.retry_count }} / 3</span>
-              <span v-if="post.status === 'scheduled'" class="text-amber-600">
-                · Next retry {{ formatScheduledAt(post.scheduled_at) }}
-              </span>
-            </div>
-
-            <!-- Error message -->
-            <div v-if="post.error_message" class="rounded border border-red-200 bg-red-50 px-3 py-2">
-              <p class="text-xs font-semibold text-red-700 mb-0.5">Failure reason</p>
-              <p class="text-xs text-red-600 break-words">{{ post.error_message }}</p>
-            </div>
-
-            <!-- Published: post URL -->
-            <div v-if="post.status === 'published'" class="flex flex-wrap items-center gap-3 text-xs">
-              <span class="text-slate-500">Published {{ formatScheduledAt(post.published_at) }}</span>
-              <a
-                v-if="post.platform_post_url"
-                :href="post.platform_post_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-blue-600 hover:underline"
-              >View post →</a>
-            </div>
-
-            <!-- Actions -->
-            <div v-if="post.status === 'failed'" class="flex items-center gap-2 pt-1">
-              <AppButton
-                size="sm"
-                variant="primary"
-                :loading="retrying[post.id]"
-                @click="retry(post)"
-              >
-                Retry now
-              </AppButton>
-              <span class="text-xs text-slate-400">Will attempt within 1 minute</span>
-            </div>
-
           </div>
-        </AppCard>
+        </div>
       </template>
     </template>
   </div>
@@ -115,7 +171,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import axios from 'axios';
-import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
+import { AppAlert, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
@@ -127,27 +183,28 @@ const queue = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const retrying = reactive({});
+const cancelling = reactive({});
 let pollTimer = null;
 
+/** 'retrying' = scheduled but has already failed at least once */
+function statusKey(post) {
+  if (post.status === 'failed') return 'failed';
+  if (post.status === 'published') return 'published';
+  if (post.status === 'scheduled' && post.retry_count > 0) return 'retrying';
+  return 'scheduled';
+}
+
+function statusLabel(post) {
+  const map = { failed: 'Failed', published: 'Published', retrying: 'Retrying', scheduled: 'Scheduled' };
+  return map[statusKey(post)];
+}
+
 const counts = computed(() => ({
-  scheduled: queue.value.filter((p) => p.status === 'scheduled').length,
+  scheduled: queue.value.filter((p) => statusKey(p) === 'scheduled').length,
+  retrying: queue.value.filter((p) => statusKey(p) === 'retrying').length,
   failed: queue.value.filter((p) => p.status === 'failed').length,
   published: queue.value.filter((p) => p.status === 'published').length,
 }));
-
-function statusLabel(post) {
-  if (post.status === 'failed') return 'Failed';
-  if (post.status === 'published') return 'Published';
-  if (post.status === 'scheduled' && post.retry_count > 0) return 'Retrying';
-  return 'Scheduled';
-}
-
-function statusBadgeVariant(post) {
-  if (post.status === 'failed') return 'danger';
-  if (post.status === 'published') return 'success';
-  if (post.status === 'scheduled' && post.retry_count > 0) return 'warning';
-  return 'info';
-}
 
 async function load() {
   loading.value = true;
@@ -177,13 +234,303 @@ async function retry(post) {
   }
 }
 
+async function cancel(post) {
+  cancelling[post.id] = true;
+  try {
+    await axios.delete(`/api/schedule/${post.id}`);
+    queue.value = queue.value.filter((p) => p.id !== post.id);
+    toast.success('Schedule cancelled.');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Could not cancel post');
+  } finally {
+    cancelling[post.id] = false;
+  }
+}
+
 onMounted(() => {
   load();
-  // Auto-refresh every 30 seconds so statuses update without manual reload
   pollTimer = setInterval(load, 30_000);
 });
 
-onUnmounted(() => {
-  clearInterval(pollTimer);
-});
+onUnmounted(() => clearInterval(pollTimer));
 </script>
+
+<style scoped>
+/* ── Stats bar ── */
+.pq-stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.65rem 1rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
+  background: #fff;
+}
+
+.pq-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.pq-stat-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: #e6ebf2;
+  flex-shrink: 0;
+}
+
+.pq-stat__count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pq-stat__count--info    { color: #0369a1; }
+.pq-stat__count--warning { color: #b45309; }
+.pq-stat__count--danger  { color: #dc2626; }
+.pq-stat__count--success { color: #059669; }
+
+.pq-stat__label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ── Post card ── */
+.pq-card {
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
+  background: #fff;
+  overflow: hidden;
+  border-left-width: 3px;
+  transition: box-shadow 0.15s ease;
+}
+
+.pq-card:hover {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
+}
+
+.pq-card--scheduled { border-left-color: #38bdf8; }
+.pq-card--retrying  { border-left-color: #f59e0b; }
+.pq-card--failed    { border-left-color: #ef4444; }
+.pq-card--published { border-left-color: #10b981; }
+
+.pq-card__body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem 0.85rem 0.85rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .pq-card__body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+/* ── Main content column ── */
+.pq-card__main {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pq-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pq-card__no-account {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.pq-card__caption {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #475569;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pq-card__no-caption {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.pq-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.pq-meta-icon {
+  margin-right: 0.25rem;
+}
+
+.pq-meta-id {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Attempt counter ── */
+.pq-attempt {
+  font-size: 0.72rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.45rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  width: fit-content;
+}
+
+.pq-attempt__label {
+  font-weight: 600;
+  color: #92400e;
+}
+
+.pq-attempt__exhausted {
+  color: #b45309;
+}
+
+.pq-attempt__next {
+  color: #78350f;
+}
+
+/* ── Error box ── */
+.pq-error {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.55rem;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+}
+
+.pq-error__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b91c1c;
+}
+
+.pq-error__message {
+  font-size: 0.78rem;
+  color: #dc2626;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* ── Status badge ── */
+.pq-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pq-status-badge--scheduled {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.pq-status-badge--retrying {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pq-status-badge--failed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pq-status-badge--published {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* ── Actions column ── */
+.pq-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.pq-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1fae5;
+  background: #ecfdf5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #065f46;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.pq-action-link:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+.pq-action-link__icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+}
+
+.pq-cancel-btn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.pq-cancel-btn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.pq-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
