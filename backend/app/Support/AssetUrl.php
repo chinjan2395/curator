@@ -13,6 +13,14 @@ class AssetUrl
             return null;
         }
 
+        if ($asset->storage_disk === 'googledrive') {
+            $external = $asset->externalUrl();
+
+            if (is_string($external) && $external !== '') {
+                return $external;
+            }
+        }
+
         return URL::temporarySignedRoute(
             'content.assets.file',
             now()->addDays(7),

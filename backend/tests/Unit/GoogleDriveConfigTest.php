@@ -28,4 +28,30 @@ class GoogleDriveConfigTest extends TestCase
 
         $this->assertTrue(GoogleDriveConfig::isConfigured());
     }
+
+    public function test_resolve_falls_back_to_process_env_when_config_is_empty(): void
+    {
+        config([
+            'filesystems.disks.googledrive.clientId' => '',
+            'filesystems.disks.googledrive.clientSecret' => '',
+            'filesystems.disks.googledrive.refreshToken' => '',
+        ]);
+
+        putenv('GOOGLE_DRIVE_CLIENT_ID=client-from-env');
+        putenv('GOOGLE_DRIVE_CLIENT_SECRET=secret-from-env');
+        putenv('GOOGLE_DRIVE_REFRESH_TOKEN=1//refresh-from-env');
+
+        try {
+            $resolved = GoogleDriveConfig::resolve();
+
+            $this->assertSame('client-from-env', $resolved['clientId']);
+            $this->assertSame('secret-from-env', $resolved['clientSecret']);
+            $this->assertSame('1//refresh-from-env', $resolved['refreshToken']);
+            $this->assertTrue(GoogleDriveConfig::isConfigured());
+        } finally {
+            putenv('GOOGLE_DRIVE_CLIENT_ID');
+            putenv('GOOGLE_DRIVE_CLIENT_SECRET');
+            putenv('GOOGLE_DRIVE_REFRESH_TOKEN');
+        }
+    }
 }

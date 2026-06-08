@@ -81,6 +81,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Storage::extend('google', function ($app, array $config) {
+            $config = array_merge($config, GoogleDriveConfig::resolve());
+
             $options = [];
 
             if (! empty($config['teamDriveId'] ?? null)) {
