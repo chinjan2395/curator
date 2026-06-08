@@ -42,6 +42,7 @@ use App\Http\Controllers\ContentTemplateController;
 use App\Http\Controllers\ContentBlockController;
 use App\Http\Controllers\Admin\TrendsController;
 use App\Http\Controllers\Admin\ModerationController;
+use App\Http\Controllers\Admin\DevToolsController;
 use App\Http\Controllers\CapabilitiesController;
 use App\Http\Controllers\SetupStatusController;
 
@@ -217,4 +218,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('integrations/health', [AdminSystemController::class, 'integrationHealth']);
     Route::get('trends', [TrendsController::class, 'index']);
     Route::get('posts/pending', [ModerationController::class, 'pending']);
+
+    Route::get('dev-tools/commands', [DevToolsController::class, 'index']);
+    Route::post('dev-tools/run', [DevToolsController::class, 'run']);
 });

@@ -190,6 +190,20 @@
                 <span v-if="!sidebarCollapsed">Activity</span>
               </router-link>
             </li>
+            <li>
+              <router-link
+                to="/admin/dev-tools"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': $route.path.startsWith('/admin/dev-tools') },
+                  sidebarCollapsed ? 'justify-center px-2' : ''
+                ]"
+                :title="sidebarCollapsed ? 'Dev Tools' : ''"
+              >
+                <AppIcon name="terminal" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">Dev Tools</span>
+              </router-link>
+            </li>
           </ul>
         </div>
 

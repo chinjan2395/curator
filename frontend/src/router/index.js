@@ -32,6 +32,7 @@ import AnalyticsPlatform from '../views/AnalyticsPlatform.vue';
 import AdminSystem from '../views/admin/AdminSystem.vue';
 import AdminTrends from '../views/admin/AdminTrends.vue';
 import AdminModeration from '../views/admin/AdminModeration.vue';
+import DevTools from '../views/admin/DevTools.vue';
 import UsersList from '../views/admin/UsersList.vue';
 import UserDetail from '../views/admin/UserDetail.vue';
 import SyncOperations from '../views/admin/SyncOperations.vue';
@@ -87,6 +88,7 @@ const routes = [
       { path: 'admin/system', name: 'admin-system', component: AdminSystem, meta: { requiresAdmin: true } },
       { path: 'admin/trends', name: 'admin-trends', component: AdminTrends, meta: { requiresAdmin: true } },
       { path: 'admin/moderation', name: 'admin-moderation', component: AdminModeration, meta: { requiresAdmin: true } },
+      { path: 'admin/dev-tools', name: 'admin-dev-tools', component: DevTools, meta: { requiresAdmin: true } },
     ],
   },
 ];
