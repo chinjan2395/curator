@@ -11,12 +11,40 @@ use App\Models\Feed;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Services\PostService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PostController extends Controller
 {
     public function __construct(private readonly PostService $postService) {}
+
+    public function workspaceIndex(Request $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+
+        $feedId = $request->query('feed_id');
+        $since = $request->query('since');
+
+        $query = Post::query()
+            ->whereHas('feed', fn ($feedQuery) => $feedQuery->where('workspace_id', $workspace->id))
+            ->orderByDesc('pinned')
+            ->orderByDesc('posted_at');
+
+        if (is_numeric($feedId) && (int) $feedId > 0) {
+            $query->where('feed_id', (int) $feedId);
+        }
+
+        if (is_string($since) && $since !== '') {
+            try {
+                $query->where('updated_at', '>', Carbon::parse($since));
+            } catch (\Throwable) {
+                // Ignore invalid since values and return the unfiltered workspace set.
+            }
+        }
+
+        return ApiResponse::success(PostResource::collection($query->get()));
+    }
 
     public function index(Request $request, Workspace $workspace, Feed $feed): JsonResponse
     {
