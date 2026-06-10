@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { apiUrlFromAny } from '../config/api.js';
 
 /** Metadata for buttons; visibility comes from GET /api/auth/social/providers (env-backed). */
 export const ALL_SOCIAL_LOGIN_PROVIDERS = [
@@ -39,6 +40,11 @@ export function socialLoginButtonGridClass(count) {
     return 'grid grid-cols-1 gap-2 sm:grid-cols-3';
   }
   return 'grid grid-cols-2 gap-2 md:grid-cols-4';
+}
+
+/** Full URL for browser redirect to Laravel social login (respects VITE_API_BASE_URL in split deploys). */
+export function socialLoginRedirectUrl(providerId) {
+  return apiUrlFromAny(`/api/auth/social/${providerId}`);
 }
 
 /**

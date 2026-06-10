@@ -11,7 +11,7 @@
             <AppButton
               v-for="p in socialProviders"
               :key="p.id"
-              :href="`/api/auth/social/${p.id}`"
+              :href="socialLoginRedirectUrl(p.id)"
               variant="secondary"
               class="social-btn"
             >
@@ -75,7 +75,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AuthLayout from '../layouts/AuthLayout.vue'
-import { fetchEnabledSocialLoginProviders, socialLoginButtonGridClass } from '../data/socialLoginProviders'
+import { fetchEnabledSocialLoginProviders, socialLoginButtonGridClass, socialLoginRedirectUrl } from '../data/socialLoginProviders'
 import { AppAlert, AppButton, AppFormField, AppInput, AppLoader } from '../components/ui/index.js'
 import { AppStack } from '../components/layout/index.js'
 
