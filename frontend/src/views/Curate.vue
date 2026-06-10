@@ -234,10 +234,10 @@
               <!-- Actions -->
               <div class="post-action-row">
                 <AppButton
+                  v-if="p.status !== 'approved'"
                   variant="success"
                   size="sm"
                   class="post-action-btn post-action-btn--icon"
-                  :class="{ 'post-action-active': p.status === 'approved' }"
                   @click="setStatus(p, 'approved')"
                   title="Approve"
                   aria-label="Approve"
@@ -245,10 +245,10 @@
                   <AppIcon name="check" class="w-3.5 h-3.5" />
                 </AppButton>
                 <AppButton
+                  v-if="p.status !== 'rejected'"
                   variant="danger"
                   size="sm"
                   class="post-action-btn post-action-btn--icon"
-                  :class="{ 'post-action-active': p.status === 'rejected' }"
                   @click="setStatus(p, 'rejected')"
                   title="Reject"
                   aria-label="Reject"
@@ -296,7 +296,8 @@
         </div>
         <div class="px-4 py-3 border-t border-slate-200 flex items-center gap-2">
           <AppButton
-            :variant="previewPost.status === 'approved' ? 'success' : 'secondary'"
+            v-if="previewPost.status !== 'approved'"
+            variant="success"
             size="sm"
             @click="setStatus(previewPost, 'approved')"
           >
@@ -304,7 +305,8 @@
             Approve
           </AppButton>
           <AppButton
-            :variant="previewPost.status === 'rejected' ? 'danger' : 'secondary'"
+            v-if="previewPost.status !== 'rejected'"
+            variant="danger"
             size="sm"
             @click="setStatus(previewPost, 'rejected')"
           >
@@ -463,7 +465,9 @@ function toggleSelectAll() {
 }
 
 async function bulkApprove() {
-  const toUpdate = visiblePosts.value.filter(p => selectedPostIds.value.has(p.id));
+  const toUpdate = visiblePosts.value.filter(
+    (p) => selectedPostIds.value.has(p.id) && p.status !== 'approved',
+  );
   if (!toUpdate.length) return;
   await posts.bulkUpdate(workspaceId.value, toUpdate.map(p => p.id), { status: 'approved' });
   toast.success(`Approved ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
@@ -471,7 +475,9 @@ async function bulkApprove() {
 }
 
 async function bulkReject() {
-  const toUpdate = visiblePosts.value.filter(p => selectedPostIds.value.has(p.id));
+  const toUpdate = visiblePosts.value.filter(
+    (p) => selectedPostIds.value.has(p.id) && p.status !== 'rejected',
+  );
   if (!toUpdate.length) return;
   await posts.bulkUpdate(workspaceId.value, toUpdate.map(p => p.id), { status: 'rejected' });
   toast.success(`Rejected ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
@@ -485,7 +491,7 @@ async function refresh() {
   const feediesToLoad = feedId.value ? feeds.list.filter(f => f.id === Number(feedId.value)) : feeds.list;
   for (const feed of feediesToLoad) {
     try {
-      const feedPosts = await posts.fetchAll(workspaceId.value, feed.id, { status: filterStatus.value || null });
+      const feedPosts = await posts.fetchAll(workspaceId.value, feed.id);
       feedPosts.forEach(p => p._feedId = feed.id);
       allPosts.push(...feedPosts);
     } catch {
@@ -530,12 +536,7 @@ onBeforeUnmount(() => {
   }
 });
 
-watch(filterStatus, () => {
-  clearSelection();
-  refresh();
-});
-
-watch(filterPlatform, () => {
+watch([filterStatus, filterPlatform], () => {
   clearSelection();
 });
 

@@ -22,19 +22,24 @@ export function trackEmbedPostEvent(publicKey, postId, eventType = 'post_click',
   });
 
   try {
-    if (navigator.sendBeacon) {
-      const blob = new Blob([payload], { type: 'application/json' });
-      if (navigator.sendBeacon(endpoint, blob)) return;
-    }
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      credentials: 'omit',
+      keepalive: true,
+    }).catch(() => {});
+    return;
   } catch {
-    // fall through to fetch
+    // fall through to sendBeacon
   }
 
-  fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-    credentials: 'omit',
-    keepalive: true,
-  }).catch(() => {});
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon(endpoint, blob);
+    }
+  } catch {
+    // Analytics must never block preview navigation.
+  }
 }

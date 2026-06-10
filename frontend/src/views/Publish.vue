@@ -633,6 +633,7 @@
                     rel="noreferrer"
                     class="crt-card crt-card--showcase crt-link"
                     :style="previewCardStyle(idx)"
+                    @pointerdown="trackPreviewPostClick(row.p)"
                     @click="trackPreviewPostClick(row.p)"
                   >
                     <div v-if="row.p.thumbnail_url" class="crt-media">
@@ -983,6 +984,7 @@
                   rel="noreferrer"
                   class="crt-card crt-link"
                   :style="previewCardStyle(idx)"
+                  @pointerdown="trackPreviewPostClick(p)"
                   @click="trackPreviewPostClick(p)"
                 >
                   <div v-if="p.thumbnail_url" class="crt-media">
@@ -1098,6 +1100,7 @@
               target="_blank"
               rel="noreferrer"
               class="block bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-card transition overflow-hidden"
+              @pointerdown="trackPreviewPostClick(p)"
               @click="trackPreviewPostClick(p)"
             >
               <div v-if="p.thumbnail_url" class="aspect-video bg-slate-100 overflow-hidden">
@@ -1270,6 +1273,7 @@ const previewShareMenuForPostId = ref(null);
 const embedPreviewVersion = ref(0);
 const embedLivePreviewNonce = ref(0);
 const autoPublishInFlight = ref(false);
+const previewClickTrackedAt = new Map();
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
@@ -1672,6 +1676,10 @@ function previewShareUrl(provider, url) {
 function trackPreviewPostClick(post) {
   const key = embedPublicKey.value;
   if (!key || !post?.id) return;
+  const lastTracked = previewClickTrackedAt.get(post.id) || 0;
+  const now = Date.now();
+  if (now - lastTracked < 1200) return;
+  previewClickTrackedAt.set(post.id, now);
   trackEmbedPostEvent(key, post.id, 'post_click', postLinkHref(post));
 }
 
