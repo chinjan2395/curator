@@ -578,7 +578,32 @@
           />
         </Teleport>
 
-        <div v-if="previewLoading" class="text-sm-pro text-slate-500">Loading preview…</div>
+        <div
+          v-if="isPreviewSectionLoading"
+          class="publish-preview-skeleton rounded-lg border border-slate-200/90 bg-slate-50/90 p-3"
+          aria-busy="true"
+          aria-label="Loading embed preview"
+        >
+          <div class="publish-preview-skeleton__grid">
+            <div
+              v-for="n in previewSkeletonCount"
+              :key="n"
+              class="publish-preview-skeleton__card"
+            >
+              <div class="publish-preview-skeleton__media" />
+              <div class="publish-preview-skeleton__body">
+                <div class="publish-preview-skeleton__row">
+                  <div class="publish-preview-skeleton__avatar" />
+                  <div class="publish-preview-skeleton__line publish-preview-skeleton__line--sm" />
+                </div>
+                <div class="publish-preview-skeleton__line publish-preview-skeleton__line--full" />
+                <div class="publish-preview-skeleton__line publish-preview-skeleton__line--lg" />
+                <div class="publish-preview-skeleton__line publish-preview-skeleton__line--xs" />
+              </div>
+            </div>
+          </div>
+          <p class="publish-preview-skeleton__caption">Loading published posts preview…</p>
+        </div>
         <div v-else-if="!previewPosts.length" class="text-sm-pro text-slate-600 space-y-2">
           <p>No published posts in this preview yet.</p>
           <p class="text-2xs text-slate-500">
@@ -1267,6 +1292,7 @@ const publishedCount = ref(null);
 const showEmbedPreview = ref(false);
 
 const previewLoading = ref(false);
+const hasLoadedPreviewOnce = ref(false);
 const previewPosts = ref([]);
 const previewStripRef = ref(null);
 const previewShareMenuForPostId = ref(null);
@@ -1346,6 +1372,10 @@ const embedJsPath = computed(() => {
 });
 
 const previewUsesEmbedStylesheet = computed(() => !!embedCssHref.value);
+
+const isPreviewSectionLoading = computed(
+  () => previewLoading.value || (!!workspaceId.value && !hasLoadedPreviewOnce.value),
+);
 
 const previewPostsJsonUrl = computed(() => {
   const key = embedPublicKey.value;
@@ -1518,6 +1548,8 @@ const previewLayoutClass = computed(() => {
 const previewIsShowcase = computed(
   () => String(appearance.value?.feed_style || '').replace(/-/g, '_') === 'showcase_carousel',
 );
+
+const previewSkeletonCount = computed(() => (previewIsShowcase.value ? 3 : 6));
 
 const showcasePreviewRows = computed(() =>
   previewPosts.value.map((p) => {
@@ -1886,6 +1918,7 @@ watch(showEmbedPreview, (open) => {
 watch(workspaceId, async (id) => {
   publish.clear();
   previewPosts.value = [];
+  hasLoadedPreviewOnce.value = false;
   if (id) {
     await publish.fetchStats(id);
     await publish.fetchCode(id);
@@ -1906,9 +1939,14 @@ async function saveAppearance() {
 
 async function refresh() {
   if (!workspaceId.value) return;
-  await publish.fetchStats(workspaceId.value);
-  await publish.fetchCode(workspaceId.value);
-  await loadPreview();
+  previewLoading.value = true;
+  try {
+    await publish.fetchStats(workspaceId.value);
+    await publish.fetchCode(workspaceId.value);
+    await loadPreview();
+  } catch {
+    previewLoading.value = false;
+  }
 }
 
 async function autoPublishIfNeeded() {
@@ -1957,7 +1995,11 @@ async function copyCode() {
 
 async function loadPreview() {
   const key = publish.code?.public_key || publish.stats?.public_key;
-  if (!key) return;
+  if (!key) {
+    previewLoading.value = false;
+    hasLoadedPreviewOnce.value = true;
+    return;
+  }
   const url = apiUrlFromAny(`/api/public/feeds/${encodeURIComponent(key)}/posts`);
   previewLoading.value = true;
   try {
@@ -1967,12 +2009,108 @@ async function loadPreview() {
     previewPosts.value = [];
   } finally {
     previewLoading.value = false;
+    hasLoadedPreviewOnce.value = true;
   }
 }
 
 </script>
 
 <style scoped>
+.publish-preview-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .publish-preview-skeleton__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .publish-preview-skeleton__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.publish-preview-skeleton__card {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240 / 0.9);
+  background: #fff;
+}
+
+.publish-preview-skeleton__media {
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 45%, #e2e8f0 90%);
+  background-size: 200% 100%;
+  animation: publish-preview-shimmer 1.35s ease-in-out infinite;
+}
+
+.publish-preview-skeleton__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem;
+}
+
+.publish-preview-skeleton__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.publish-preview-skeleton__avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 45%, #e2e8f0 90%);
+  background-size: 200% 100%;
+  animation: publish-preview-shimmer 1.35s ease-in-out infinite;
+}
+
+.publish-preview-skeleton__line {
+  height: 0.65rem;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 45%, #e2e8f0 90%);
+  background-size: 200% 100%;
+  animation: publish-preview-shimmer 1.35s ease-in-out infinite;
+}
+
+.publish-preview-skeleton__line--sm {
+  width: 35%;
+}
+
+.publish-preview-skeleton__line--full {
+  width: 92%;
+}
+
+.publish-preview-skeleton__line--lg {
+  width: 78%;
+}
+
+.publish-preview-skeleton__line--xs {
+  width: 28%;
+}
+
+.publish-preview-skeleton__caption {
+  margin-top: 0.85rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+@keyframes publish-preview-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .curator-embed-preview--showcase {
   background: #0b0f19;
   border-color: rgba(148, 163, 184, 0.25);
