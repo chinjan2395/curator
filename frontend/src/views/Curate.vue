@@ -94,10 +94,10 @@
         <span class="text-sm font-medium text-slate-700">{{ selectedPostIds.size }} selected</span>
       </div>
       <div class="curate-bulk-bar__actions">
-        <AppButton variant="success" size="sm" @click="bulkApprove">
+        <AppButton variant="success" size="sm" :disabled="!canBulkApprove" @click="bulkApprove">
           <AppIcon name="check" class="w-3.5 h-3.5" /> Approve
         </AppButton>
-        <AppButton variant="danger" size="sm" @click="bulkReject">
+        <AppButton variant="danger" size="sm" :disabled="!canBulkReject" @click="bulkReject">
           <AppIcon name="close" class="w-3.5 h-3.5" /> Reject
         </AppButton>
         <AppButton variant="secondary" size="sm" @click="clearSelection">Clear</AppButton>
@@ -224,7 +224,7 @@
               <button
                 class="text-left text-2xs text-slate-700 hover:text-blue-700 transition-colors flex-1 leading-relaxed"
                 :class="viewMode === 'compact' ? 'line-clamp-2' : 'line-clamp-4'"
-                @click="previewPost = p"
+                @click="previewPostId = p.id"
                 title="Click to preview"
               >
                 <strong v-if="p.title" class="block text-slate-800 font-semibold mb-0.5 line-clamp-1">{{ p.title }}</strong>
@@ -264,14 +264,14 @@
     </div>
 
     <!-- Post preview modal -->
-    <AppModal v-if="previewPost" :open="true" :closable="true" size="lg" @close="previewPost = null">
+    <AppModal v-if="previewPost" :open="true" :closable="true" size="lg" @close="previewPostId = null">
       <div class="w-full">
         <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <span
             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
             :class="statusBadgeClass(previewPost.status)"
           >{{ previewPost.status }}</span>
-          <AppButton variant="secondary" size="sm" @click="previewPost = null" aria-label="Close preview">
+          <AppButton variant="secondary" size="sm" @click="previewPostId = null" aria-label="Close preview">
             <AppIcon name="close" class="w-4 h-4" />
           </AppButton>
         </div>
@@ -346,7 +346,11 @@ const feedId = computed(() => route.params.feedId);
 
 const filterStatus = ref('');
 const filterPlatform = ref('');
-const previewPost = ref(null);
+const previewPostId = ref(null);
+const previewPost = computed(() => {
+  if (!previewPostId.value) return null;
+  return posts.list.find((post) => post.id === previewPostId.value) ?? null;
+});
 const viewMode = ref('cards');
 const brokenThumbnails = ref(new Set());
 const autoRefreshTimer = ref(null);
@@ -389,6 +393,18 @@ const visiblePosts = computed(() => {
   if (filterStatus.value) return filteredPosts.value;
   return filteredPosts.value.filter((p) => p.status !== 'rejected');
 });
+
+const selectedPosts = computed(() =>
+  visiblePosts.value.filter((post) => selectedPostIds.value.has(post.id)),
+);
+
+const canBulkApprove = computed(() =>
+  selectedPosts.value.some((post) => post.status !== 'approved'),
+);
+
+const canBulkReject = computed(() =>
+  selectedPosts.value.some((post) => post.status !== 'rejected'),
+);
 
 const allVisibleSelected = computed(() => {
   const ids = visiblePosts.value.map(p => p.id);
@@ -484,21 +500,36 @@ async function bulkReject() {
   clearSelection();
 }
 
-async function refresh() {
-  clearSelection();
-  posts.clearList();
-  const allPosts = [];
-  const feediesToLoad = feedId.value ? feeds.list.filter(f => f.id === Number(feedId.value)) : feeds.list;
-  for (const feed of feediesToLoad) {
-    try {
-      const feedPosts = await posts.fetchAll(workspaceId.value, feed.id);
-      feedPosts.forEach(p => p._feedId = feed.id);
-      allPosts.push(...feedPosts);
-    } catch {
-      // Continue loading from other feeds
-    }
+function getLatestUpdatedAt() {
+  let latest = null;
+  for (const post of posts.list) {
+    const at = post.updated_at || post.posted_at;
+    if (!at) continue;
+    const date = new Date(at);
+    if (Number.isNaN(date.getTime())) continue;
+    if (!latest || date > latest) latest = date;
   }
-  posts.list = allPosts.sort((a, b) => new Date(b.posted_at) - new Date(a.posted_at));
+  return latest ? latest.toISOString() : null;
+}
+
+async function refresh({ incremental = false } = {}) {
+  if (!incremental) {
+    clearSelection();
+    posts.clearList();
+  }
+
+  const fetched = await posts.fetchWorkspace(workspaceId.value, {
+    feedId: feedId.value ? Number(feedId.value) : null,
+    since: incremental ? getLatestUpdatedAt() : null,
+    silent: incremental,
+  });
+
+  if (incremental) {
+    posts.mergePosts(fetched);
+    return;
+  }
+
+  posts.list = fetched;
 }
 
 async function syncNow() {
@@ -525,7 +556,11 @@ onMounted(async () => {
   // Keep Curate list fresh while scheduler/background sync adds posts.
   autoRefreshTimer.value = window.setInterval(async () => {
     if (document.hidden || posts.loading || feeds.syncing) return;
-    await refresh();
+    try {
+      await refresh({ incremental: true });
+    } catch {
+      // Background refresh should not interrupt curation.
+    }
   }, 30000);
 });
 
