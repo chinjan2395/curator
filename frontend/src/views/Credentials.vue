@@ -27,10 +27,10 @@
       </div>
     </div>
 
-    <div v-if="creds.loading" class="surface-card-soft px-4 py-3">
-      <AppLoader size="sm" label="Loading..." />
+    <div v-if="isPageLoading" class="surface-card-soft px-4 py-3">
+      <AppLoader size="sm" label="Loading connected accounts and OAuth settings…" />
     </div>
-    <div v-else-if="creds.error" class="text-sm-pro text-red-600">{{ creds.error }}</div>
+    <div v-else-if="pageError" class="text-sm-pro text-red-600">{{ pageError }}</div>
     <AppCard v-else-if="!providerCards.length" class="p-6 text-center text-sm-pro text-slate-500">
       No providers are ready yet. Configure shared defaults or your override in
       <router-link to="/oauth-apps" class="text-blue-600 font-medium hover:underline">OAuth apps</router-link>.
@@ -237,6 +237,14 @@ const oauthProviderByProvider = {
   linkedin: 'linkedin',
 };
 const connectableProviders = computed(() => socialProviders.filter((item) => isProviderConnectable(item.type)));
+const pageInitializing = ref(true);
+
+const isPageLoading = computed(
+  () => pageInitializing.value || creds.loading || oauthApps.loading,
+);
+
+const pageError = computed(() => creds.error || oauthApps.error);
+
 const providerCards = computed(() => connectableProviders.value.map((item) => {
   const credentials = creds.byProvider?.[item.type] || [];
   return {
@@ -255,26 +263,29 @@ function isProviderConnectable(providerType) {
 }
 
 onMounted(async () => {
-  await creds.fetchAll();
-  await oauthApps.fetchAll();
-  if (!isProviderConnectable(provider.value) && connectableProviders.value.length) {
-    provider.value = connectableProviders.value[0].type;
-  }
-  const connected = route.query.connected;
-  const error = route.query.error;
-  const message = route.query.message;
-  if (connected && implementedProviders.includes(connected)) {
-    const label = getPlatformLabel(connected);
-    toast.success(`${label} connected successfully`);
-    await creds.fetchAll();
-    if (window.history.replaceState) {
-      window.history.replaceState({}, '', '/credentials');
+  try {
+    await Promise.all([creds.fetchAll(), oauthApps.fetchAll()]);
+    if (!isProviderConnectable(provider.value) && connectableProviders.value.length) {
+      provider.value = connectableProviders.value[0].type;
     }
-  } else if (error) {
-    toast.error(message ? decodeURIComponent(message) : 'Connection failed');
-    if (window.history.replaceState) {
-      window.history.replaceState({}, '', '/credentials');
+    const connected = route.query.connected;
+    const error = route.query.error;
+    const message = route.query.message;
+    if (connected && implementedProviders.includes(connected)) {
+      const label = getPlatformLabel(connected);
+      toast.success(`${label} connected successfully`);
+      await creds.fetchAll();
+      if (window.history.replaceState) {
+        window.history.replaceState({}, '', '/credentials');
+      }
+    } else if (error) {
+      toast.error(message ? decodeURIComponent(message) : 'Connection failed');
+      if (window.history.replaceState) {
+        window.history.replaceState({}, '', '/credentials');
+      }
     }
+  } finally {
+    pageInitializing.value = false;
   }
 });
 
