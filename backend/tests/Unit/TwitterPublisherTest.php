@@ -68,4 +68,42 @@ class TwitterPublisherTest extends TestCase
                 && $request['text'] === 'Hello from Curator #launch';
         });
     }
+
+    public function test_rejects_video_attachment_with_clear_message(): void
+    {
+        $user = User::factory()->create();
+        $credential = SocialCredential::create([
+            'user_id' => $user->id,
+            'provider' => 'twitter',
+            'account_id' => 'user-1',
+            'access_token' => 'test-token',
+            'expires_at' => now()->addHour(),
+            'status' => 'active',
+        ]);
+
+        $campaign = Campaign::create(['user_id' => $user->id, 'name' => 'Launch', 'status' => 'generated']);
+        $package = ContentPackage::create([
+            'campaign_id' => $campaign->id,
+            'user_id' => $user->id,
+            'platform' => 'twitter',
+            'content_type' => 'video',
+            'caption' => 'Clip',
+            'media_urls' => ['https://cdn.example.com/clip.mp4'],
+            'status' => 'approved',
+        ]);
+
+        $scheduled = ScheduledPost::create([
+            'user_id' => $user->id,
+            'social_credential_id' => $credential->id,
+            'content_package_id' => $package->id,
+            'scheduled_at' => now(),
+            'status' => 'scheduled',
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('video upload is not yet supported');
+
+        (new TwitterPublisher)->publish($scheduled);
+    }
 }
+

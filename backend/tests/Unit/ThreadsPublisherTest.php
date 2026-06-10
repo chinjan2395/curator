@@ -70,6 +70,41 @@ class ThreadsPublisherTest extends TestCase
         });
     }
 
+    public function test_publishes_carousel_thread(): void
+    {
+        Http::fake([
+            'https://graph.threads.net/v1.0/threads-user-9/threads' => Http::sequence()
+                ->push(['id' => 'child_1'], 200)
+                ->push(['id' => 'child_2'], 200)
+                ->push(['id' => 'carousel_1'], 200),
+            'https://graph.threads.net/v1.0/child_1*' => Http::response(['status' => 'FINISHED'], 200),
+            'https://graph.threads.net/v1.0/child_2*' => Http::response(['status' => 'FINISHED'], 200),
+            'https://graph.threads.net/v1.0/carousel_1*' => Http::response(['status' => 'FINISHED'], 200),
+            'https://graph.threads.net/v1.0/threads-user-9/threads_publish' => Http::response(['id' => 'thread_post_3'], 200),
+            'https://graph.threads.net/v1.0/thread_post_3*' => Http::response([
+                'permalink' => 'https://www.threads.net/@creator/post/carousel',
+            ], 200),
+        ]);
+
+        $scheduled = $this->scheduledPost(
+            caption: 'Carousel drop',
+            mediaUrls: [
+                'https://cdn.example.com/one.jpg',
+                'https://cdn.example.com/two.jpg',
+            ],
+        );
+
+        $result = (new ThreadsPublisher)->publish($scheduled);
+
+        $this->assertSame('thread_post_3', $result['platform_post_id']);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://graph.threads.net/v1.0/threads-user-9/threads'
+                && ($request['media_type'] ?? '') === 'CAROUSEL'
+                && ($request['children'] ?? '') === 'child_1,child_2';
+        });
+    }
+
     private function scheduledPost(string $caption, ?array $mediaUrls): ScheduledPost
     {
         $user = User::factory()->create();

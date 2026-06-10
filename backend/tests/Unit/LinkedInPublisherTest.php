@@ -69,6 +69,38 @@ class LinkedInPublisherTest extends TestCase
         });
     }
 
+    public function test_publishes_image_post_via_images_api(): void
+    {
+        Http::fake([
+            'https://cdn.example.com/hero.jpg' => Http::response('image-bytes', 200),
+            'https://api.linkedin.com/rest/images*' => Http::response([
+                'value' => [
+                    'uploadUrl' => 'https://upload.linkedin.com/image/1',
+                    'image' => 'urn:li:image:123',
+                ],
+            ], 200),
+            'https://upload.linkedin.com/image/1' => Http::response('', 201),
+            'https://api.linkedin.com/rest/posts' => Http::response('', 201, [
+                'x-restli-id' => 'urn:li:share:555',
+            ]),
+        ]);
+
+        $scheduled = $this->scheduledPost(
+            'Product photo launch',
+            ['https://cdn.example.com/hero.jpg'],
+        );
+
+        $result = (new LinkedInPublisher)->publish($scheduled);
+
+        $this->assertSame('urn:li:share:555', $result['platform_post_id']);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return ($body['content']['media']['id'] ?? '') === 'urn:li:image:123';
+        });
+    }
+
     private function scheduledPost(string $caption, ?array $mediaUrls, string $contentType = 'post'): ScheduledPost
     {
         $user = User::factory()->create();

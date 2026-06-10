@@ -130,4 +130,75 @@ class TikTokPublisherTest extends TestCase
 
         (new TikTokPublisher)->publish($scheduled);
     }
+
+    public function test_publishes_photo_post_via_content_init(): void
+    {
+        Http::fake([
+            'https://open.tiktokapis.com/v2/post/publish/creator_info/query/' => Http::response([
+                'data' => [
+                    'creator_username' => 'creator',
+                    'privacy_level_options' => ['PUBLIC_TO_EVERYONE'],
+                ],
+                'error' => ['code' => 'ok', 'message' => ''],
+            ], 200),
+            'https://open.tiktokapis.com/v2/post/publish/content/init/' => Http::response([
+                'data' => ['publish_id' => 'photo_pub~v2.test456'],
+                'error' => ['code' => 'ok', 'message' => ''],
+            ], 200),
+            'https://open.tiktokapis.com/v2/post/publish/status/fetch/' => Http::response([
+                'data' => [
+                    'status' => 'PUBLISH_COMPLETE',
+                    'publicaly_available_post_id' => ['9988776655443322110'],
+                ],
+                'error' => ['code' => 'ok', 'message' => ''],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $credential = SocialCredential::create([
+            'user_id' => $user->id,
+            'provider' => 'tiktok',
+            'account_id' => 'open-123',
+            'access_token' => 'tiktok-token',
+            'expires_at' => now()->addHour(),
+            'status' => 'active',
+        ]);
+
+        $campaign = Campaign::create(['user_id' => $user->id, 'name' => 'C', 'status' => 'generated']);
+        $package = ContentPackage::create([
+            'campaign_id' => $campaign->id,
+            'user_id' => $user->id,
+            'platform' => 'tiktok',
+            'content_type' => 'image',
+            'caption' => 'Photo drop',
+            'media_urls' => ['https://cdn.example.com/photo.jpg'],
+            'status' => 'approved',
+        ]);
+
+        $scheduled = ScheduledPost::create([
+            'user_id' => $user->id,
+            'social_credential_id' => $credential->id,
+            'content_package_id' => $package->id,
+            'scheduled_at' => now(),
+            'status' => 'scheduled',
+        ]);
+
+        $result = (new TikTokPublisher)->publish($scheduled);
+
+        $this->assertSame('9988776655443322110', $result['platform_post_id']);
+        $this->assertSame(
+            'https://www.tiktok.com/@creator/photo/9988776655443322110',
+            $result['platform_post_url'],
+        );
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/post/publish/content/init/')) {
+                return false;
+            }
+
+            return ($request['media_type'] ?? '') === 'PHOTO'
+                && ($request['source_info']['photo_images'][0] ?? '') === 'https://cdn.example.com/photo.jpg';
+        });
+    }
 }
+
