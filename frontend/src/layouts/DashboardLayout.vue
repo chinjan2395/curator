@@ -134,7 +134,7 @@
                 <span v-if="!sidebarCollapsed">Sync Ops</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-system')">
               <router-link
                 to="/admin/system"
                 class="sidebar-nav-item"
@@ -148,7 +148,7 @@
                 <span v-if="!sidebarCollapsed">System</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-trends')">
               <router-link
                 to="/admin/trends"
                 class="sidebar-nav-item"
@@ -162,7 +162,7 @@
                 <span v-if="!sidebarCollapsed">Trends</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-moderation')">
               <router-link
                 to="/admin/moderation"
                 class="sidebar-nav-item"
@@ -433,6 +433,22 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { useActivityLogStore } from '../stores/activityLog';
 import { useToastStore } from '../stores/toast';
 
+// Temporarily hidden sidebar items — remove IDs from this set to show them again.
+const HIDDEN_SIDEBAR_ITEM_IDS = new Set([
+  'curator',
+  'campaigns',
+  'schedule',
+  'content-library',
+  'inbox',
+  'admin-system',
+  'admin-trends',
+  'admin-moderation',
+]);
+
+function isSidebarItemHidden(id) {
+  return HIDDEN_SIDEBAR_ITEM_IDS.has(id);
+}
+
 const auth = useAuthStore();
 const toast = useToastStore();
 const router = useRouter();
@@ -527,7 +543,7 @@ const userInitials = computed(() => {
   return parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('') || 'U';
 });
 
-const mainNavSections = [
+const MAIN_NAV_SECTIONS = [
   {
     id: 'overview',
     label: 'Overview',
@@ -569,6 +585,15 @@ const mainNavSections = [
     ],
   },
 ];
+
+const mainNavSections = computed(() =>
+  MAIN_NAV_SECTIONS
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !isSidebarItemHidden(item.id)),
+    }))
+    .filter((section) => section.items.length > 0),
+);
 
 function isMainNavActive(item) {
   const path = route.path;
