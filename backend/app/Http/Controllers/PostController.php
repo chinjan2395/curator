@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DTOs\PostUpdateData;
+use App\Http\Requests\BulkUpdatePostsRequest;
 use App\Http\Requests\UpdatePostRequest;
 use App\Http\Resources\ApiResponse;
 use App\Http\Resources\PostResource;
@@ -44,6 +45,35 @@ class PostController extends Controller
         $post = $this->postService->updatePost($post, $feed, PostUpdateData::fromArray($request->validated()), $request->user());
 
         return ApiResponse::success(new PostResource($post), 'Post updated.');
+    }
+
+    public function bulkUpdate(BulkUpdatePostsRequest $request, Workspace $workspace): JsonResponse
+    {
+        $this->authorizeOwner($request, $workspace);
+
+        $validated = $request->validated();
+        $postIds = array_values(array_unique($validated['post_ids']));
+
+        $posts = Post::query()
+            ->whereIn('id', $postIds)
+            ->whereHas('feed', fn ($query) => $query->where('workspace_id', $workspace->id))
+            ->get();
+
+        if ($posts->count() !== count($postIds)) {
+            abort(404, 'One or more posts were not found.');
+        }
+
+        Post::query()
+            ->whereIn('id', $postIds)
+            ->update(['status' => $validated['status']]);
+
+        $updatedPosts = Post::query()
+            ->whereIn('id', $postIds)
+            ->orderByDesc('pinned')
+            ->orderByDesc('posted_at')
+            ->get();
+
+        return ApiResponse::success(PostResource::collection($updatedPosts), 'Posts updated.');
     }
 
     public function destroy(Request $request, Workspace $workspace, Feed $feed, Post $post): JsonResponse

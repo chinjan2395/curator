@@ -94,6 +94,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('workspaces/{workspace}/publish/settings', [FeedPublishController::class, 'updateSettings']);
     Route::post('workspaces/{workspace}/publish', [FeedPublishController::class, 'publish']);
     Route::get('workspaces/{workspace}/publish/code', [FeedPublishController::class, 'publishCode']);
+    Route::put('workspaces/{workspace}/posts/bulk', [PostController::class, 'bulkUpdate']);
     Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
 
     Route::apiResource('social-credentials', SocialCredentialController::class);
