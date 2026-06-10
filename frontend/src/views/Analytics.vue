@@ -6,9 +6,10 @@
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <template v-else-if="overview">
-      <div class="grid gap-3 md:grid-cols-4">
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
         <AppCard class="p-4"><div class="text-2xl font-bold">{{ overview.total_likes ?? 0 }}</div><div class="text-xs text-slate-500">Likes</div></AppCard>
         <AppCard class="p-4"><div class="text-2xl font-bold">{{ overview.total_views ?? 0 }}</div><div class="text-xs text-slate-500">Views</div></AppCard>
+        <AppCard class="p-4"><div class="text-2xl font-bold">{{ overview.total_embed_clicks ?? 0 }}</div><div class="text-xs text-slate-500">Embed clicks</div></AppCard>
         <AppCard class="p-4"><div class="text-2xl font-bold">{{ overview.engagement_rate ?? 0 }}%</div><div class="text-xs text-slate-500">Engagement</div></AppCard>
         <AppCard class="p-4"><div class="text-2xl font-bold">{{ overview.follower_total ?? 0 }}</div><div class="text-xs text-slate-500">Followers</div></AppCard>
       </div>
@@ -30,6 +31,20 @@
 
       <AppCard v-else class="p-4">
         <p class="text-sm text-slate-500">No platform engagement data yet. Connect feeds and sync posts to see charts.</p>
+      </AppCard>
+
+      <AppCard class="p-4" v-if="overview?.top_embed_clicked_posts?.length">
+        <AppTitle size="sm">Top clicked embed posts</AppTitle>
+        <div class="mt-2 space-y-2 text-sm">
+          <div
+            v-for="post in overview.top_embed_clicked_posts"
+            :key="post.id"
+            class="flex items-center justify-between gap-3 border-b py-2 last:border-b-0"
+          >
+            <span class="truncate">{{ post.title || 'Untitled' }}</span>
+            <span class="shrink-0 text-slate-500">{{ post.clicks }} clicks</span>
+          </div>
+        </div>
       </AppCard>
 
       <AppCard class="p-4" v-if="overview?.campaigns?.length">
