@@ -78,25 +78,66 @@
               <AppIcon name="target" class="w-4 h-4" />
             </div>
             <div>
-              <AppTitle size="sm">Top embed clicks</AppTitle>
-              <p class="analytics-section-copy">Most opened posts in your widget</p>
+              <AppTitle size="sm">Embed clicks</AppTitle>
+              <p class="analytics-section-copy">Widget opens by platform · last 30 days</p>
             </div>
           </div>
 
-          <div v-if="overview?.top_embed_clicked_posts?.length" class="mt-4 space-y-2">
-            <div
-              v-for="(post, index) in overview.top_embed_clicked_posts"
-              :key="post.id"
-              class="analytics-top-post"
-            >
-              <span class="analytics-top-post__rank">{{ index + 1 }}</span>
-              <div class="min-w-0 flex-1">
-                <p class="analytics-top-post__title">{{ post.title || 'Untitled post' }}</p>
-                <p class="analytics-top-post__meta">{{ post.clicks }} clicks</p>
+          <template v-if="hasEmbedClickData">
+            <div v-if="clickChartBars.length" class="mt-4 space-y-3">
+              <div v-for="bar in clickChartBars" :key="bar.platform" class="analytics-platform-row">
+                <router-link
+                  :to="`/analytics/platforms/${bar.platform}`"
+                  class="analytics-platform-link"
+                >
+                  <SocialPlatformLabel :type="bar.platform" size="sm" />
+                  <AppIcon name="chevron-right" class="analytics-platform-link__arrow" />
+                </router-link>
+                <div class="analytics-platform-track">
+                  <div
+                    class="analytics-platform-fill"
+                    :style="{
+                      width: `${bar.pct}%`,
+                      background: `linear-gradient(90deg, ${bar.color}dd, ${bar.color})`,
+                    }"
+                  />
+                </div>
+                <span class="analytics-platform-value">{{ formatMetric(bar.clicks) }}</span>
               </div>
-              <AppIcon name="link" class="analytics-top-post__icon" />
             </div>
-          </div>
+
+            <div
+              v-if="overview?.top_embed_clicked_posts?.length"
+              class="analytics-top-posts-block"
+              :class="{ 'analytics-top-posts-block--with-chart': clickChartBars.length }"
+            >
+              <p class="analytics-top-posts-label">Top clicked posts</p>
+              <div class="space-y-2">
+                <div
+                  v-for="(post, index) in overview.top_embed_clicked_posts"
+                  :key="post.id"
+                  class="analytics-top-post"
+                >
+                  <span class="analytics-top-post__rank">{{ index + 1 }}</span>
+                  <SocialPlatformLabel
+                    v-if="post.platform"
+                    :type="post.platform"
+                    variant="badge"
+                    size="sm"
+                    :show-label="false"
+                    class="analytics-top-post__platform"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <p class="analytics-top-post__title">{{ post.title || 'Untitled post' }}</p>
+                    <p class="analytics-top-post__meta">
+                      <span v-if="post.platform">{{ getPlatformMeta(post.platform).label }} · </span>
+                      {{ post.clicks }} clicks
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
 
           <div v-else class="analytics-empty mt-4">
             <div class="analytics-empty__icon">
@@ -237,19 +278,36 @@ const metricCards = computed(() => [
   },
 ]);
 
+function buildPlatformBars(items, valueKey) {
+  if (!items.length) return [];
+  const max = Math.max(1, ...items.map((item) => Number(item[valueKey] || 0)));
+  return items
+    .map((item) => ({
+      ...item,
+      color: getPlatformMeta(item.platform).color,
+      pct: Math.round((Number(item[valueKey] || 0) / max) * 100),
+    }))
+    .sort((a, b) => Number(b[valueKey] || 0) - Number(a[valueKey] || 0));
+}
+
 const chartBars = computed(() => {
   const series = overview.value?.time_series || {};
   const totals = Object.entries(series).map(([platform, rows]) => ({
     platform,
     likes: (rows || []).reduce((sum, row) => sum + Number(row.likes || 0), 0),
-    color: getPlatformMeta(platform).color,
   }));
-  if (!totals.length) return [];
-  const max = Math.max(1, ...totals.map((item) => item.likes));
-  return totals
-    .map((item) => ({ ...item, pct: Math.round((item.likes / max) * 100) }))
-    .sort((a, b) => b.likes - a.likes);
+  return buildPlatformBars(totals, 'likes');
 });
+
+const clickChartBars = computed(() =>
+  buildPlatformBars(overview.value?.embed_clicks_by_platform || [], 'clicks'),
+);
+
+const hasEmbedClickData = computed(
+  () =>
+    clickChartBars.value.length > 0 ||
+    (overview.value?.top_embed_clicked_posts?.length ?? 0) > 0,
+);
 
 function formatMetric(value, format = 'number') {
   const numeric = Number(value || 0);
@@ -426,8 +484,16 @@ onMounted(async () => {
   @apply text-xs text-slate-500;
 }
 
-.analytics-top-post__icon {
-  @apply h-4 w-4 shrink-0 text-violet-400;
+.analytics-top-posts-block--with-chart {
+  @apply mt-5 border-t border-slate-100 pt-4;
+}
+
+.analytics-top-posts-label {
+  @apply mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400;
+}
+
+.analytics-top-post__platform {
+  @apply shrink-0;
 }
 
 .analytics-campaign__head {

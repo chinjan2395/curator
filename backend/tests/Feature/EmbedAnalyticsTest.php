@@ -126,7 +126,10 @@ class EmbedAnalyticsTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.total_embed_clicks', 1)
             ->assertJsonPath('data.top_embed_clicked_posts.0.id', $seed['post']->id)
-            ->assertJsonPath('data.top_embed_clicked_posts.0.clicks', 1);
+            ->assertJsonPath('data.top_embed_clicked_posts.0.clicks', 1)
+            ->assertJsonPath('data.top_embed_clicked_posts.0.platform', 'youtube')
+            ->assertJsonPath('data.embed_clicks_by_platform.0.platform', 'youtube')
+            ->assertJsonPath('data.embed_clicks_by_platform.0.clicks', 1);
     }
 
     public function test_platform_analytics_includes_embed_clicks(): void

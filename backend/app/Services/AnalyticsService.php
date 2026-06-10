@@ -37,6 +37,7 @@ class AnalyticsService
                 ->count(),
             'best_post' => (clone $posts)->orderByDesc('likes')->first(['id', 'title', 'likes', 'thumbnail_url']),
             'top_embed_clicked_posts' => $this->topEmbedClickedPosts($workspaceIds),
+            'embed_clicks_by_platform' => $this->embedClicksByPlatform($user),
         ];
     }
 
@@ -150,15 +151,37 @@ class AnalyticsService
             ->where('event_type', EmbedPostEvent::TYPE_POST_CLICK);
     }
 
+    public function embedClicksByPlatform(User $user): array
+    {
+        $workspaceIds = Workspace::where('owner_id', $user->id)->pluck('id');
+
+        return DB::table('embed_post_events')
+            ->join('posts', 'posts.id', '=', 'embed_post_events.post_id')
+            ->join('feeds', 'feeds.id', '=', 'posts.feed_id')
+            ->whereIn('embed_post_events.workspace_id', $workspaceIds)
+            ->where('embed_post_events.event_type', EmbedPostEvent::TYPE_POST_CLICK)
+            ->where('embed_post_events.created_at', '>=', now()->subDays(30))
+            ->groupBy('feeds.type')
+            ->selectRaw('feeds.type as platform, COUNT(*) as clicks')
+            ->orderByDesc('clicks')
+            ->get()
+            ->map(static fn ($row) => [
+                'platform' => (string) $row->platform,
+                'clicks' => (int) $row->clicks,
+            ])
+            ->all();
+    }
+
     /** @param  \Illuminate\Support\Collection<int, int|string>  $workspaceIds */
     private function topEmbedClickedPosts($workspaceIds, int $limit = 5): array
     {
         return DB::table('embed_post_events')
             ->join('posts', 'posts.id', '=', 'embed_post_events.post_id')
+            ->join('feeds', 'feeds.id', '=', 'posts.feed_id')
             ->whereIn('embed_post_events.workspace_id', $workspaceIds)
             ->where('embed_post_events.event_type', EmbedPostEvent::TYPE_POST_CLICK)
-            ->groupBy('embed_post_events.post_id', 'posts.title', 'posts.thumbnail_url')
-            ->selectRaw('embed_post_events.post_id as id, posts.title, posts.thumbnail_url, COUNT(*) as clicks')
+            ->groupBy('embed_post_events.post_id', 'posts.title', 'posts.thumbnail_url', 'feeds.type')
+            ->selectRaw('embed_post_events.post_id as id, posts.title, posts.thumbnail_url, feeds.type as platform, COUNT(*) as clicks')
             ->orderByDesc('clicks')
             ->limit($limit)
             ->get()
@@ -166,6 +189,7 @@ class AnalyticsService
                 'id' => (int) $row->id,
                 'title' => $row->title,
                 'thumbnail_url' => $row->thumbnail_url,
+                'platform' => (string) $row->platform,
                 'clicks' => (int) $row->clicks,
             ])
             ->all();
