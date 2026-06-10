@@ -86,12 +86,6 @@
       referrer: typeof document !== 'undefined' ? String(document.referrer || '') : '',
     });
     try {
-      if (navigator.sendBeacon) {
-        var blob = new Blob([payload], { type: 'application/json' });
-        if (navigator.sendBeacon(endpoint, blob)) return;
-      }
-    } catch (e) {}
-    try {
       fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,14 +93,29 @@
         credentials: 'omit',
         keepalive: true,
       }).catch(function () {});
-    } catch (e2) {}
+      return;
+    } catch (e0) {}
+    try {
+      if (navigator.sendBeacon) {
+        var blob = new Blob([payload], { type: 'application/json' });
+        if (navigator.sendBeacon(endpoint, blob)) return;
+      }
+    } catch (e) {}
   }
 
   function attachPostClickTracking(el, p, linkHref) {
     if (!el || !p || !p.id) return;
-    el.addEventListener('click', function () {
+    var trackedAt = 0;
+    function trackOnce() {
+      var now = Date.now();
+      if (now - trackedAt < 1200) return;
+      trackedAt = now;
       trackEmbedEvent(p.id, 'post_click', linkHref || postLinkHref(p));
-    });
+    }
+    el.addEventListener('pointerdown', trackOnce);
+    el.addEventListener('mousedown', trackOnce);
+    el.addEventListener('touchstart', trackOnce, { passive: true });
+    el.addEventListener('click', trackOnce);
   }
 
   function clamp(s, n) {
