@@ -58,9 +58,9 @@
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-[minmax(0,550px)_minmax(0,1fr)] gap-6 items-start">
         <div class="space-y-4">
-          <AppCard v-if="appearance" class="p-6 space-y-6">
+          <AppCard v-if="appearance" class="p-6">
             <!-- Header -->
-            <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-200">
+            <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-200 mb-5">
               <div>
                 <h2 class="text-base font-semibold text-slate-900">Feed appearance</h2>
                 <p class="text-xs text-slate-500 mt-1">Customize how your posts look in the embed</p>
@@ -74,8 +74,9 @@
               </AppButton>
             </div>
 
+            <div class="divide-y divide-slate-200">
             <!-- Feed Style Section -->
-            <div class="space-y-3">
+            <div class="space-y-3 pb-5">
               <div>
                 <label class="block text-sm font-semibold text-slate-900 mb-2">Feed Layout</label>
                 <AppSelect v-model="appearance.feed_style" select-class="w-full" :show-placeholder="false">
@@ -88,7 +89,7 @@
             </div>
 
             <!-- Feed Options Section -->
-            <div v-if="!previewIsShowcase" class="space-y-4 pt-4 border-t border-slate-200">
+            <div v-if="showFeedOptionsSection" class="space-y-4 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Feed Options</h3>
               <div class="space-y-3">
                 <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
@@ -107,12 +108,12 @@
                 </label>
               </div>
 
-              <div class="grid grid-cols-2 gap-3 pt-2">
+              <div class="grid gap-3 pt-2" :class="showPostMinWidth ? 'grid-cols-2' : 'grid-cols-1'">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Posts per page</label>
                   <AppInput v-model.number="appearance.feed.posts_per_page" type="number" min="1" max="100" input-class="w-full py-2" />
                 </div>
-                <div>
+                <div v-if="showPostMinWidth">
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Min width (px)</label>
                   <AppInput v-model.number="appearance.feed.post_min_width" type="number" min="120" max="600" input-class="w-full py-2" />
                 </div>
@@ -120,7 +121,7 @@
             </div>
 
             <!-- Post Display Section -->
-            <div class="space-y-4 pt-4 border-t border-slate-200">
+            <div class="space-y-4 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Post Display</h3>
               <div class="space-y-3">
                 <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
@@ -170,9 +171,9 @@
             </div>
 
             <!-- Post Layout Section -->
-            <div class="space-y-4 pt-4 border-t border-slate-200">
+            <div v-if="showLayoutSection" class="space-y-4 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Layout</h3>
-              <div v-if="!previewIsShowcase" class="grid grid-cols-2 gap-3">
+              <div v-if="showStandardLayoutOptions" class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Source layout</label>
                   <AppSelect v-model="appearance.post.source_row_layout" select-class="w-full py-2" :show-placeholder="false">
@@ -188,7 +189,7 @@
                   </AppSelect>
                 </div>
               </div>
-              <div v-if="previewIsShowcase" class="grid grid-cols-2 gap-3">
+              <div v-if="showShowcaseLayoutOptions" class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Showcase alignment</label>
                   <AppSelect v-model="appearance.post.showcase_content_alignment" select-class="w-full py-2" :show-placeholder="false">
@@ -205,7 +206,7 @@
                   </AppSelect>
                 </div>
               </div>
-              <div v-if="previewIsShowcase && appearance.post.showcase_share_icon !== 'none'" class="grid grid-cols-2 gap-3">
+              <div v-if="showShowcaseLayoutOptions && appearance.post.showcase_share_icon !== 'none'" class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Share icon color</label>
                   <AppSelect v-model="appearance.post.showcase_share_icon_color_mode" select-class="w-full py-2" :show-placeholder="false">
@@ -233,32 +234,8 @@
               </div>
             </div>
 
-            <!-- Import from brand kit -->
-            <div class="space-y-3 pt-4 border-t border-slate-200">
-              <h3 class="text-sm font-semibold text-slate-900">Import from brand kit</h3>
-              <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
-              <div class="flex flex-wrap items-end gap-2">
-                <div class="flex-1 min-w-[10rem]">
-                  <AppSelect v-model="brandKitImportId" :show-placeholder="false" select-class="w-full">
-                    <option value="">Select brand kit…</option>
-                    <option v-for="kit in brandKitsForImport" :key="kit.id" :value="String(kit.id)">
-                      {{ kit.name }}{{ kit.is_default ? ' (default)' : '' }}
-                    </option>
-                  </AppSelect>
-                </div>
-                <AppButton
-                  size="sm"
-                  variant="secondary"
-                  :disabled="!brandKitImportId"
-                  @click="applyBrandKit"
-                >
-                  Apply
-                </AppButton>
-              </div>
-            </div>
-
             <!-- Colors Section -->
-            <div class="space-y-4 pt-4 border-t border-slate-200">
+            <div class="space-y-4 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Colors</h3>
               <div class="space-y-3">
                 <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
@@ -289,7 +266,7 @@
               </div>
 
               <!-- Optional Colors -->
-              <div class="space-y-3 pt-3 border-t border-slate-200">
+              <div v-if="showPostBorderBgOptions" class="space-y-3 pt-1">
                 <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
                   <AppCheckbox v-model="appearance.colors.post_border.enabled" />
                   <span class="text-xs font-semibold text-slate-700 flex-1">Post border</span>
@@ -314,19 +291,15 @@
             </div>
 
             <!-- Widget settings -->
-            <div v-if="appearance?.widget" class="space-y-4 pt-4 border-t border-slate-200">
+            <div v-if="showEmbedWidgetSection" class="space-y-4 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Embed widget</h3>
-              <div class="grid grid-cols-2 gap-3">
+              <div v-if="showWidgetStyleOptions" class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-1">Theme</label>
                   <AppSelect v-model="appearance.widget.theme" select-class="w-full py-2" :show-placeholder="false">
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
                   </AppSelect>
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold text-slate-700 mb-1">Columns</label>
-                  <AppInput v-model.number="appearance.widget.columns" type="number" min="1" max="6" input-class="w-full py-2" />
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-1">Gap (px)</label>
@@ -340,7 +313,7 @@
                   <label class="block text-xs font-semibold text-slate-700 mb-1">Font family</label>
                   <AppInput v-model="appearance.widget.font_family" input-class="w-full py-2" />
                 </div>
-                <div>
+                <div v-if="showWidgetAnimationOption">
                   <label class="block text-xs font-semibold text-slate-700 mb-1">Animation</label>
                   <AppSelect v-model="appearance.widget.animation" select-class="w-full py-2" :show-placeholder="false">
                     <option value="none">None</option>
@@ -357,11 +330,11 @@
                   </AppSelect>
                 </div>
               </div>
-              <label class="flex items-center gap-2 text-sm">
+              <label v-if="showWidgetStyleOptions" class="flex items-center gap-2 text-sm">
                 <AppCheckbox v-model="appearance.widget.auto_refresh" />
                 Auto-refresh feed every 5 minutes
               </label>
-              <div>
+              <div v-if="showWidgetFilters">
                 <label class="block text-xs font-semibold text-slate-700 mb-2">Platform filters</label>
                 <div class="flex flex-wrap gap-2">
                   <label v-for="p in platformFilterOptions" :key="p" class="inline-flex items-center gap-1 text-xs">
@@ -370,7 +343,7 @@
                   </label>
                 </div>
               </div>
-              <div>
+              <div v-if="showWidgetFilters">
                 <label class="block text-xs font-semibold text-slate-700 mb-2">Content type filters</label>
                 <div class="flex flex-wrap gap-2">
                   <label v-for="t in contentTypeFilterOptions" :key="t" class="inline-flex items-center gap-1 text-xs">
@@ -379,11 +352,11 @@
                   </label>
                 </div>
               </div>
-              <p class="text-xs text-slate-500">WordPress: paste the embed snippet in a Custom HTML block. Squarespace: use a Code block with the same snippet.</p>
+              <p v-if="showWidgetStyleOptions" class="text-xs text-slate-500">WordPress: paste the embed snippet in a Custom HTML block. Squarespace: use a Code block with the same snippet.</p>
             </div>
 
             <!-- Branding Section -->
-            <div v-if="appearance?.branding && previewIsShowcase" class="space-y-4 pt-4 border-t border-slate-200">
+            <div v-if="appearance?.branding && previewIsShowcase" class="space-y-4 py-5">
               <div>
                 <h3 class="text-sm font-semibold text-slate-900">Showcase branding</h3>
                 <p class="text-xs text-slate-500 mt-2">Customize icons and avatars on the Showcase carousel. Use HTTPS URLs for custom images (square PNG or JPG).</p>
@@ -503,6 +476,7 @@
                     />
                 </div>
               </div>
+            </div>
             </div>
           </AppCard>
         </div>
@@ -1304,9 +1278,7 @@ const previewClickTrackedAt = new Map();
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
 
-/** Brand kit import */
-const brandKitsForImport = ref([]);
-const brandKitImportId = ref('');
+const FEED_STYLES_WITH_MIN_WIDTH = new Set(['grid', 'grid_carousel']);
 
 const feedStyleOptions = [
   { value: 'waterfall', label: 'Waterfall' },
@@ -1545,8 +1517,36 @@ const previewLayoutClass = computed(() => {
   return `crt-layout--${st}`;
 });
 
-const previewIsShowcase = computed(
-  () => String(appearance.value?.feed_style || '').replace(/-/g, '_') === 'showcase_carousel',
+const activeFeedStyle = computed(() =>
+  String(appearance.value?.feed_style || 'grid').replace(/-/g, '_'),
+);
+
+const previewIsShowcase = computed(() => activeFeedStyle.value === 'showcase_carousel');
+
+const showFeedOptionsSection = computed(() => !previewIsShowcase.value);
+
+const showPostMinWidth = computed(() => FEED_STYLES_WITH_MIN_WIDTH.has(activeFeedStyle.value));
+
+const showStandardLayoutOptions = computed(() => !previewIsShowcase.value);
+
+const showShowcaseLayoutOptions = computed(() => previewIsShowcase.value);
+
+const showLayoutSection = computed(
+  () => showStandardLayoutOptions.value || showShowcaseLayoutOptions.value,
+);
+
+const showPostBorderBgOptions = computed(() => !previewIsShowcase.value);
+
+const showWidgetFilters = computed(() => !previewIsShowcase.value);
+
+const showWidgetStyleOptions = computed(() => !previewIsShowcase.value);
+
+const showWidgetAnimationOption = computed(() => activeFeedStyle.value === 'stagger');
+
+const showEmbedWidgetSection = computed(
+  () =>
+    !!appearance.value?.widget &&
+    (showWidgetStyleOptions.value || showWidgetFilters.value),
 );
 
 const previewSkeletonCount = computed(() => (previewIsShowcase.value ? 3 : 6));
@@ -1853,53 +1853,7 @@ onMounted(async () => {
   } else if (!workspaceId.value && workspaces.list.length) {
     workspaceId.value = String(workspaces.list[0].id);
   }
-  if (workspaceId.value) {
-    await publish.fetchStats(workspaceId.value);
-    await publish.fetchCode(workspaceId.value);
-    await loadPreview();
-    await autoPublishIfNeeded();
-  }
-  loadBrandKitsForImport();
 });
-
-async function loadBrandKitsForImport() {
-  try {
-    const axios = (await import('axios')).default;
-    const { data } = await axios.get('/api/content/brand-kits', { skipErrorToast: true });
-    brandKitsForImport.value = data.data || data || [];
-    // Pre-select default kit if available
-    const def = brandKitsForImport.value.find((k) => k.is_default);
-    if (def) brandKitImportId.value = String(def.id);
-  } catch {
-    brandKitsForImport.value = [];
-  }
-}
-
-function applyBrandKit() {
-  if (!appearance.value || !brandKitImportId.value) return;
-  const kit = brandKitsForImport.value.find((k) => String(k.id) === brandKitImportId.value);
-  if (!kit) return;
-
-  const colors = kit.colors || {};
-  if (colors.primary) appearance.value.colors.post_button = colors.primary;
-  if (colors.primary) appearance.value.colors.post_link = colors.primary;
-  if (colors.text) appearance.value.colors.post_text = colors.text;
-  if (colors.text) appearance.value.colors.post_icon = colors.text;
-  if (colors.background) {
-    appearance.value.colors.post_bg.enabled = true;
-    appearance.value.colors.post_bg.color = colors.background;
-  }
-  if (colors.secondary) appearance.value.colors.post_date = colors.secondary;
-
-  const fonts = kit.fonts || {};
-  if (fonts.body && fonts.body !== 'inherit') {
-    appearance.value.widget.font_family = fonts.body;
-  } else if (fonts.heading && fonts.heading !== 'inherit') {
-    appearance.value.widget.font_family = fonts.heading;
-  }
-
-  toast.success(`Brand kit "${kit.name}" applied — save to publish changes.`);
-}
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handlePreviewShareOutsideClick);
