@@ -20,6 +20,7 @@ use App\Http\Controllers\OAuthAppConfigController;
 use App\Http\Controllers\FeedPublishController;
 use App\Http\Controllers\PublicFeedController;
 use App\Http\Controllers\EmbedController;
+use App\Http\Controllers\EmbedAnalyticsController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Admin\ActivityController as AdminActivityController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -60,6 +61,9 @@ Route::get('public/feeds/{publicKey}/posts', [PublicFeedController::class, 'post
 Route::get('embed/{publicToken}/feed', [PublicFeedController::class, 'posts']);
 Route::get('embed/{publicKey}.js', [EmbedController::class, 'js']);
 Route::get('embed/{publicKey}.css', [EmbedController::class, 'css']);
+Route::middleware('throttle:embed-analytics')->group(function () {
+    Route::post('public/feeds/{publicKey}/posts/{post}/events', [EmbedAnalyticsController::class, 'store']);
+});
 
 // Signed asset preview (no Bearer token; used by <img src> via Vite /api proxy)
 Route::get('content/assets/{asset}/file', [AssetController::class, 'file'])

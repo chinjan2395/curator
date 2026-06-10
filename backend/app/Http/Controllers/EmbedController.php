@@ -481,6 +481,7 @@ CSS;
 
         $base = rtrim((string) config('app.url', ''), '/');
         $postsUrl = $base.'/api/public/feeds/'.$workspace->public_key.'/posts';
+        $analyticsBase = $base.'/api/public/feeds/'.$workspace->public_key.'/posts';
 
         $settingsJson = json_encode(
             PublishSettings::merge($workspace->publish_settings),
@@ -496,6 +497,7 @@ CSS;
 
         $bootstrap = 'var CRT_POSTS_URL = '.$this->jsString($postsUrl).";\n"
             .'var CRT_PUBLIC_KEY = '.$this->jsString($workspace->public_key).";\n"
+            .'var CRT_ANALYTICS_BASE = '.$this->jsString($analyticsBase).";\n"
             .'var CRT_SETTINGS = '.$settingsJson.";\n";
 
         return response($bootstrap."\n".$runtime, 200, [

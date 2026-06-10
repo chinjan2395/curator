@@ -1,7 +1,8 @@
-/* global CRT_POSTS_URL, CRT_PUBLIC_KEY, CRT_SETTINGS */
+/* global CRT_POSTS_URL, CRT_PUBLIC_KEY, CRT_ANALYTICS_BASE, CRT_SETTINGS */
 (function () {
   var POSTS_URL = typeof CRT_POSTS_URL !== 'undefined' ? CRT_POSTS_URL : '';
   var PUBLIC_KEY = typeof CRT_PUBLIC_KEY !== 'undefined' ? CRT_PUBLIC_KEY : '';
+  var ANALYTICS_BASE = typeof CRT_ANALYTICS_BASE !== 'undefined' ? CRT_ANALYTICS_BASE : '';
   var SETTINGS = typeof CRT_SETTINGS !== 'undefined' ? CRT_SETTINGS : {};
 
   var containers = Array.prototype.slice.call(
@@ -38,6 +39,43 @@
 
   var NAV_CHEV_RIGHT =
     '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
+  function postLinkHref(p) {
+    return String((p && p.post_url) || (p && p.video_url) || '#');
+  }
+
+  function trackEmbedEvent(postId, eventType, targetUrl) {
+    if (!ANALYTICS_BASE || !postId) return;
+    var endpoint = ANALYTICS_BASE + '/' + encodeURIComponent(String(postId)) + '/events';
+    var payload = JSON.stringify({
+      event_type: eventType || 'post_click',
+      target_url: targetUrl || '',
+      page_url: typeof location !== 'undefined' ? String(location.href || '') : '',
+      referrer: typeof document !== 'undefined' ? String(document.referrer || '') : '',
+    });
+    try {
+      if (navigator.sendBeacon) {
+        var blob = new Blob([payload], { type: 'application/json' });
+        if (navigator.sendBeacon(endpoint, blob)) return;
+      }
+    } catch (e) {}
+    try {
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        credentials: 'omit',
+        keepalive: true,
+      }).catch(function () {});
+    } catch (e2) {}
+  }
+
+  function attachPostClickTracking(el, p, linkHref) {
+    if (!el || !p || !p.id) return;
+    el.addEventListener('click', function () {
+      trackEmbedEvent(p.id, 'post_click', linkHref || postLinkHref(p));
+    });
+  }
 
   function clamp(s, n) {
     s = String(s || '');
@@ -220,6 +258,7 @@
     if (shareMode !== 'none' && shareUrl && shareUrl !== '#') {
       shareEl = buildShareTooltip({
         url: shareUrl,
+        postId: p.id,
         wrapperClass: 'crt-showcase-share',
         triggerClass: 'crt-showcase-share-btn',
         menuClass: 'crt-showcase-share-tooltip',
@@ -379,6 +418,9 @@
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
+        if (options.postId) {
+          trackEmbedEvent(options.postId, 'share_click', options.url);
+        }
         openShare(entry.provider, options.url);
         closeMenu();
       });
@@ -578,10 +620,11 @@
     return wrap;
   }
 
-  function shareBar(url) {
+  function shareBar(url, postId) {
     if (!url || url === '#') return null;
     return buildShareTooltip({
       url: url,
+      postId: postId,
       wrapperClass: 'crt-share',
       triggerClass: 'crt-share-link crt-share-link--trigger',
       menuClass: 'crt-share-tooltip',
@@ -643,21 +686,26 @@
   }
 
   function renderShowcaseCard(p, index, linkHref) {
+    var resolvedHref = linkHref || postLinkHref(p);
     var useIframe = postOpts.autoplay_videos && youtubeId(p.video_url);
     var root = document.createElement(useIframe ? 'div' : 'a');
     if (root.tagName === 'A') {
-      root.href = linkHref || p.video_url || '#';
+      root.href = resolvedHref;
       root.target = '_blank';
       root.rel = 'noreferrer';
     }
     root.className = 'crt-card crt-card--showcase crt-link';
     root.setAttribute('data-crt-i', String(index));
+    root.setAttribute('data-crt-post-id', String(p.id || ''));
 
     if (useIframe) {
       root.addEventListener('click', function () {
+        trackEmbedEvent(p.id, 'post_click', resolvedHref);
         var y = youtubeId(p.video_url);
         if (y) window.open('https://www.youtube.com/watch?v=' + y, '_blank', 'noreferrer');
       });
+    } else {
+      attachPostClickTracking(root, p, resolvedHref);
     }
 
     var media = buildMedia(p);
@@ -710,21 +758,26 @@
     if (feedStyle === 'showcase_carousel') {
       return renderShowcaseCard(p, index, linkHref);
     }
+    var resolvedHref = linkHref || postLinkHref(p);
     var useIframe = postOpts.autoplay_videos && youtubeId(p.video_url);
     var a = document.createElement(useIframe ? 'div' : 'a');
     if (a.tagName === 'A') {
-      a.href = linkHref || p.video_url || '#';
+      a.href = resolvedHref;
       a.target = '_blank';
       a.rel = 'noreferrer';
     }
     a.className = 'crt-card crt-link';
     a.setAttribute('data-crt-i', String(index));
+    a.setAttribute('data-crt-post-id', String(p.id || ''));
 
     if (useIframe) {
-      a.addEventListener('click', function (e) {
+      a.addEventListener('click', function () {
+        trackEmbedEvent(p.id, 'post_click', resolvedHref);
         var y = youtubeId(p.video_url);
         if (y) window.open('https://www.youtube.com/watch?v=' + y, '_blank', 'noreferrer');
       });
+    } else {
+      attachPostClickTracking(a, p, resolvedHref);
     }
 
     var media = buildMedia(p);
@@ -751,7 +804,7 @@
     body.appendChild(metaRow(p));
 
     if (postOpts.show_share_icons) {
-      var sh = shareBar(p.video_url);
+      var sh = shareBar(p.video_url || p.post_url, p.id);
       if (sh) body.appendChild(sh);
     }
 
@@ -806,7 +859,7 @@
     function appendPosts(posts) {
       var start = inner.querySelectorAll('.crt-card').length;
       posts.forEach(function (p, j) {
-        inner.appendChild(renderCard(p, start + j, p.video_url));
+        inner.appendChild(renderCard(p, start + j, postLinkHref(p)));
       });
       var cards = Array.prototype.slice.call(inner.querySelectorAll('.crt-card'));
       applyLayoutExtras(inner, cards);

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\EmbedPostEvent;
 use App\Models\Workspace;
 use App\Repositories\Contracts\PostRepositoryInterface;
 use App\Support\PublishSettings;
@@ -42,6 +43,10 @@ class EmbedPublishService
             'approved' => $this->postRepository->countApprovedForWorkspace($workspace),
             'published' => $this->postRepository->countPublishedForWorkspace($workspace),
             'pending' => $this->postRepository->countPendingForWorkspace($workspace),
+            'embed_clicks' => (int) EmbedPostEvent::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('event_type', EmbedPostEvent::TYPE_POST_CLICK)
+                ->count(),
             'last_published_at' => $workspace->last_published_at,
             'public_key' => $workspace->public_key,
             'publish_settings' => PublishSettings::merge($workspace->publish_settings),

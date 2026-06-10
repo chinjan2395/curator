@@ -63,6 +63,10 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->ip());
         });
 
+        RateLimiter::for('embed-analytics', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
+        });
+
         VerifyEmail::createUrlUsing(function ($user) {
             $base = rtrim((string) config('app.frontend_url', config('app.url')), '/');
             $id = $user->getKey();
