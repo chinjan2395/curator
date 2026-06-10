@@ -5,11 +5,15 @@ namespace App\Services\Social\Publishers;
 use App\Models\ScheduledPost;
 use App\Services\Social\Support\ContentPackageCaptionBuilder;
 use App\Services\Social\Support\LinkedInPublishingClient;
+use App\Services\Social\Support\MediaUrlClassifier;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class LinkedInPublisher implements PublisherInterface
 {
     private const MAX_COMMENTARY_LENGTH = 3000;
+
+    private const MAX_IMAGES = 9;
 
     public function __construct(
         private readonly LinkedInPublishingClient $client = new LinkedInPublishingClient,
@@ -49,20 +53,24 @@ class LinkedInPublisher implements PublisherInterface
         }
 
         $authorUrn = $this->client->personUrn($personId);
-        $mediaUrl = ContentPackageCaptionBuilder::firstMediaUrl($package);
+        $mediaUrls = ContentPackageCaptionBuilder::mediaUrls($package);
 
-        if ($mediaUrl && $this->isArticleUrl($mediaUrl, (string) ($package->content_type ?? ''))) {
+        if ($mediaUrls === []) {
+            $postId = $this->client->createTextPost($token, $authorUrn, $commentary);
+        } elseif ($this->containsVideo($mediaUrls)) {
+            throw new RuntimeException(
+                'LinkedIn video upload is not yet supported. Use text-only posts, image URLs, or an article link in media_urls.',
+            );
+        } elseif ($this->areImageUrls($mediaUrls)) {
+            $postId = $this->publishImagePost($token, $authorUrn, $commentary, $mediaUrls);
+        } elseif (count($mediaUrls) === 1 && $this->isArticleUrl($mediaUrls[0], (string) ($package->content_type ?? ''))) {
             $postId = $this->client->createArticlePost(
                 $token,
                 $authorUrn,
                 $commentary,
-                $mediaUrl,
+                $mediaUrls[0],
                 $this->articleTitle($commentary),
                 mb_substr($commentary, 0, 200),
-            );
-        } elseif ($mediaUrl && $this->isHttpsUrl($mediaUrl)) {
-            throw new RuntimeException(
-                'LinkedIn image/video posts require asset upload via the Images/Videos API. Use text-only posts or put an article URL in media_urls.',
             );
         } else {
             $postId = $this->client->createTextPost($token, $authorUrn, $commentary);
@@ -72,6 +80,59 @@ class LinkedInPublisher implements PublisherInterface
             'platform_post_id' => $postId,
             'platform_post_url' => $this->buildPostUrl($postId),
         ];
+    }
+
+    /**
+     * @param  list<string>  $mediaUrls
+     */
+    private function publishImagePost(string $token, string $authorUrn, string $commentary, array $mediaUrls): string
+    {
+        $imageUrns = [];
+
+        foreach (array_slice($mediaUrls, 0, self::MAX_IMAGES) as $imageUrl) {
+            if (! MediaUrlClassifier::isHttpsUrl($imageUrl)) {
+                throw new RuntimeException('LinkedIn image URLs must be public HTTPS links.');
+            }
+
+            $download = Http::timeout(60)->get($imageUrl);
+            if (! $download->ok()) {
+                throw new RuntimeException('Could not download image for LinkedIn upload: '.$imageUrl);
+            }
+
+            $init = $this->client->initializeImageUpload($token, $authorUrn);
+            $this->client->uploadImageBinary($init['upload_url'], $download->body(), $token);
+            $imageUrns[] = $init['image_urn'];
+        }
+
+        return $this->client->createImagePost($token, $authorUrn, $commentary, $imageUrns);
+    }
+
+    /**
+     * @param  list<string>  $mediaUrls
+     */
+    private function areImageUrls(array $mediaUrls): bool
+    {
+        foreach ($mediaUrls as $url) {
+            if (! MediaUrlClassifier::looksLikeImageAsset($url)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  list<string>  $mediaUrls
+     */
+    private function containsVideo(array $mediaUrls): bool
+    {
+        foreach ($mediaUrls as $url) {
+            if (MediaUrlClassifier::isVideo($url)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function articleTitle(string $commentary): string
@@ -84,21 +145,14 @@ class LinkedInPublisher implements PublisherInterface
     private function isArticleUrl(string $url, string $contentType): bool
     {
         if ($contentType === 'article' || $contentType === 'link') {
-            return $this->isHttpsUrl($url);
+            return MediaUrlClassifier::isHttpsUrl($url);
         }
 
-        if ($this->looksLikeMediaAsset($url)) {
+        if (MediaUrlClassifier::looksLikeImageAsset($url) || MediaUrlClassifier::isVideo($url)) {
             return false;
         }
 
-        return $this->isHttpsUrl($url);
-    }
-
-    private function looksLikeMediaAsset(string $url): bool
-    {
-        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
-
-        return (bool) preg_match('/\.(jpe?g|png|gif|webp|mp4|mov|webm|m4v|avi|pdf)(\?.*)?$/', $path);
+        return MediaUrlClassifier::isHttpsUrl($url);
     }
 
     private function buildPostUrl(string $postUrn): ?string
@@ -108,10 +162,5 @@ class LinkedInPublisher implements PublisherInterface
         }
 
         return null;
-    }
-
-    private function isHttpsUrl(string $url): bool
-    {
-        return (bool) preg_match('#^https://#i', $url);
     }
 }

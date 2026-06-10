@@ -4,12 +4,15 @@ namespace App\Services\Social\Publishers;
 
 use App\Models\ScheduledPost;
 use App\Services\Social\Support\ContentPackageCaptionBuilder;
+use App\Services\Social\Support\MediaUrlClassifier;
 use App\Services\Social\Support\TikTokContentPostingClient;
 use RuntimeException;
 
 class TikTokPublisher implements PublisherInterface
 {
     private const MAX_TITLE_LENGTH = 2200;
+
+    private const MAX_PHOTOS = 35;
 
     private const PRIVACY_PREFERENCE = [
         'PUBLIC_TO_EVERYONE',
@@ -41,9 +44,15 @@ class TikTokPublisher implements PublisherInterface
             throw new RuntimeException('Schedule a content package for TikTok publishing.');
         }
 
-        $videoUrl = ContentPackageCaptionBuilder::firstMediaUrl($package);
-        if (! $videoUrl || ! $this->isHttpsUrl($videoUrl)) {
-            throw new RuntimeException('TikTok requires a public HTTPS video URL in content package media_urls. Verify the URL domain in the TikTok developer portal for PULL_FROM_URL.');
+        $mediaUrls = ContentPackageCaptionBuilder::mediaUrls($package);
+        if ($mediaUrls === []) {
+            throw new RuntimeException('TikTok requires at least one public HTTPS media URL in content package media_urls.');
+        }
+
+        foreach ($mediaUrls as $url) {
+            if (! MediaUrlClassifier::isHttpsUrl($url)) {
+                throw new RuntimeException('TikTok requires public HTTPS media URLs. Verify the URL domain in the TikTok developer portal for PULL_FROM_URL.');
+            }
         }
 
         $title = ContentPackageCaptionBuilder::build($package, self::MAX_TITLE_LENGTH);
@@ -52,14 +61,13 @@ class TikTokPublisher implements PublisherInterface
         }
 
         $tiktokOptions = $this->tiktokPackageOptions($package->platform_specific_data);
-
         $creator = $this->client->queryCreatorInfo($token);
         $privacyLevel = $this->resolvePrivacyLevel(
             $creator['privacy_level_options'] ?? [],
             $tiktokOptions['privacy_level'] ?? null,
         );
 
-        $init = $this->client->initVideoPullFromUrl($token, $videoUrl, [
+        $postInfo = [
             'title' => $title,
             'privacy_level' => $privacyLevel,
             'disable_duet' => false,
@@ -67,7 +75,22 @@ class TikTokPublisher implements PublisherInterface
             'disable_stitch' => false,
             'brand_content_toggle' => (bool) ($tiktokOptions['brand_content_toggle'] ?? false),
             'brand_organic_toggle' => (bool) ($tiktokOptions['brand_organic_toggle'] ?? false),
-        ]);
+        ];
+
+        if ($this->isPhotoPost($mediaUrls, (string) ($package->content_type ?? ''))) {
+            MediaUrlClassifier::assertNoVideos($mediaUrls, 'TikTok photo');
+            $init = $this->client->initPhotoPullFromUrl(
+                $token,
+                array_slice($mediaUrls, 0, self::MAX_PHOTOS),
+                $postInfo,
+            );
+        } else {
+            if (count($mediaUrls) > 1) {
+                throw new RuntimeException('TikTok video posts support one video URL. Use image URLs for photo posts.');
+            }
+
+            $init = $this->client->initVideoPullFromUrl($token, $mediaUrls[0], $postInfo);
+        }
 
         $publishId = $init['publish_id'];
         $status = $this->client->waitUntilComplete($token, $publishId);
@@ -78,12 +101,30 @@ class TikTokPublisher implements PublisherInterface
             : $publishId;
 
         $username = (string) ($creator['creator_username'] ?? '');
-        $platformPostUrl = $this->buildPostUrl($username, $platformPostId, $publishId);
+        $platformPostUrl = $this->buildPostUrl($username, $platformPostId, $publishId, $this->isPhotoPost($mediaUrls, (string) ($package->content_type ?? '')));
 
         return [
             'platform_post_id' => $platformPostId,
             'platform_post_url' => $platformPostUrl,
         ];
+    }
+
+    /**
+     * @param  list<string>  $mediaUrls
+     */
+    private function isPhotoPost(array $mediaUrls, string $contentType): bool
+    {
+        if ($contentType === 'image' || $contentType === 'photo') {
+            return true;
+        }
+
+        foreach ($mediaUrls as $url) {
+            if (MediaUrlClassifier::isVideo($url)) {
+                return false;
+            }
+        }
+
+        return MediaUrlClassifier::looksLikeImageAsset($mediaUrls[0]);
     }
 
     /** @return array<string, mixed> */
@@ -122,17 +163,14 @@ class TikTokPublisher implements PublisherInterface
         return 'SELF_ONLY';
     }
 
-    private function buildPostUrl(string $username, string $platformPostId, string $publishId): ?string
+    private function buildPostUrl(string $username, string $platformPostId, string $publishId, bool $isPhoto): ?string
     {
-        if ($username !== '' && $platformPostId !== '' && $platformPostId !== $publishId) {
-            return 'https://www.tiktok.com/@'.ltrim($username, '@').'/video/'.$platformPostId;
+        if ($username === '' || $platformPostId === '' || $platformPostId === $publishId) {
+            return null;
         }
 
-        return null;
-    }
+        $path = $isPhoto ? 'photo' : 'video';
 
-    private function isHttpsUrl(string $url): bool
-    {
-        return (bool) preg_match('#^https://#i', $url);
+        return 'https://www.tiktok.com/@'.ltrim($username, '@').'/'.$path.'/'.$platformPostId;
     }
 }

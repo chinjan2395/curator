@@ -4,12 +4,15 @@ namespace App\Services\Social\Publishers;
 
 use App\Models\ScheduledPost;
 use App\Services\Social\Support\ContentPackageCaptionBuilder;
+use App\Services\Social\Support\MediaUrlClassifier;
 use App\Services\Social\Support\ThreadsPublishingClient;
 use RuntimeException;
 
 class ThreadsPublisher implements PublisherInterface
 {
     private const MAX_TEXT_LENGTH = 500;
+
+    private const MAX_CAROUSEL_ITEMS = 20;
 
     public function __construct(
         private readonly ThreadsPublishingClient $client = new ThreadsPublishingClient,
@@ -35,27 +38,35 @@ class ThreadsPublisher implements PublisherInterface
         }
 
         $text = ContentPackageCaptionBuilder::build($package, self::MAX_TEXT_LENGTH);
-        $mediaUrl = ContentPackageCaptionBuilder::firstMediaUrl($package);
-        $mediaType = $this->resolveMediaType($mediaUrl, (string) ($package->content_type ?? ''));
+        $mediaUrls = ContentPackageCaptionBuilder::mediaUrls($package);
 
-        if ($mediaType === 'TEXT' && $text === '') {
+        foreach ($mediaUrls as $url) {
+            if (! MediaUrlClassifier::isHttpsUrl($url)) {
+                throw new RuntimeException('Threads media posts require public HTTPS URLs in content package media_urls.');
+            }
+        }
+
+        if ($mediaUrls === [] && $text === '') {
             throw new RuntimeException('Threads requires caption text or a public HTTPS image/video URL in media_urls.');
         }
 
-        if ($mediaType !== 'TEXT' && (! $mediaUrl || ! $this->isHttpsUrl($mediaUrl))) {
-            throw new RuntimeException('Threads media posts require a public HTTPS URL in content package media_urls.');
-        }
-
         $userId = $this->client->resolveUserId($credential, $token);
-        $containerParams = $this->buildContainerParams($mediaType, $text, $mediaUrl);
 
-        $container = $this->client->createContainer($userId, $token, $containerParams);
+        if (count($mediaUrls) >= 2) {
+            $containerId = $this->createCarouselContainer($userId, $token, $mediaUrls, $text, $package);
+        } else {
+            $mediaUrl = $mediaUrls[0] ?? null;
+            $mediaType = $this->resolveMediaType($mediaUrl, (string) ($package->content_type ?? ''));
+            $containerParams = $this->buildContainerParams($mediaType, $text, $mediaUrl);
+            $container = $this->client->createContainer($userId, $token, $containerParams);
+            $containerId = $container['creation_id'];
 
-        if ($mediaType !== 'TEXT') {
-            $this->client->waitUntilReady($token, $container['creation_id']);
+            if ($mediaType !== 'TEXT') {
+                $this->client->waitUntilReady($token, $containerId);
+            }
         }
 
-        $published = $this->client->publishContainer($userId, $token, $container['creation_id']);
+        $published = $this->client->publishContainer($userId, $token, $containerId);
         $postId = $published['platform_post_id'];
         $permalink = $this->client->fetchPermalink($token, $postId);
 
@@ -63,6 +74,51 @@ class ThreadsPublisher implements PublisherInterface
             'platform_post_id' => $postId,
             'platform_post_url' => $permalink,
         ];
+    }
+
+    /**
+     * @param  list<string>  $mediaUrls
+     */
+    private function createCarouselContainer(
+        string $userId,
+        string $token,
+        array $mediaUrls,
+        string $text,
+        $package,
+    ): string {
+        $childIds = [];
+
+        foreach (array_slice($mediaUrls, 0, self::MAX_CAROUSEL_ITEMS) as $mediaUrl) {
+            $mediaType = $this->resolveMediaType($mediaUrl, (string) ($package->content_type ?? ''));
+            $params = [
+                'media_type' => $mediaType,
+                'is_carousel_item' => 'true',
+            ];
+
+            if ($mediaType === 'IMAGE') {
+                $params['image_url'] = $mediaUrl;
+            } else {
+                $params['video_url'] = $mediaUrl;
+            }
+
+            $child = $this->client->createContainer($userId, $token, $params);
+            $this->client->waitUntilReady($token, $child['creation_id']);
+            $childIds[] = $child['creation_id'];
+        }
+
+        $params = [
+            'media_type' => 'CAROUSEL',
+            'children' => implode(',', $childIds),
+        ];
+
+        if ($text !== '') {
+            $params['text'] = $text;
+        }
+
+        $container = $this->client->createContainer($userId, $token, $params);
+        $this->client->waitUntilReady($token, $container['creation_id']);
+
+        return $container['creation_id'];
     }
 
     /** @return array<string, string> */
@@ -91,22 +147,10 @@ class ThreadsPublisher implements PublisherInterface
             return 'TEXT';
         }
 
-        if ($contentType === 'video' || $this->looksLikeVideoUrl($mediaUrl)) {
+        if (MediaUrlClassifier::isVideoContentType($contentType) || MediaUrlClassifier::isVideo($mediaUrl)) {
             return 'VIDEO';
         }
 
         return 'IMAGE';
-    }
-
-    private function looksLikeVideoUrl(string $url): bool
-    {
-        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
-
-        return (bool) preg_match('/\.(mp4|mov|webm|m4v|avi)(\?.*)?$/', $path);
-    }
-
-    private function isHttpsUrl(string $url): bool
-    {
-        return (bool) preg_match('#^https://#i', $url);
     }
 }

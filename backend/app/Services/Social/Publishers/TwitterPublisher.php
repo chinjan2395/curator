@@ -4,6 +4,7 @@ namespace App\Services\Social\Publishers;
 
 use App\Models\ScheduledPost;
 use App\Services\Social\Support\ContentPackageCaptionBuilder;
+use App\Services\Social\Support\MediaUrlClassifier;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -12,6 +13,8 @@ class TwitterPublisher implements PublisherInterface
     private const X_API_BASE = 'https://api.x.com/2';
 
     private const MAX_TWEET_LENGTH = 280;
+
+    private const MAX_IMAGES = 4;
 
     public function __construct(
         private readonly TwitterMediaUploader $mediaUploader = new TwitterMediaUploader,
@@ -43,10 +46,16 @@ class TwitterPublisher implements PublisherInterface
 
         $payload = ['text' => $text];
 
-        $mediaUrl = ContentPackageCaptionBuilder::firstMediaUrl($package);
-        if ($mediaUrl !== null) {
-            $mediaId = $this->mediaUploader->uploadFromUrl($token, $mediaUrl);
-            $payload['media'] = ['media_ids' => [$mediaId]];
+        $mediaUrls = array_slice(ContentPackageCaptionBuilder::mediaUrls($package), 0, self::MAX_IMAGES);
+        if ($mediaUrls !== []) {
+            MediaUrlClassifier::assertNoVideos($mediaUrls, 'X / Twitter');
+
+            $mediaIds = [];
+            foreach ($mediaUrls as $mediaUrl) {
+                $mediaIds[] = $this->mediaUploader->uploadFromUrl($token, $mediaUrl);
+            }
+
+            $payload['media'] = ['media_ids' => $mediaIds];
         }
 
         $response = Http::withToken($token)

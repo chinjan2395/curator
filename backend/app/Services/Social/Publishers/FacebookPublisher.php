@@ -5,14 +5,13 @@ namespace App\Services\Social\Publishers;
 use App\Models\ScheduledPost;
 use App\Services\Social\Support\ContentPackageCaptionBuilder;
 use App\Services\Social\Support\FacebookGraphClient;
+use App\Services\Social\Support\MediaUrlClassifier;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class FacebookPublisher implements PublisherInterface
 {
     private const GRAPH_VERSION = 'v23.0';
-
-    private const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'webm', 'mkv', 'm4v', 'wmv'];
 
     public function __construct(
         private readonly FacebookGraphClient $graph = new FacebookGraphClient,
@@ -47,7 +46,7 @@ class FacebookPublisher implements PublisherInterface
             return $this->publishTextPost($pageId, $pageToken, $message);
         }
 
-        if ($this->isVideo($mediaUrls[0])) {
+        if (MediaUrlClassifier::isVideo($mediaUrls[0])) {
             return $this->publishVideoPost($pageId, $pageToken, $mediaUrls[0], $message);
         }
 
@@ -165,13 +164,6 @@ class FacebookPublisher implements PublisherInterface
         }
 
         return $this->result($videoId);
-    }
-
-    private function isVideo(string $url): bool
-    {
-        $ext = strtolower(pathinfo((string) parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-
-        return in_array($ext, self::VIDEO_EXTENSIONS, true);
     }
 
     private function result(string $postId): array
