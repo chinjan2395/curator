@@ -628,11 +628,12 @@
                   <a
                     v-for="(row, idx) in showcasePreviewRows"
                     :key="row.p.id"
-                    :href="row.p.video_url || '#'"
+                    :href="postLinkHref(row.p)"
                     target="_blank"
                     rel="noreferrer"
                     class="crt-card crt-card--showcase crt-link"
                     :style="previewCardStyle(idx)"
+                    @click="trackPreviewPostClick(row.p)"
                   >
                     <div v-if="row.p.thumbnail_url" class="crt-media">
                       <img :src="row.p.thumbnail_url" :alt="row.p.title || 'Post'" loading="lazy" />
@@ -797,7 +798,7 @@
                                 class="crt-showcase-share-platform"
                                 title="Share on X"
                                 aria-label="Share on X"
-                                @click.stop.prevent="openPreviewShare('twitter', row.p.video_url)"
+                                @click.stop.prevent="openPreviewShare('twitter', row.p.video_url || row.p.post_url, row.p.id)"
                               >
                                 <SocialIcon type="twitter" class="w-4 h-4" />
                               </button>
@@ -806,7 +807,7 @@
                                 class="crt-showcase-share-platform"
                                 title="Share on Facebook"
                                 aria-label="Share on Facebook"
-                                @click.stop.prevent="openPreviewShare('facebook', row.p.video_url)"
+                                @click.stop.prevent="openPreviewShare('facebook', row.p.video_url || row.p.post_url, row.p.id)"
                               >
                                 <SocialIcon type="facebook" class="w-4 h-4" />
                               </button>
@@ -929,7 +930,7 @@
                                 class="crt-showcase-share-platform"
                                 title="Share on X"
                                 aria-label="Share on X"
-                                @click.stop.prevent="openPreviewShare('twitter', row.p.video_url)"
+                                @click.stop.prevent="openPreviewShare('twitter', row.p.video_url || row.p.post_url, row.p.id)"
                               >
                                 <SocialIcon type="twitter" class="w-4 h-4" />
                               </button>
@@ -938,7 +939,7 @@
                                 class="crt-showcase-share-platform"
                                 title="Share on Facebook"
                                 aria-label="Share on Facebook"
-                                @click.stop.prevent="openPreviewShare('facebook', row.p.video_url)"
+                                @click.stop.prevent="openPreviewShare('facebook', row.p.video_url || row.p.post_url, row.p.id)"
                               >
                                 <SocialIcon type="facebook" class="w-4 h-4" />
                               </button>
@@ -977,11 +978,12 @@
                 <a
                   v-for="(p, idx) in previewPosts"
                   :key="p.id"
-                  :href="p.video_url || '#'"
+                  :href="postLinkHref(p)"
                   target="_blank"
                   rel="noreferrer"
                   class="crt-card crt-link"
                   :style="previewCardStyle(idx)"
+                  @click="trackPreviewPostClick(p)"
                 >
                   <div v-if="p.thumbnail_url" class="crt-media">
                     <img :src="p.thumbnail_url" :alt="p.title || 'Post'" loading="lazy" />
@@ -1067,7 +1069,7 @@
                           class="crt-showcase-share-platform"
                           title="Share on X"
                           aria-label="Share on X"
-                          @click.stop.prevent="openPreviewShare('twitter', p.video_url)"
+                          @click.stop.prevent="openPreviewShare('twitter', p.video_url || p.post_url, p.id)"
                         >
                           <SocialIcon type="twitter" class="w-4 h-4" />
                         </button>
@@ -1076,7 +1078,7 @@
                           class="crt-showcase-share-platform"
                           title="Share on Facebook"
                           aria-label="Share on Facebook"
-                          @click.stop.prevent="openPreviewShare('facebook', p.video_url)"
+                          @click.stop.prevent="openPreviewShare('facebook', p.video_url || p.post_url, p.id)"
                         >
                           <SocialIcon type="facebook" class="w-4 h-4" />
                         </button>
@@ -1092,10 +1094,11 @@
             <a
               v-for="p in previewPosts"
               :key="p.id"
-              :href="p.video_url || '#'"
+              :href="postLinkHref(p)"
               target="_blank"
               rel="noreferrer"
               class="block bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-card transition overflow-hidden"
+              @click="trackPreviewPostClick(p)"
             >
               <div v-if="p.thumbnail_url" class="aspect-video bg-slate-100 overflow-hidden">
                 <img :src="p.thumbnail_url" class="w-full h-full object-cover" :alt="p.title || 'Post'" />
@@ -1173,6 +1176,7 @@ import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import { AppButton, AppCard, AppCheckbox, AppIcon, AppInput, AppSelect } from '../components/ui';
 import { fetchPreviewPosts } from '../composables/usePublishApi';
+import { postLinkHref, trackEmbedPostEvent } from '../composables/useEmbedAnalytics';
 import { absolutePageAssetUrl, apiUrlFromAny } from '../config/api.js';
 
 defineOptions({ name: 'PublishView' });
@@ -1665,7 +1669,17 @@ function previewShareUrl(provider, url) {
   return `https://twitter.com/intent/tweet?url=${target}`;
 }
 
-function openPreviewShare(provider, url) {
+function trackPreviewPostClick(post) {
+  const key = embedPublicKey.value;
+  if (!key || !post?.id) return;
+  trackEmbedPostEvent(key, post.id, 'post_click', postLinkHref(post));
+}
+
+function openPreviewShare(provider, url, postId) {
+  const key = embedPublicKey.value;
+  if (key && postId) {
+    trackEmbedPostEvent(key, postId, 'share_click', url || '');
+  }
   const href = previewShareUrl(provider, url);
   if (typeof window !== 'undefined') {
     window.open(href, '_blank', 'noopener,noreferrer');

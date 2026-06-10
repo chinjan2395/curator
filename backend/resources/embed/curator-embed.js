@@ -44,9 +44,41 @@
     return String((p && p.post_url) || (p && p.video_url) || '#');
   }
 
+  function embedScriptOrigin() {
+    try {
+      var scripts = document.getElementsByTagName('script');
+      for (var i = scripts.length - 1; i >= 0; i--) {
+        var src = scripts[i].src || '';
+        if (src.indexOf('/api/embed/') !== -1 && src.indexOf('.js') !== -1) {
+          return new URL(src, window.location.href).origin;
+        }
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function resolveAnalyticsBase() {
+    var base = ANALYTICS_BASE || String(POSTS_URL || '').replace(/\/posts(\?.*)?$/, '/posts');
+    if (!base) return '';
+    try {
+      var api = new URL(base, window.location.href);
+      var loaderOrigin = embedScriptOrigin();
+      if (loaderOrigin && loaderOrigin !== api.origin) {
+        api.host = new URL(loaderOrigin).host;
+        api.protocol = new URL(loaderOrigin).protocol;
+      }
+      var path = api.pathname.replace(/\/$/, '');
+      if (!/\/posts$/.test(path)) path += '/posts';
+      return api.origin + path;
+    } catch (e2) {
+      return base;
+    }
+  }
+
   function trackEmbedEvent(postId, eventType, targetUrl) {
-    if (!ANALYTICS_BASE || !postId) return;
-    var endpoint = ANALYTICS_BASE + '/' + encodeURIComponent(String(postId)) + '/events';
+    var analyticsBase = resolveAnalyticsBase();
+    if (!analyticsBase || !postId) return;
+    var endpoint = analyticsBase + '/' + encodeURIComponent(String(postId)) + '/events';
     var payload = JSON.stringify({
       event_type: eventType || 'post_click',
       target_url: targetUrl || '',
