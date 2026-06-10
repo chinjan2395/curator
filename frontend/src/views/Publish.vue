@@ -88,7 +88,7 @@
             </div>
 
             <!-- Feed Options Section -->
-            <div class="space-y-4 pt-4 border-t border-slate-200">
+            <div v-if="!previewIsShowcase" class="space-y-4 pt-4 border-t border-slate-200">
               <h3 class="text-sm font-semibold text-slate-900">Feed Options</h3>
               <div class="space-y-3">
                 <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
@@ -127,23 +127,38 @@
                   <AppCheckbox v-model="appearance.post.show_titles" />
                   <div class="font-medium text-slate-900">Show titles</div>
                 </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                <label
+                  v-if="!previewIsShowcase"
+                  class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2"
+                >
                   <AppCheckbox v-model="appearance.post.show_platform_icon" />
                   <div class="font-medium text-slate-900">Show platform icon</div>
                 </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                <label
+                  v-if="!previewIsShowcase"
+                  class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2"
+                >
                   <AppCheckbox v-model="appearance.post.show_feed_name" />
                   <div class="font-medium text-slate-900">Show feed / account name</div>
                 </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                <label
+                  v-if="!previewIsShowcase"
+                  class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2"
+                >
                   <AppCheckbox v-model="appearance.post.show_share_icons" />
                   <div class="font-medium text-slate-900">Show share icons</div>
                 </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                <label
+                  v-if="!previewIsShowcase"
+                  class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2"
+                >
                   <AppCheckbox v-model="appearance.post.show_likes" />
                   <div class="font-medium text-slate-900">Show likes</div>
                 </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2">
+                <label
+                  v-if="!previewIsShowcase"
+                  class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2"
+                >
                   <AppCheckbox v-model="appearance.post.show_comments" />
                   <div class="font-medium text-slate-900">Show comments</div>
                 </label>
@@ -157,7 +172,7 @@
             <!-- Post Layout Section -->
             <div class="space-y-4 pt-4 border-t border-slate-200">
               <h3 class="text-sm font-semibold text-slate-900">Layout</h3>
-              <div class="grid grid-cols-2 gap-3">
+              <div v-if="!previewIsShowcase" class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Source layout</label>
                   <AppSelect v-model="appearance.post.source_row_layout" select-class="w-full py-2" :show-placeholder="false">
@@ -173,7 +188,7 @@
                   </AppSelect>
                 </div>
               </div>
-              <div v-if="previewIsShowcase" class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+              <div v-if="previewIsShowcase" class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-700 mb-2">Showcase alignment</label>
                   <AppSelect v-model="appearance.post.showcase_content_alignment" select-class="w-full py-2" :show-placeholder="false">
@@ -368,7 +383,7 @@
             </div>
 
             <!-- Branding Section -->
-            <div v-if="appearance?.branding" class="space-y-4 pt-4 border-t border-slate-200">
+            <div v-if="appearance?.branding && previewIsShowcase" class="space-y-4 pt-4 border-t border-slate-200">
               <div>
                 <h3 class="text-sm font-semibold text-slate-900">Showcase branding</h3>
                 <p class="text-xs text-slate-500 mt-2">Customize icons and avatars on the Showcase carousel. Use HTTPS URLs for custom images (square PNG or JPG).</p>
@@ -492,7 +507,7 @@
           </AppCard>
         </div>
 
-        <div class="lg:sticky lg:top-5 self-start max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
+        <div class="lg:sticky lg:top-5 self-start max-h-[calc(100vh-140px)] overflow-y-auto pr-1 space-y-4">
           <AppCard class="p-4">
             <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-3 mb-3">
               <div class="text-sm-pro text-slate-700 min-w-0">

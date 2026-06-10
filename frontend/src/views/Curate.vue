@@ -465,7 +465,7 @@ function toggleSelectAll() {
 async function bulkApprove() {
   const toUpdate = visiblePosts.value.filter(p => selectedPostIds.value.has(p.id));
   if (!toUpdate.length) return;
-  await Promise.all(toUpdate.map(p => posts.update(workspaceId.value, getPostFeedId(p), p.id, { status: 'approved' })));
+  await posts.bulkUpdate(workspaceId.value, toUpdate.map(p => p.id), { status: 'approved' });
   toast.success(`Approved ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
   clearSelection();
 }
@@ -473,7 +473,7 @@ async function bulkApprove() {
 async function bulkReject() {
   const toUpdate = visiblePosts.value.filter(p => selectedPostIds.value.has(p.id));
   if (!toUpdate.length) return;
-  await Promise.all(toUpdate.map(p => posts.update(workspaceId.value, getPostFeedId(p), p.id, { status: 'rejected' })));
+  await posts.bulkUpdate(workspaceId.value, toUpdate.map(p => p.id), { status: 'rejected' });
   toast.success(`Rejected ${toUpdate.length} post${toUpdate.length !== 1 ? 's' : ''}`);
   clearSelection();
 }

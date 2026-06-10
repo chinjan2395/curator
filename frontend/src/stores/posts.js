@@ -49,6 +49,36 @@ export const usePostsStore = defineStore('posts', {
         throw err;
       }
     },
+    async bulkUpdate(workspaceId, postIds, patch) {
+      this.error = null;
+      try {
+        const { data } = await axios.put(`/api/workspaces/${workspaceId}/posts/bulk`, {
+          post_ids: postIds,
+          ...patch,
+        });
+        const body = data?.data ?? data;
+        const updatedPosts = Array.isArray(body) ? body : body?.data ?? [];
+        const updatedById = new Map(updatedPosts.map((p) => [Number(p.id), p]));
+
+        this.list = this.list.map((post) => {
+          const updated = updatedById.get(Number(post.id));
+          if (!updated) return post;
+
+          return {
+            ...post,
+            ...updated,
+            // Preserve local link used by Curate grouping when API payload omits it.
+            _feedId: updated?._feedId ?? updated?.feed_id ?? post?._feedId ?? post?.feed_id,
+          };
+        });
+
+        return updatedPosts;
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Failed to update posts';
+        useToastStore().error(msg);
+        throw err;
+      }
+    },
     async remove(workspaceId, feedId, postId) {
       this.error = null;
       try {
