@@ -38,8 +38,96 @@ class LinkedInPublishingClient
     }
 
     /**
-     * @return string Post URN from x-restli-id header
+     * @return array{upload_url: string, image_urn: string}
      */
+    public function initializeImageUpload(string $accessToken, string $ownerUrn): array
+    {
+        $response = Http::withToken($accessToken)
+            ->acceptJson()
+            ->timeout(60)
+            ->withHeaders($this->apiHeaders())
+            ->post(self::API_BASE.'/rest/images?action=initializeUpload', [
+                'initializeUploadRequest' => [
+                    'owner' => $ownerUrn,
+                ],
+            ]);
+
+        if (! $response->ok()) {
+            $this->throwApiError($response);
+        }
+
+        $value = $response->json('value');
+        if (! is_array($value)) {
+            throw new RuntimeException('LinkedIn image initialize returned no value.');
+        }
+
+        $uploadUrl = (string) ($value['uploadUrl'] ?? '');
+        $imageUrn = (string) ($value['image'] ?? '');
+
+        if ($uploadUrl === '' || $imageUrn === '') {
+            throw new RuntimeException('LinkedIn image initialize returned incomplete upload data.');
+        }
+
+        return [
+            'upload_url' => $uploadUrl,
+            'image_urn' => $imageUrn,
+        ];
+    }
+
+    public function uploadImageBinary(string $uploadUrl, string $binary, string $accessToken): void
+    {
+        $response = Http::withToken($accessToken)
+            ->withBody($binary, 'application/octet-stream')
+            ->timeout(120)
+            ->put($uploadUrl);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('LinkedIn image binary upload failed: '.$response->body());
+        }
+    }
+
+    /**
+     * @param  list<string>  $imageUrns
+     */
+    public function createImagePost(string $accessToken, string $authorUrn, string $commentary, array $imageUrns): string
+    {
+        if ($imageUrns === []) {
+            throw new RuntimeException('LinkedIn image post requires at least one uploaded image.');
+        }
+
+        if (count($imageUrns) === 1) {
+            return $this->createPost($accessToken, [
+                'author' => $authorUrn,
+                'commentary' => $commentary,
+                'visibility' => 'PUBLIC',
+                'distribution' => $this->distributionPayload(),
+                'content' => [
+                    'media' => [
+                        'id' => $imageUrns[0],
+                    ],
+                ],
+                'lifecycleState' => 'PUBLISHED',
+                'isReshareDisabledByAuthor' => false,
+            ]);
+        }
+
+        $images = array_map(static fn (string $urn) => ['id' => $urn], $imageUrns);
+
+        return $this->createPost($accessToken, [
+            'author' => $authorUrn,
+            'commentary' => $commentary,
+            'visibility' => 'PUBLIC',
+            'distribution' => $this->distributionPayload(),
+            'content' => [
+                'multiImage' => [
+                    'images' => $images,
+                ],
+            ],
+            'lifecycleState' => 'PUBLISHED',
+            'isReshareDisabledByAuthor' => false,
+        ]);
+    }
+
     public function createArticlePost(
         string $accessToken,
         string $authorUrn,

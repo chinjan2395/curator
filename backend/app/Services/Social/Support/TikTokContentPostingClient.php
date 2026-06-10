@@ -34,6 +34,32 @@ class TikTokContentPostingClient
             ],
         ]);
 
+        return $this->extractPublishId($data);
+    }
+
+    /**
+     * @param  list<string>  $photoUrls
+     * @return array{publish_id: string}
+     */
+    public function initPhotoPullFromUrl(string $accessToken, array $photoUrls, array $postInfo): array
+    {
+        $data = $this->post('/post/publish/content/init/', $accessToken, [
+            'post_info' => $postInfo,
+            'source_info' => [
+                'source' => 'PULL_FROM_URL',
+                'photo_cover_index' => 1,
+                'photo_images' => array_values($photoUrls),
+            ],
+            'post_mode' => 'DIRECT_POST',
+            'media_type' => 'PHOTO',
+        ]);
+
+        return $this->extractPublishId($data);
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private function extractPublishId(array $data): array
+    {
         $publishId = (string) ($data['publish_id'] ?? '');
         if ($publishId === '') {
             throw new RuntimeException('TikTok publish init returned no publish_id.');
