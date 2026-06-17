@@ -47,6 +47,7 @@ use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\DevToolsController;
 use App\Http\Controllers\CapabilitiesController;
 use App\Http\Controllers\SetupStatusController;
+use App\Http\Controllers\DuplicateGroupController;
 
 // OAuth callbacks (public, no auth)
 Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
@@ -102,6 +103,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('workspaces/{workspace}/posts', [PostController::class, 'workspaceIndex']);
     Route::put('workspaces/{workspace}/posts/bulk', [PostController::class, 'bulkUpdate']);
     Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
+
+    Route::get('workspaces/{workspace}/duplicate-groups', [DuplicateGroupController::class, 'index']);
+    Route::post('workspaces/{workspace}/duplicate-groups/scan', [DuplicateGroupController::class, 'scan']);
+    Route::post('workspaces/{workspace}/duplicate-groups/{group}/keep/{post}', [DuplicateGroupController::class, 'keep']);
+    Route::post('workspaces/{workspace}/duplicate-groups/{group}/dismiss', [DuplicateGroupController::class, 'dismiss']);
 
     Route::apiResource('social-credentials', SocialCredentialController::class);
     Route::put('social-credentials/{socialCredential}/label', [SocialCredentialController::class, 'label']);
