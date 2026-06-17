@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
+use App\Models\ContentPackage;
 use App\Models\ScheduledPost;
 use App\Models\SocialCredential;
+use App\Services\Social\SocialPublisherService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
 {
@@ -33,17 +36,34 @@ class ScheduleController extends Controller
     {
         $validated = $request->validate([
             'social_credential_id' => ['required', 'exists:social_credentials,id'],
-            'content_package_id' => ['nullable', 'exists:content_packages,id'],
+            'content_package_id' => ['required', 'exists:content_packages,id'],
             'scheduled_at' => ['required', 'date', 'after:now'],
         ]);
 
         $credential = SocialCredential::findOrFail($validated['social_credential_id']);
         abort_if($credential->user_id !== $request->user()->id, 403);
 
+        if (! in_array($credential->provider, SocialPublisherService::NATIVE_PUBLISH_PROVIDERS, true)) {
+            throw ValidationException::withMessages([
+                'social_credential_id' => [
+                    ucfirst($credential->provider).' does not support native scheduling. Use embed publishing or pick X, Facebook, Instagram, TikTok, Threads, or LinkedIn.',
+                ],
+            ]);
+        }
+
+        $package = ContentPackage::findOrFail($validated['content_package_id']);
+        abort_if($package->user_id !== $request->user()->id, 403);
+
+        if (trim((string) $package->caption) === '') {
+            throw ValidationException::withMessages([
+                'content_package_id' => ['Content package must have caption text before scheduling native publish.'],
+            ]);
+        }
+
         $post = ScheduledPost::create([
             'user_id' => $request->user()->id,
             'social_credential_id' => $credential->id,
-            'content_package_id' => $validated['content_package_id'] ?? null,
+            'content_package_id' => $package->id,
             'scheduled_at' => Carbon::parse($validated['scheduled_at'])->utc(),
             'status' => 'scheduled',
         ]);

@@ -44,8 +44,8 @@
             size="sm"
             variant="secondary"
             :disabled="syncingAll"
-            @click="syncAllAccounts"
             title="Sync all accounts"
+            @click="syncAllAccounts"
           >
             <AppIcon name="sync" class="w-3.5 h-3.5 shrink-0" :class="{ 'animate-spin': syncingAll }" />
             Sync all
@@ -59,7 +59,8 @@
           class="connected-provider-card overflow-hidden"
           :class="{ 'connected-provider-card--broken': card.hasBroken }"
         >
-          <div class="px-3 py-2 border-b flex items-center justify-between gap-2"
+          <div
+            class="px-3 py-2 border-b flex items-center justify-between gap-2"
             :class="card.hasBroken ? 'border-rose-100' : 'border-slate-100/95'"
           >
             <div class="flex items-center gap-2 min-w-0">
@@ -75,8 +76,8 @@
               size="sm"
               variant="secondary"
               :disabled="creds.connecting"
-              @click="startConnect(card.type)"
               title="Add another account"
+              @click="startConnect(card.type)"
             >
               <AppIcon name="add" class="w-3.5 h-3.5 shrink-0" />
               Add
@@ -106,7 +107,7 @@
                       class="credential-status-badge"
                       :class="c.status === 'active' ? 'credential-status-badge--active' : 'credential-status-badge--broken'"
                     >
-                      <span class="credential-status-dot"></span>
+                      <span class="credential-status-dot" />
                       {{ c.status === 'active' ? 'Active' : 'Disconnected' }}
                     </span>
                   </div>
@@ -154,8 +155,8 @@
                   size="sm"
                   class="compact-sync-btn"
                   :disabled="syncingIds.has(c.id)"
-                  @click="syncCredential(c)"
                   title="Sync feeds for this account"
+                  @click="syncCredential(c)"
                 >
                   <AppIcon name="sync" class="w-3.5 h-3.5 shrink-0" :class="{ 'animate-spin': syncingIds.has(c.id) }" />
                   Sync
@@ -164,8 +165,8 @@
                   variant="ghost"
                   size="sm"
                   class="compact-disconnect-btn"
-                  @click="disconnect(c)"
                   title="Disconnect account"
+                  @click="disconnect(c)"
                 >
                   <AppIcon name="delete" class="w-3.5 h-3.5 shrink-0" />
                   Disconnect
@@ -176,6 +177,15 @@
         </div>
       </div>
     </div>
+
+    <AppCard v-if="!isPageLoading && !pageError" class="p-4">
+      <PlatformPublishGuide
+        :platforms="publishGuidePlatforms"
+        variant="cards"
+        title="What each platform supports"
+        subtitle="Native publish vs embed/sync — aligned with official API documentation."
+      />
+    </AppCard>
   </div>
 </template>
 
@@ -187,6 +197,7 @@ import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useToastStore } from '../stores/toast';
 import { useAuthStore } from '../stores/auth';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
 import { AppPageHeader } from '../components/layout/index.js';
 import { AppButton, AppCard, AppIcon, AppInput, AppLoader } from '../components/ui';
@@ -226,6 +237,16 @@ const providerLabels = {
   other: 'Other',
 };
 const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads', 'linkedin'];
+const publishGuidePlatforms = [
+  'twitter',
+  'facebook',
+  'instagram',
+  'tiktok',
+  'threads',
+  'linkedin',
+  'youtube',
+  'rss',
+];
 const oauthProviderByProvider = {
   youtube: 'google',
   google: 'google',

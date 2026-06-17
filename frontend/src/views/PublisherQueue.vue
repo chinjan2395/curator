@@ -10,6 +10,15 @@
 
     <CapabilityBanner context="publish" />
 
+    <AppCard v-if="queuePlatformList.length" class="p-4">
+      <PlatformPublishGuide
+        :platforms="queuePlatformList"
+        variant="compact"
+        title="Platform content types in your queue"
+        subtitle="Aa = text · IMG = image · VID = video · CAR = carousel · LINK = article"
+      />
+    </AppCard>
+
     <AppLoader v-if="loading && !queue.length" label="Loading queue…" />
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
@@ -61,10 +70,8 @@
           >
             <!-- Main grid: content | actions -->
             <div class="pq-card__body">
-
               <!-- Left: content -->
               <div class="pq-card__main">
-
                 <!-- Row 1: platform + account + status -->
                 <div class="pq-card__header">
                   <div class="flex flex-wrap items-center gap-2">
@@ -118,7 +125,6 @@
                   <span class="pq-error__label">Failure reason</span>
                   <span class="pq-error__message">{{ post.error_message }}</span>
                 </div>
-
               </div>
 
               <!-- Right: actions -->
@@ -133,7 +139,7 @@
                 >
                   View post
                   <svg class="pq-action-link__icon" viewBox="0 0 16 16" fill="none">
-                    <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5m0 0v5m0-5L7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M6 3H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3M9 2h5m0 0v5m0-5L7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </a>
 
@@ -159,7 +165,6 @@
                   {{ cancelling[post.id] ? 'Cancelling…' : 'Cancel' }}
                 </button>
               </div>
-
             </div>
           </div>
         </div>
@@ -174,6 +179,7 @@ import axios from 'axios';
 import { AppAlert, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { useToastStore } from '../stores/toast';
 import { formatScheduledAt } from '../utils/datetime';
@@ -205,6 +211,14 @@ const counts = computed(() => ({
   failed: queue.value.filter((p) => p.status === 'failed').length,
   published: queue.value.filter((p) => p.status === 'published').length,
 }));
+
+const queuePlatformList = computed(() => [
+  ...new Set(
+    queue.value
+      .map((p) => p.social_credential?.provider)
+      .filter(Boolean),
+  ),
+]);
 
 async function load() {
   loading.value = true;

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Campaign;
+use App\Models\ContentPackage;
 use App\Models\ScheduledPost;
 use App\Models\SocialCredential;
 use App\Models\User;
@@ -20,14 +22,9 @@ class ScheduleTimezoneTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_store_persists_scheduled_at_in_utc(): void
+    private function credentialFor(User $user): SocialCredential
     {
-        Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));
-
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
-
-        $credential = SocialCredential::create([
+        return SocialCredential::create([
             'user_id' => $user->id,
             'provider' => 'twitter',
             'account_id' => 'acct-1',
@@ -35,11 +32,41 @@ class ScheduleTimezoneTest extends TestCase
             'expires_at' => now()->addHour(),
             'status' => 'active',
         ]);
+    }
+
+    private function packageFor(User $user): ContentPackage
+    {
+        $campaign = Campaign::create([
+            'user_id' => $user->id,
+            'name' => 'Test campaign',
+            'status' => 'active',
+        ]);
+
+        return ContentPackage::create([
+            'campaign_id' => $campaign->id,
+            'user_id' => $user->id,
+            'platform' => 'twitter',
+            'content_type' => 'post',
+            'caption' => 'Scheduled post caption',
+            'status' => 'approved',
+        ]);
+    }
+
+    public function test_store_persists_scheduled_at_in_utc(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $credential = $this->credentialFor($user);
+        $package = $this->packageFor($user);
 
         $scheduledAt = '2026-06-10T18:30:00Z';
 
         $response = $this->postJson('/api/schedule', [
             'social_credential_id' => $credential->id,
+            'content_package_id' => $package->id,
             'scheduled_at' => $scheduledAt,
         ]);
 
@@ -58,14 +85,7 @@ class ScheduleTimezoneTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $credential = SocialCredential::create([
-            'user_id' => $user->id,
-            'provider' => 'twitter',
-            'account_id' => 'acct-1',
-            'access_token' => 'token',
-            'expires_at' => now()->addHour(),
-            'status' => 'active',
-        ]);
+        $credential = $this->credentialFor($user);
 
         $inRange = ScheduledPost::create([
             'user_id' => $user->id,
@@ -100,18 +120,38 @@ class ScheduleTimezoneTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
+        $credential = $this->credentialFor($user);
+        $package = $this->packageFor($user);
+
+        $this->postJson('/api/schedule', [
+            'social_credential_id' => $credential->id,
+            'content_package_id' => $package->id,
+            'scheduled_at' => '2026-06-08T11:00:00Z',
+        ])->assertUnprocessable();
+    }
+
+    public function test_store_rejects_unsupported_native_provider(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
         $credential = SocialCredential::create([
             'user_id' => $user->id,
-            'provider' => 'twitter',
-            'account_id' => 'acct-1',
+            'provider' => 'youtube',
+            'account_id' => 'yt-1',
             'access_token' => 'token',
             'expires_at' => now()->addHour(),
             'status' => 'active',
         ]);
+        $package = $this->packageFor($user);
 
         $this->postJson('/api/schedule', [
             'social_credential_id' => $credential->id,
-            'scheduled_at' => '2026-06-08T11:00:00Z',
-        ])->assertUnprocessable();
+            'content_package_id' => $package->id,
+            'scheduled_at' => '2026-06-10T18:30:00Z',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['social_credential_id']);
     }
 }

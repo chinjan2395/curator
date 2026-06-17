@@ -74,6 +74,14 @@
               <AppFormField label="Platforms" hint="Comma-separated: instagram, linkedin, tiktok" class="mt-3">
                 <AppInput v-model="campaignForm.platformsText" type="text" placeholder="instagram, twitter, facebook" />
               </AppFormField>
+              <PlatformPublishGuide
+                v-if="splitList(campaignForm.platformsText).length"
+                class="mt-3"
+                :platforms="splitList(campaignForm.platformsText)"
+                variant="compact"
+                title="Native publish by platform"
+                subtitle="Aa = text · IMG = image · VID = video · CAR = carousel · LINK = article"
+              />
             </div>
 
             <div class="campaign-form-panel">
@@ -229,6 +237,14 @@
         </AppEmptyState>
 
         <template v-else>
+          <PlatformPublishGuide
+            v-if="draftPlatformList.length"
+            :platforms="draftPlatformList"
+            variant="compact"
+            title="What each draft platform accepts"
+            subtitle="Aa = text · IMG = image · VID = video · CAR = carousel · LINK = article"
+          />
+
           <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="text-2xs text-slate-500">
               {{ filteredPackages.length }} draft{{ filteredPackages.length === 1 ? '' : 's' }}
@@ -336,7 +352,13 @@
               </div>
 
               <div v-if="expandedPackageId === pkg.id" class="campaign-draft-expanded">
-                <p class="text-sm text-slate-800 whitespace-pre-wrap leading-6">{{ pkg.caption }}</p>
+                <PlatformPublishGuide
+                  :platforms="[pkg.platform]"
+                  variant="cards"
+                  title="Publish requirements"
+                  subtitle="Match your draft media and caption to what this platform accepts."
+                />
+                <p class="text-sm text-slate-800 whitespace-pre-wrap leading-6 mt-3">{{ pkg.caption }}</p>
 
                 <!-- Insert content block -->
                 <div v-if="contentBlocks.length" class="flex flex-wrap items-end gap-2 mt-2">
@@ -589,6 +611,7 @@ import {
 } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 
 const route = useRoute();
@@ -678,6 +701,10 @@ const draftPlatformOptions = computed(() => {
     })),
   ];
 });
+
+const draftPlatformList = computed(() => [
+  ...new Set(packages.value.map((p) => p.platform).filter(Boolean)),
+]);
 
 const filteredPackages = computed(() => {
   const list = platformFilter.value === 'all'

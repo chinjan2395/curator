@@ -24,6 +24,17 @@ class CapabilitiesTest extends TestCase
             ->assertJsonPath('data.publish.native.tiktok.enabled', true)
             ->assertJsonPath('data.publish.native.threads.enabled', true)
             ->assertJsonPath('data.publish.native.linkedin.enabled', true)
+            ->assertJsonPath('data.publish.content_specs.instagram.native_publish', true)
+            ->assertJsonPath('data.publish.content_specs.youtube.native_publish', false)
+            ->assertJsonStructure([
+                'data' => [
+                    'publish' => [
+                        'content_specs' => [
+                            'twitter' => ['summary', 'content_types', 'docs_url'],
+                        ],
+                    ],
+                ],
+            ])
             ->assertJsonPath('data.inbox.sync_mode', 'stub');
     }
 
