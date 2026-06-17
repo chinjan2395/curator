@@ -3,7 +3,7 @@
     current="curate"
     title="Curate"
     description="Review and approve posts from all feeds."
-    :workspaceId="workspaceId"
+    :workspace-id="workspaceId"
     :breadcrumb="['Workspaces', workspaceName || 'Workspace', 'Curate']"
     no-sticky
   >
@@ -48,10 +48,10 @@
             type="checkbox"
             :checked="allVisibleSelected"
             :indeterminate.prop="!allVisibleSelected && hasSelection"
-            @change="toggleSelectAll"
             class="post-checkbox-input"
-          />
-          <span class="post-checkbox-mark" :class="{ 'post-checkbox-mark--checked': allVisibleSelected }"></span>
+            @change="toggleSelectAll"
+          >
+          <span class="post-checkbox-mark" :class="{ 'post-checkbox-mark--checked': allVisibleSelected }" />
           <span class="curate-select-all-text">All</span>
         </label>
         <div class="curate-view-toggle" role="group" aria-label="Post view mode">
@@ -72,7 +72,7 @@
             Compact
           </button>
         </div>
-        <AppButton variant="secondary" size="sm" class="curate-toolbar__btn" @click="syncNow" :disabled="feeds.syncing">
+        <AppButton variant="secondary" size="sm" class="curate-toolbar__btn" :disabled="feeds.syncing" @click="syncNow">
           {{ feeds.syncing ? 'Syncing…' : 'Sync now' }}
         </AppButton>
       </div>
@@ -88,9 +88,9 @@
           type="checkbox"
           :checked="allVisibleSelected"
           :indeterminate.prop="!allVisibleSelected && hasSelection"
-          @change="toggleSelectAll"
           class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
-        />
+          @change="toggleSelectAll"
+        >
         <span class="text-sm font-medium text-slate-700">{{ selectedPostIds.size }} selected</span>
       </div>
       <div class="curate-bulk-bar__actions">
@@ -130,6 +130,43 @@
         </div>
       </AppCard>
     </div>
+
+    <!-- Duplicate groups banner -->
+    <div
+      v-if="duplicateGroups.list.length > 0"
+      class="dup-banner rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 mb-3 flex flex-wrap items-center gap-2"
+    >
+      <span class="text-sm-pro font-semibold text-amber-800 flex-1">
+        {{ duplicateGroups.list.length }} possible duplicate group{{ duplicateGroups.list.length !== 1 ? 's' : '' }} found
+      </span>
+      <AppButton variant="secondary" size="sm" :disabled="duplicateGroups.loading" @click="scanDuplicates">
+        {{ duplicateGroups.loading ? 'Scanning…' : 'Scan for duplicates' }}
+      </AppButton>
+      <AppButton
+        variant="ghost"
+        size="sm"
+        class="text-amber-600 hover:text-amber-800 font-medium"
+        @click="showDuplicates = !showDuplicates"
+      >
+        {{ showDuplicates ? '▲ Hide' : '▼ Show' }}
+      </AppButton>
+    </div>
+
+    <div v-if="duplicateGroups.list.length === 0" class="mb-3">
+      <AppButton variant="secondary" size="sm" :disabled="duplicateGroups.loading" @click="scanDuplicates">
+        {{ duplicateGroups.loading ? 'Scanning…' : 'Scan for duplicates' }}
+      </AppButton>
+    </div>
+
+    <DuplicateGroupPanel
+      v-if="showDuplicates && duplicateGroups.list.length > 0"
+      :groups="duplicateGroups.list"
+      :feeds-by-id="feedsById"
+      :keeping-group-id="keepingGroupId"
+      class="mb-4"
+      @keep="keepPost"
+      @dismiss="dismissGroup"
+    />
 
     <div v-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
       <AppLoader size="sm" label="Loading posts..." />
@@ -174,7 +211,7 @@
                 :alt="p.title || 'Post image'"
                 class="w-full h-full object-cover group-hover:opacity-90 transition"
                 @error="markThumbnailBroken(p)"
-              />
+              >
               <div v-else class="w-full h-full flex items-center justify-center">
                 <div class="text-center px-3">
                   <div class="w-8 h-8 opacity-40 mx-auto mb-1" :class="platformIconClass(platform)">
@@ -186,7 +223,7 @@
               <!-- Play overlay for videos -->
               <div v-if="p.video_url" class="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div class="w-7 h-7 rounded-full bg-black/40 flex items-center justify-center">
-                  <svg class="w-3.5 h-3.5 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <svg class="w-3.5 h-3.5 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 </div>
               </div>
               <!-- Checkbox overlay -->
@@ -194,10 +231,10 @@
                 <input
                   type="checkbox"
                   :checked="selectedPostIds.has(p.id)"
-                  @change="toggleSelect(p)"
                   class="post-checkbox-input"
-                />
-                <span class="post-checkbox-mark" :class="{ 'post-checkbox-mark--checked': selectedPostIds.has(p.id) }"></span>
+                  @change="toggleSelect(p)"
+                >
+                <span class="post-checkbox-mark" :class="{ 'post-checkbox-mark--checked': selectedPostIds.has(p.id) }" />
               </label>
             </component>
 
@@ -210,11 +247,15 @@
                   class="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-semibold uppercase tracking-wider shrink-0"
                   :class="statusBadgeClass(p.status)"
                 >{{ statusInitial(p.status) }}</span>
+                <span
+                  v-if="duplicateGroups.duplicatedPostIds.has(p.id)"
+                  class="inline-flex items-center px-1 py-0.5 rounded text-2xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-200 shrink-0"
+                >Dup</span>
                 <button
                   class="p-0.5 rounded transition-colors"
                   :class="p.pinned ? 'text-amber-500' : 'text-slate-300 hover:text-slate-500'"
-                  @click="togglePin(p)"
                   :title="p.pinned ? 'Unpin' : 'Pin'"
+                  @click="togglePin(p)"
                 >
                   <AppIcon name="pin" class="w-3 h-3" />
                 </button>
@@ -224,8 +265,8 @@
               <button
                 class="text-left text-2xs text-slate-700 hover:text-blue-700 transition-colors flex-1 leading-relaxed"
                 :class="viewMode === 'compact' ? 'line-clamp-2' : 'line-clamp-4'"
-                @click="previewPostId = p.id"
                 title="Click to preview"
+                @click="previewPostId = p.id"
               >
                 <strong v-if="p.title" class="block text-slate-800 font-semibold mb-0.5 line-clamp-1">{{ p.title }}</strong>
                 {{ p.content }}
@@ -238,9 +279,9 @@
                   variant="success"
                   size="sm"
                   class="post-action-btn post-action-btn--icon"
-                  @click="setStatus(p, 'approved')"
                   title="Approve"
                   aria-label="Approve"
+                  @click="setStatus(p, 'approved')"
                 >
                   <AppIcon name="check" class="w-3.5 h-3.5" />
                 </AppButton>
@@ -249,9 +290,9 @@
                   variant="danger"
                   size="sm"
                   class="post-action-btn post-action-btn--icon"
-                  @click="setStatus(p, 'rejected')"
                   title="Reject"
                   aria-label="Reject"
+                  @click="setStatus(p, 'rejected')"
                 >
                   <AppIcon name="close" class="w-3.5 h-3.5" />
                 </AppButton>
@@ -260,7 +301,6 @@
           </AppCard>
         </div>
       </section>
-
     </div>
 
     <!-- Post preview modal -->
@@ -271,13 +311,13 @@
             class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
             :class="statusBadgeClass(previewPost.status)"
           >{{ previewPost.status }}</span>
-          <AppButton variant="secondary" size="sm" @click="previewPostId = null" aria-label="Close preview">
+          <AppButton variant="secondary" size="sm" aria-label="Close preview" @click="previewPostId = null">
             <AppIcon name="close" class="w-4 h-4" />
           </AppButton>
         </div>
         <div class="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
           <div v-if="previewPost.thumbnail_url" class="aspect-video rounded-md overflow-hidden bg-slate-100">
-            <img :src="previewPost.thumbnail_url" :alt="previewPost.title || 'Post'" class="w-full h-full object-cover" />
+            <img :src="previewPost.thumbnail_url" :alt="previewPost.title || 'Post'" class="w-full h-full object-cover">
           </div>
           <div v-if="previewPost.title" class="text-sm-pro font-semibold text-slate-800">{{ previewPost.title }}</div>
           <div class="text-sm-pro text-slate-700 whitespace-pre-wrap">{{ previewPost.content }}</div>
@@ -326,9 +366,11 @@ import { usePostsStore } from '../stores/posts';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useToastStore } from '../stores/toast';
+import { useDuplicateGroupsStore } from '../stores/duplicateGroups';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import SocialIcon from '../components/SocialIcon.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import DuplicateGroupPanel from '../components/curate/DuplicateGroupPanel.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
 import { AppBadge, AppButton, AppCard, AppIcon, AppLoader, AppModal, AppSelect } from '../components/ui';
 
@@ -340,6 +382,9 @@ const route = useRoute();
 const posts = usePostsStore();
 const feeds = useFeedsStore();
 const workspaces = useWorkspacesStore();
+const duplicateGroups = useDuplicateGroupsStore();
+const showDuplicates = ref(true);
+const keepingGroupId = ref(null);
 
 const workspaceId = computed(() => route.params.workspaceId);
 const feedId = computed(() => route.params.feedId);
@@ -367,6 +412,12 @@ const lastSyncedAt = computed(() => {
 const workspaceName = computed(() => {
   const w = workspaces.list.find((x) => x.id === Number(workspaceId.value));
   return w ? w.name : '…';
+});
+
+const feedsById = computed(() => {
+  const map = {};
+  for (const f of feeds.list) map[f.id] = f;
+  return map;
 });
 
 const platformOptions = computed(() => {
@@ -545,6 +596,7 @@ async function syncNow() {
   }
   toast.success(`Sync complete — ${totalCreated} new post${totalCreated !== 1 ? 's' : ''} found`);
   await refresh();
+  await duplicateGroups.fetch(workspaceId.value);
 }
 
 
@@ -552,6 +604,7 @@ onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
   if (!feeds.list.length && workspaceId.value) await feeds.fetchAll(workspaceId.value);
   await refresh();
+  await duplicateGroups.fetch(workspaceId.value);
 
   // Keep Curate list fresh while scheduler/background sync adds posts.
   autoRefreshTimer.value = window.setInterval(async () => {
@@ -586,6 +639,32 @@ watch(
     brokenThumbnails.value = next;
   },
 );
+
+async function keepPost(groupId, postId) {
+  keepingGroupId.value = groupId;
+  try {
+    await duplicateGroups.keepPost(workspaceId.value, groupId, postId);
+    toast.success('Resolved — duplicates rejected.');
+  } catch {
+    toast.error('Failed to resolve group.');
+  } finally {
+    keepingGroupId.value = null;
+  }
+}
+
+async function dismissGroup(groupId) {
+  try {
+    await duplicateGroups.dismiss(workspaceId.value, groupId);
+    toast.success('Group dismissed.');
+  } catch {
+    toast.error('Failed to dismiss group.');
+  }
+}
+
+async function scanDuplicates() {
+  await duplicateGroups.scan(workspaceId.value);
+  toast.success('Duplicate scan complete.');
+}
 
 async function setStatus(p, status) {
   await posts.update(workspaceId.value, getPostFeedId(p), p.id, { status });

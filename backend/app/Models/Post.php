@@ -41,4 +41,9 @@ class Post extends Model
     {
         return $this->belongsTo(Feed::class);
     }
+
+    public function duplicateGroups()
+    {
+        return $this->belongsToMany(PostDuplicateGroup::class, 'post_duplicate_group_items', 'post_id', 'group_id');
+    }
 }
