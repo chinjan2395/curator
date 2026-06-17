@@ -19,18 +19,23 @@ class GoogleDriveConnectTest extends TestCase
             'filesystems.disks.googledrive.clientId' => '',
             'filesystems.disks.googledrive.clientSecret' => '',
             'filesystems.disks.googledrive.refreshToken' => '',
+            'services.google.client_id' => '',
+            'services.google.client_secret' => '',
         ]);
 
         putenv('GOOGLE_DRIVE_CLIENT_ID=');
         putenv('GOOGLE_DRIVE_CLIENT_SECRET=');
         putenv('GOOGLE_DRIVE_REFRESH_TOKEN=');
+        putenv('GOOGLE_CLIENT_ID=');
+        putenv('GOOGLE_CLIENT_SECRET=');
 
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->getJson('/api/google-drive')
             ->assertOk()
-            ->assertJsonPath('data.connected', false);
+            ->assertJsonPath('data.connected', false)
+            ->assertJsonPath('data.oauth_ready', false);
     }
 
     public function test_non_admin_cannot_start_connect_flow(): void
@@ -62,6 +67,17 @@ class GoogleDriveConnectTest extends TestCase
 
     public function test_admin_connect_requires_google_oauth_config(): void
     {
+        config([
+            'filesystems.disks.googledrive.clientId' => '',
+            'filesystems.disks.googledrive.clientSecret' => '',
+            'services.google.client_id' => '',
+            'services.google.client_secret' => '',
+        ]);
+        putenv('GOOGLE_CLIENT_ID=');
+        putenv('GOOGLE_CLIENT_SECRET=');
+        putenv('GOOGLE_DRIVE_CLIENT_ID=');
+        putenv('GOOGLE_DRIVE_CLIENT_SECRET=');
+
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAs($admin)

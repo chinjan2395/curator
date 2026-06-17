@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\GoogleDriveConnection;
 use App\Models\OAuthAppConfig;
+use App\Support\OAuthAppConfigResolver;
 
 class GoogleDriveConfig
 {
@@ -78,12 +79,30 @@ class GoogleDriveConfig
             && $credentials['clientSecret'] !== '';
     }
 
-    public static function status(): array
+    public static function status(?int $userId = null): array
     {
+        $oauthReady = $userId !== null
+            ? self::oauthReadyForUser($userId)
+            : self::oauthReady();
+
         $connection = GoogleDriveConnection::current();
 
         if ($connection && self::isValidRefreshToken($connection->refresh_token ?? '')) {
-            return $connection->toStatusArray();
+            return array_merge($connection->toStatusArray(), ['oauth_ready' => $oauthReady]);
+        }
+
+        if ($connection && $connection->token_health === 'needs_reauth') {
+            return [
+                'connected' => true,
+                'account_email' => $connection->account_email,
+                'account_label' => $connection->account_label,
+                'token_health' => $connection->token_health,
+                'last_error' => $connection->last_error,
+                'connected_at' => $connection->connected_at?->toIso8601String(),
+                'expires_at' => $connection->expires_at?->toIso8601String(),
+                'source' => 'database',
+                'oauth_ready' => $oauthReady,
+            ];
         }
 
         $credentials = self::resolve();
@@ -98,6 +117,7 @@ class GoogleDriveConfig
                 'connected_at' => null,
                 'expires_at' => null,
                 'source' => 'env',
+                'oauth_ready' => $oauthReady,
             ];
         }
 
@@ -110,7 +130,22 @@ class GoogleDriveConfig
             'connected_at' => $connection?->connected_at?->toIso8601String(),
             'expires_at' => null,
             'source' => null,
+            'oauth_ready' => $oauthReady,
         ];
+    }
+
+    public static function oauthReady(): bool
+    {
+        return self::resolveClientId() !== '' && self::resolveClientSecret() !== '';
+    }
+
+    public static function oauthReadyForUser(int $userId): bool
+    {
+        if (OAuthAppConfigResolver::resolveForUser($userId, 'google')) {
+            return true;
+        }
+
+        return self::oauthReady();
     }
 
     public static function sharedOAuthConfigured(): bool

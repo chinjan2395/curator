@@ -43,6 +43,13 @@ class SocialPublisherService
     public function publish(ScheduledPost $scheduledPost, ?NotificationService $notifications = null): void
     {
         $notifications ??= app(NotificationService::class);
+
+        // Scheduled-post queries often eager-load trimmed relations (id/provider only).
+        // loadMissing() would skip a reload, leaving tokens null and falsely "expired".
+        $scheduledPost->unsetRelation('socialCredential');
+        $scheduledPost->unsetRelation('contentPackage');
+        $scheduledPost->load(['socialCredential', 'contentPackage']);
+
         $credential = $scheduledPost->socialCredential;
         $provider = $credential?->provider ?? 'stub';
         $publisher = $this->publishers[$provider] ?? $this->publishers['stub'];

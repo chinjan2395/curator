@@ -27,7 +27,7 @@ class GoogleDriveController extends Controller
 
     public function status(Request $request): JsonResponse
     {
-        return ApiResponse::success(GoogleDriveConfig::status());
+        return ApiResponse::success(GoogleDriveConfig::status((int) $request->user()->id));
     }
 
     public function connect(Request $request): JsonResponse
@@ -35,24 +35,24 @@ class GoogleDriveController extends Controller
         $user = $request->user();
         abort_unless($user?->isAdmin(), 403, 'Admin access required to connect Google Drive storage.');
 
-        $oauth = OAuthAppConfigResolver::resolveForUser((int) $user->id, 'google');
+        $oauth = $this->googleOAuthCredentials((int) $user->id);
         if (! $oauth) {
             return ApiResponse::error(
-                'Google OAuth is not configured. Add Google client ID and secret in OAuth Apps first.',
+                'Google OAuth is not configured. Add Google client ID and secret in OAuth Apps or environment.',
                 null,
                 503
             );
         }
 
-        $redirectUrl = $this->driveCallbackUrl($oauth->redirect_uri);
+        $redirectUrl = $this->driveCallbackUrl($oauth['redirect_uri'] ?? null);
         $state = Crypt::encryptString(json_encode([
             'user_id' => $user->id,
             'provider' => 'google_drive',
         ]));
 
         $authUrl = Socialite::buildProvider(GoogleProvider::class, [
-            'client_id' => $oauth->client_id,
-            'client_secret' => $oauth->client_secret,
+            'client_id' => $oauth['client_id'],
+            'client_secret' => $oauth['client_secret'],
             'redirect' => $redirectUrl,
         ])
             ->stateless()
@@ -81,16 +81,16 @@ class GoogleDriveController extends Controller
             }
 
             $userId = (int) $payload['user_id'];
-            $oauth = OAuthAppConfigResolver::resolveForUser($userId, 'google');
+            $oauth = $this->googleOAuthCredentials($userId);
             if (! $oauth) {
                 return $this->redirectError('missing_google_oauth_config');
             }
 
-            $redirectUrl = $this->driveCallbackUrl($oauth->redirect_uri);
+            $redirectUrl = $this->driveCallbackUrl($oauth['redirect_uri'] ?? null);
 
             $googleUser = Socialite::buildProvider(GoogleProvider::class, [
-                'client_id' => $oauth->client_id,
-                'client_secret' => $oauth->client_secret,
+                'client_id' => $oauth['client_id'],
+                'client_secret' => $oauth['client_secret'],
                 'redirect' => $redirectUrl,
             ])
                 ->stateless()
@@ -160,6 +160,33 @@ class GoogleDriveController extends Controller
         }
 
         return ApiResponse::success(null, 'Google Drive disconnected.');
+    }
+
+    /**
+     * @return array{client_id: string, client_secret: string, redirect_uri: ?string}|null
+     */
+    private function googleOAuthCredentials(int $userId): ?array
+    {
+        $oauth = OAuthAppConfigResolver::resolveForUser($userId, 'google');
+        if ($oauth) {
+            return [
+                'client_id' => $oauth->client_id,
+                'client_secret' => $oauth->client_secret,
+                'redirect_uri' => $oauth->redirect_uri,
+            ];
+        }
+
+        $clientId = GoogleDriveConfig::resolveClientId();
+        $clientSecret = GoogleDriveConfig::resolveClientSecret();
+        if ($clientId === '' || $clientSecret === '') {
+            return null;
+        }
+
+        return [
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'redirect_uri' => null,
+        ];
     }
 
     private function driveCallbackUrl(?string $configuredRedirect): string
