@@ -18,6 +18,7 @@ class Campaign extends Model
         'goals',
         'platforms',
         'status',
+        'auto_pilot_enabled',
         'ai_strategy',
         'brand_kit_id',
         'template_id',
@@ -28,6 +29,7 @@ class Campaign extends Model
         'goals' => 'array',
         'platforms' => 'array',
         'ai_strategy' => 'array',
+        'auto_pilot_enabled' => 'boolean',
     ];
 
     public function user(): BelongsTo

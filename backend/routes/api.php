@@ -31,6 +31,7 @@ use App\Http\Controllers\Auth\AccountController;
 use App\Http\Controllers\Auth\TokenRefreshController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\AutoPilotController;
 use App\Http\Controllers\ContentPackageController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\ScheduleController;
@@ -154,12 +155,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('campaigns', CampaignController::class);
     Route::post('campaigns/{campaign}/generate', [CampaignController::class, 'generate']);
+    Route::post('campaigns/{campaign}/auto-pilot/enable', [AutoPilotController::class, 'enable']);
+    Route::post('campaigns/{campaign}/auto-pilot/disable', [AutoPilotController::class, 'disable']);
+    Route::post('campaigns/{campaign}/auto-pilot/run', [AutoPilotController::class, 'run']);
     Route::get('content-packages', [ContentPackageController::class, 'index']);
     Route::post('content-packages/{contentPackage}/refine', [ContentPackageController::class, 'refine']);
     Route::patch('content-packages/{contentPackage}/status', [ContentPackageController::class, 'updateStatus']);
     Route::patch('content-packages/{contentPackage}/media', [ContentPackageController::class, 'updateMedia']);
     Route::patch('content-packages/{contentPackage}/caption', [ContentPackageController::class, 'updateCaption']);
     Route::get('content-packages/{contentPackage}/versions', [ContentPackageController::class, 'versions']);
+    Route::post('content-packages/{contentPackage}/variants', [ContentPackageController::class, 'generateVariants']);
+    Route::get('content-packages/{contentPackage}/variants', [ContentPackageController::class, 'variantGroup']);
+    Route::post('content-packages/{contentPackage}/winner', [ContentPackageController::class, 'markWinner']);
 
     Route::get('content/brand-kits', [BrandKitController::class, 'index']);
     Route::get('content/brand-kits/{brandKit}', [BrandKitController::class, 'show']);

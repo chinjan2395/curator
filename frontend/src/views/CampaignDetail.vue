@@ -150,6 +150,51 @@
               </div>
             </div>
 
+            <div class="campaign-form-panel">
+              <div class="cf-panel-header">
+                <div class="cf-panel-icon" style="background:#eef2ff;color:#4f46e5">
+                  <AppIcon name="sparkles" class="w-3.5 h-3.5" />
+                </div>
+                <p class="text-sm font-semibold text-slate-800">Auto-pilot</p>
+              </div>
+              <p class="text-2xs text-slate-500 mt-2 mb-3">
+                When enabled, Curator picks the highest-scored approved draft per platform and schedules it for the next weekday at 9:00 AM.
+              </p>
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="campaign-media-toggle">
+                  <button
+                    type="button"
+                    class="campaign-media-toggle__btn"
+                    :class="!autoPilotEnabled ? 'campaign-media-toggle__btn--active' : ''"
+                    :disabled="autoPilotLoading"
+                    @click="setAutoPilot(false)"
+                  >
+                    Off
+                  </button>
+                  <button
+                    type="button"
+                    class="campaign-media-toggle__btn"
+                    :class="autoPilotEnabled ? 'campaign-media-toggle__btn--active' : ''"
+                    :disabled="autoPilotLoading"
+                    @click="setAutoPilot(true)"
+                  >
+                    On
+                  </button>
+                </div>
+                <AppButton
+                  v-if="autoPilotEnabled"
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  :loading="autoPilotRunning"
+                  :disabled="autoPilotLoading || autoPilotRunning"
+                  @click="runAutoPilot"
+                >
+                  Run now
+                </AppButton>
+              </div>
+            </div>
+
             <div v-if="campaignError" class="text-2xs text-red-600">{{ campaignError }}</div>
           </form>
         </AppCard>
@@ -224,6 +269,10 @@
                     <SocialPlatformLabel :type="pkg.platform" size="md" />
                     <span class="text-2xs text-slate-400 font-medium">v{{ pkg.version }}</span>
                     <AppBadge :variant="draftStatusVariant(pkg.status)">{{ formatStatusLabel(pkg.status) }}</AppBadge>
+                    <AppBadge v-if="pkg.is_winner" variant="success">
+                      <AppIcon name="star" class="w-2.5 h-2.5 mr-0.5" />Winner
+                    </AppBadge>
+                    <AppBadge v-else-if="pkg.variant_group_id" variant="info">A/B</AppBadge>
                   </div>
                   <p class="campaign-draft-preview">{{ pkg.caption }}</p>
                   <p v-if="pkg.hashtags?.length" class="text-2xs text-slate-400 truncate">{{ pkg.hashtags.join(' ') }}</p>
@@ -252,6 +301,24 @@
                     <AppButton size="sm" variant="secondary" @click="openRefine(pkg)">
                       <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
                       Refine
+                    </AppButton>
+                    <AppButton
+                      v-if="pkg.variant_group_id"
+                      size="sm"
+                      variant="secondary"
+                      @click="openVariantsModal(pkg)"
+                    >
+                      <AppIcon name="layers" class="w-3.5 h-3.5 mr-1" />
+                      View variants
+                    </AppButton>
+                    <AppButton
+                      v-else
+                      size="sm"
+                      variant="secondary"
+                      @click="generateVariantsForPackage(pkg)"
+                    >
+                      <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
+                      A/B test
                     </AppButton>
                     <AppButton v-if="pkg.status === 'approved'" size="sm" @click="schedulePackage(pkg)">
                       <AppIcon name="send" class="w-3.5 h-3.5 mr-1" />
@@ -368,6 +435,58 @@
         </template>
       </div>
 
+      <!-- A/B Variants Modal -->
+      <AppModal
+        :open="abVariantsModalOpen"
+        title="A/B Caption Variants"
+        size="xl"
+        @close="closeVariantsModal"
+      >
+        <div v-if="generatingVariants" class="flex flex-col items-center gap-3 py-8">
+          <AppLoader label="Generating variants with AI…" />
+        </div>
+
+        <template v-else-if="variantGroup.length">
+          <p class="text-xs text-slate-500 mb-4">
+            Pick the best caption. The winner will be approved and the others rejected.
+          </p>
+          <div class="space-y-3">
+            <div
+              v-for="variant in variantGroup"
+              :key="variant.id"
+              :class="[
+                'ab-variant-card',
+                variant.is_winner ? 'ab-variant-card--winner' : '',
+                variant.status === 'rejected' ? 'ab-variant-card--rejected' : '',
+              ]"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="ab-variant-label">{{ variantLabel(variant) }}</span>
+                <AppBadge v-if="variant.is_winner" variant="success">
+                  <AppIcon name="star" class="w-2.5 h-2.5 mr-0.5" />Winner
+                </AppBadge>
+                <AppBadge v-else-if="variant.status === 'rejected'" variant="danger">Rejected</AppBadge>
+                <AppBadge v-else :variant="draftStatusVariant(variant.status)">{{ formatStatusLabel(variant.status) }}</AppBadge>
+              </div>
+              <p class="text-sm text-slate-700 whitespace-pre-wrap leading-6 mb-3">{{ variant.caption }}</p>
+              <AppButton
+                v-if="!variant.is_winner"
+                size="sm"
+                :disabled="!!pickingWinnerId"
+                @click="pickVariantWinner(variant)"
+              >
+                <AppIcon name="star" class="w-3.5 h-3.5 mr-1" />
+                {{ pickingWinnerId === variant.id ? 'Picking…' : 'Pick as winner' }}
+              </AppButton>
+            </div>
+          </div>
+        </template>
+
+        <template #footer>
+          <AppButton variant="secondary" @click="closeVariantsModal">Close</AppButton>
+        </template>
+      </AppModal>
+
       <AppModal
         :open="refineModalOpen"
         title="Refine caption"
@@ -452,11 +571,20 @@ const loadError = ref(null);
 const campaignError = ref('');
 const generating = ref(false);
 const savingCampaign = ref(false);
+const autoPilotEnabled = ref(false);
+const autoPilotLoading = ref(false);
+const autoPilotRunning = ref(false);
 
 const activeTab = ref('brief');
 const expandedPackageId = ref(null);
 const platformFilter = ref('all');
 const refineModalOpen = ref(false);
+
+// A/B variants state
+const abVariantsModalOpen = ref(false);
+const variantGroup = ref([]);
+const generatingVariants = ref(false);
+const pickingWinnerId = ref(null);
 
 const selected = ref(null);
 const selectedPackageId = ref(null);
@@ -670,6 +798,49 @@ function hydrateCampaignForm(value) {
   campaignForm.platformsText = joinList(value?.platforms, ', ');
   campaignForm.brand_kit_id = value?.brand_kit_id ? String(value.brand_kit_id) : '';
   campaignForm.template_id = value?.template_id ? String(value.template_id) : '';
+  autoPilotEnabled.value = Boolean(value?.auto_pilot_enabled);
+}
+
+async function setAutoPilot(enabled) {
+  if (!campaign.value || autoPilotLoading.value || autoPilotEnabled.value === enabled) return;
+
+  autoPilotLoading.value = true;
+  try {
+    const action = enabled ? 'enable' : 'disable';
+    const { data } = await axios.post(`/api/campaigns/${campaign.value.id}/auto-pilot/${action}`);
+    const updated = data.data || data;
+    autoPilotEnabled.value = Boolean(updated.auto_pilot_enabled);
+    campaign.value = { ...campaign.value, ...updated };
+    toast.success(enabled ? 'Auto-pilot enabled' : 'Auto-pilot disabled');
+  } catch {
+    // interceptor handles error toast
+  } finally {
+    autoPilotLoading.value = false;
+  }
+}
+
+async function runAutoPilot() {
+  if (!campaign.value || autoPilotRunning.value) return;
+
+  autoPilotRunning.value = true;
+  try {
+    const { data } = await axios.post(`/api/campaigns/${campaign.value.id}/auto-pilot/run`);
+    const result = data.data || data;
+    const scheduledCount = Array.isArray(result?.scheduled) ? result.scheduled.length : 0;
+    const skippedCount = Array.isArray(result?.skipped) ? result.skipped.length : 0;
+
+    if (scheduledCount > 0) {
+      toast.success(`Scheduled ${scheduledCount} post${scheduledCount === 1 ? '' : 's'}${skippedCount > 0 ? ` (${skippedCount} skipped)` : ''}`);
+    } else {
+      toast.info(skippedCount > 0 ? `No posts scheduled (${skippedCount} platform${skippedCount === 1 ? '' : 's'} skipped)` : 'No approved drafts to schedule');
+    }
+
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+  } catch {
+    // interceptor handles error toast
+  } finally {
+    autoPilotRunning.value = false;
+  }
 }
 
 function joinList(value, separator = '\n') {
@@ -916,6 +1087,62 @@ async function addManualUrl(pkg) {
 function schedulePackage(pkg) {
   router.push({ path: '/calendar', query: { content_package_id: pkg.id } });
 }
+
+// ── A/B Variants ──────────────────────────────────────────────────────────────
+
+function variantLabel(pkg) {
+  if (pkg.variant_index === 0) return 'Original';
+  return `Variant ${'ABC'[pkg.variant_index - 1] ?? pkg.variant_index}`;
+}
+
+function closeVariantsModal() {
+  abVariantsModalOpen.value = false;
+}
+
+async function openVariantsModal(pkg) {
+  abVariantsModalOpen.value = true;
+  variantGroup.value = [];
+  try {
+    const { data } = await axios.get(`/api/content-packages/${pkg.id}/variants`);
+    variantGroup.value = data.data || data || [];
+  } catch {
+    toast.error('Could not load variants');
+    abVariantsModalOpen.value = false;
+  }
+}
+
+async function generateVariantsForPackage(pkg) {
+  abVariantsModalOpen.value = true;
+  generatingVariants.value = true;
+  variantGroup.value = [];
+  try {
+    const { data } = await axios.post(`/api/content-packages/${pkg.id}/variants`);
+    variantGroup.value = data.data || data || [];
+    toast.success('A/B variants generated');
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+  } catch {
+    toast.error('Failed to generate variants');
+    abVariantsModalOpen.value = false;
+  } finally {
+    generatingVariants.value = false;
+  }
+}
+
+async function pickVariantWinner(pkg) {
+  pickingWinnerId.value = pkg.id;
+  try {
+    await axios.post(`/api/content-packages/${pkg.id}/winner`);
+    toast.success(`${variantLabel(pkg)} picked as winner`);
+    // Refresh variant group in modal
+    const { data } = await axios.get(`/api/content-packages/${pkg.id}/variants`);
+    variantGroup.value = data.data || data || [];
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+  } catch {
+    toast.error('Failed to pick winner');
+  } finally {
+    pickingWinnerId.value = null;
+  }
+}
 </script>
 
 <style scoped>
@@ -1159,5 +1386,33 @@ function schedulePackage(pkg) {
   border: 1px solid #e6ebf2;
   border-radius: 0.75rem;
   background: #f8fafc;
+}
+
+/* ── A/B Variant cards ─────────────────────────────── */
+.ab-variant-card {
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
+  padding: 1rem;
+  background: #fff;
+  transition: border-color 0.15s ease;
+}
+
+.ab-variant-card--winner {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.ab-variant-card--rejected {
+  opacity: 0.5;
+}
+
+.ab-variant-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  background: rgba(239, 246, 255, 0.9);
+  border: 1px solid rgba(30, 58, 138, 0.15);
+  border-radius: 0.375rem;
+  padding: 0.1rem 0.5rem;
 }
 </style>
