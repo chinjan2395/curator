@@ -55,7 +55,7 @@
             </div>
             <div>
               <AppTitle size="sm">Schedule post</AppTitle>
-              <p class="text-sm text-slate-500 mt-0.5">Choose where to publish, optional content, and when it should go live.</p>
+              <p class="text-sm text-slate-500 mt-0.5">Pick an account and approved content package. Requirements are checked before scheduling.</p>
             </div>
           </div>
         </template>
@@ -68,6 +68,7 @@
                 v-model="form.social_credential_id"
                 select-class="w-full"
                 :show-placeholder="false"
+                @update:model-value="onCredentialChange"
               >
                 <option value="">Select account</option>
                 <option v-for="c in credentials" :key="c.id" :value="String(c.id)">{{ platformOptionLabel(c) }}</option>
@@ -90,10 +91,16 @@
             </AppFormField>
           </div>
 
+          <ScheduleValidationPanel
+            v-if="selectedSchedulePlatform"
+            :platform="selectedSchedulePlatform"
+            :content-package="selectedPackage"
+          />
+
           <AppFormField
             id="schedule-package"
             label="Content package"
-            hint="Required — approved package with caption text for native publish."
+            :hint="packageFieldHint"
             required
           >
             <AppSelect
@@ -103,25 +110,23 @@
               :show-placeholder="false"
             >
               <option value="">Select content package</option>
-              <option v-for="pkg in approvedPackages" :key="pkg.id" :value="String(pkg.id)">
-                {{ packageLabel(pkg) }}
+              <option
+                v-for="pkg in orderedPackages"
+                :key="pkg.id"
+                :value="String(pkg.id)"
+                :disabled="selectedSchedulePlatform && !isPackageCompatible(pkg, selectedSchedulePlatform)"
+              >
+                {{ packageOptionLabel(pkg) }}
               </option>
             </AppSelect>
           </AppFormField>
-
-          <PlatformPublishGuide
-            v-if="selectedSchedulePlatform"
-            :platforms="[selectedSchedulePlatform]"
-            variant="cards"
-            title="Content requirements for this account"
-          />
 
           <div class="flex flex-wrap items-center justify-end gap-2 pt-4 border-t border-slate-100">
             <AppButton variant="secondary" type="button" @click="closeForm">Cancel</AppButton>
             <AppButton
               variant="primary"
               type="submit"
-              :disabled="scheduling || !form.social_credential_id || !form.content_package_id || !form.scheduled_at"
+              :disabled="!canSubmitSchedule"
               :loading="scheduling"
             >
               <AppIcon name="send" class="w-3.5 h-3.5 mr-1.5" />
@@ -216,9 +221,13 @@ import { useToastStore } from '../stores/toast';
 import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppFormField, AppIcon, AppInput, AppLoader, AppSelect, AppTitle } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
-import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
+import ScheduleValidationPanel from '../components/ScheduleValidationPanel.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
+import {
+  isPackageCompatible,
+  validateScheduleContent,
+} from '../utils/scheduleContentValidation';
 import {
   formatLocalDayLabel,
   formatScheduledAt,
@@ -274,6 +283,64 @@ const selectedSchedulePlatform = computed(() => {
   const cred = credentials.value.find((c) => c.id === id);
   return cred?.provider ?? null;
 });
+
+const selectedPackage = computed(() => {
+  const id = Number(form.value.content_package_id);
+  if (!id) return null;
+  return approvedPackages.value.find((p) => p.id === id) ?? null;
+});
+
+const scheduleValidation = computed(() => {
+  if (!selectedSchedulePlatform.value || !selectedPackage.value) {
+    return { valid: false, checks: [] };
+  }
+  return validateScheduleContent(selectedPackage.value, selectedSchedulePlatform.value);
+});
+
+const canSubmitSchedule = computed(() => (
+  !scheduling.value
+  && form.value.social_credential_id
+  && form.value.content_package_id
+  && form.value.scheduled_at
+  && scheduleValidation.value.valid
+));
+
+const packageFieldHint = computed(() => {
+  if (!selectedSchedulePlatform.value) {
+    return 'Select a social account first to see platform requirements.';
+  }
+  const compatible = approvedPackages.value.filter((p) => isPackageCompatible(p, selectedSchedulePlatform.value)).length;
+  return compatible > 0
+    ? `${compatible} compatible approved package${compatible === 1 ? '' : 's'} available. Incompatible options are disabled.`
+    : 'No compatible approved packages — add media in Campaigns (e.g. Instagram requires an image URL).';
+});
+
+const orderedPackages = computed(() => {
+  const platform = selectedSchedulePlatform.value;
+  const list = [...approvedPackages.value];
+  if (!platform) return list;
+  return list.sort((a, b) => {
+    const aOk = isPackageCompatible(a, platform);
+    const bOk = isPackageCompatible(b, platform);
+    if (aOk === bOk) return 0;
+    return aOk ? -1 : 1;
+  });
+});
+
+function onCredentialChange() {
+  if (!selectedPackage.value || !selectedSchedulePlatform.value) return;
+  if (!isPackageCompatible(selectedPackage.value, selectedSchedulePlatform.value)) {
+    form.value.content_package_id = '';
+  }
+}
+
+function packageOptionLabel(pkg) {
+  const base = packageLabel(pkg);
+  if (!selectedSchedulePlatform.value) return base;
+  return isPackageCompatible(pkg, selectedSchedulePlatform.value)
+    ? `${base} · ready`
+    : `${base} · incompatible`;
+}
 
 function displayStatus(post) {
   if (post.status === 'failed') return 'failed';
@@ -342,6 +409,10 @@ function closeForm() {
 }
 
 async function submitSchedule() {
+  if (!canSubmitSchedule.value) {
+    toast.error('Fix the content requirements above before scheduling.');
+    return;
+  }
   scheduling.value = true;
   try {
     await axios.post('/api/schedule', {

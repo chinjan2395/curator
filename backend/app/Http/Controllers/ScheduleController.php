@@ -7,6 +7,7 @@ use App\Models\ContentPackage;
 use App\Models\ScheduledPost;
 use App\Models\SocialCredential;
 use App\Services\Social\SocialPublisherService;
+use App\Support\ScheduleContentValidator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,9 +55,17 @@ class ScheduleController extends Controller
         $package = ContentPackage::findOrFail($validated['content_package_id']);
         abort_if($package->user_id !== $request->user()->id, 403);
 
-        if (trim((string) $package->caption) === '') {
+        $validation = ScheduleContentValidator::validate($package, $credential->provider);
+        if (! $validation['valid']) {
+            $messages = collect($validation['checks'])
+                ->filter(static fn (array $c) => ! $c['passed'] && $c['message'])
+                ->pluck('message')
+                ->all();
+
             throw ValidationException::withMessages([
-                'content_package_id' => ['Content package must have caption text before scheduling native publish.'],
+                'content_package_id' => $messages !== []
+                    ? $messages
+                    : ['Content package does not meet platform requirements for native publish.'],
             ]);
         }
 

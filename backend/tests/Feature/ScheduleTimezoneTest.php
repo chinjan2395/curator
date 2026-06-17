@@ -130,6 +130,46 @@ class ScheduleTimezoneTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    public function test_store_rejects_instagram_package_without_media(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $credential = SocialCredential::create([
+            'user_id' => $user->id,
+            'provider' => 'instagram',
+            'account_id' => 'ig-1',
+            'access_token' => 'token',
+            'expires_at' => now()->addHour(),
+            'status' => 'active',
+        ]);
+
+        $campaign = Campaign::create([
+            'user_id' => $user->id,
+            'name' => 'IG campaign',
+            'status' => 'active',
+        ]);
+
+        $package = ContentPackage::create([
+            'campaign_id' => $campaign->id,
+            'user_id' => $user->id,
+            'platform' => 'instagram',
+            'content_type' => 'post',
+            'caption' => 'Caption without media',
+            'status' => 'approved',
+        ]);
+
+        $this->postJson('/api/schedule', [
+            'social_credential_id' => $credential->id,
+            'content_package_id' => $package->id,
+            'scheduled_at' => '2026-06-10T18:30:00Z',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['content_package_id']);
+    }
+
     public function test_store_rejects_unsupported_native_provider(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));

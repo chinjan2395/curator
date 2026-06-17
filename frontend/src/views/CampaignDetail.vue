@@ -249,6 +249,7 @@
             <p class="text-2xs text-slate-500">
               {{ filteredPackages.length }} draft{{ filteredPackages.length === 1 ? '' : 's' }}
               <span v-if="approvedCount"> · {{ approvedCount }} approved</span>
+              <span v-if="draftIssueCount" class="campaign-draft-issue-stat"> · {{ draftIssueCount }} publish issue{{ draftIssueCount === 1 ? '' : 's' }}</span>
             </p>
           </div>
 
@@ -277,7 +278,11 @@
               :key="pkg.id"
               padding="none"
               class="campaign-draft-card"
-              :class="expandedPackageId === pkg.id ? 'campaign-draft-card--expanded' : ''"
+              :class="[
+                expandedPackageId === pkg.id ? 'campaign-draft-card--expanded' : '',
+                draftHasPublishIssue(pkg) ? 'campaign-draft-card--issue' : '',
+                draftIsPublishReady(pkg) ? 'campaign-draft-card--ready' : '',
+              ]"
             >
               <div class="campaign-draft-row">
                 <button type="button" class="campaign-draft-row__main" @click="toggleExpand(pkg.id)">
@@ -285,6 +290,17 @@
                     <SocialPlatformLabel :type="pkg.platform" size="md" />
                     <span class="text-2xs text-slate-400 font-medium">v{{ pkg.version }}</span>
                     <AppBadge :variant="draftStatusVariant(pkg.status)">{{ formatStatusLabel(pkg.status) }}</AppBadge>
+                    <AppBadge
+                      v-if="draftHasPublishIssue(pkg)"
+                      variant="danger"
+                      :title="draftPublishIssues(pkg).join(' ')"
+                    >
+                      <AppIcon name="alert" class="w-2.5 h-2.5 mr-0.5" />
+                      Publish issue
+                    </AppBadge>
+                    <AppBadge v-else-if="draftIsPublishReady(pkg)" variant="success" title="Ready for native schedule/publish">
+                      Ready to publish
+                    </AppBadge>
                     <AppBadge
                       v-if="pkg.ai_score != null"
                       :variant="aiScoreBadgeVariant(pkg.ai_score)"
@@ -298,6 +314,10 @@
                     <AppBadge v-else-if="pkg.variant_group_id" variant="info">A/B</AppBadge>
                   </div>
                   <p class="campaign-draft-preview">{{ pkg.caption }}</p>
+                  <p v-if="draftIssueSummary(pkg)" class="campaign-draft-issue-line">
+                    <AppIcon name="alert" class="w-3 h-3 inline-block flex-shrink-0" />
+                    {{ draftIssueSummary(pkg) }}
+                  </p>
                   <p v-if="pkg.hashtags?.length" class="text-2xs text-slate-400 truncate">{{ pkg.hashtags.join(' ') }}</p>
                 </button>
 
@@ -343,7 +363,13 @@
                       <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
                       A/B test
                     </AppButton>
-                    <AppButton v-if="pkg.status === 'approved'" size="sm" @click="schedulePackage(pkg)">
+                    <AppButton
+                      v-if="pkg.status === 'approved'"
+                      size="sm"
+                      :disabled="draftHasPublishIssue(pkg)"
+                      :title="draftHasPublishIssue(pkg) ? draftIssueSummary(pkg) : 'Schedule native publish'"
+                      @click="schedulePackage(pkg)"
+                    >
                       <AppIcon name="send" class="w-3.5 h-3.5 mr-1" />
                       Schedule
                     </AppButton>
@@ -352,11 +378,17 @@
               </div>
 
               <div v-if="expandedPackageId === pkg.id" class="campaign-draft-expanded">
+                <ScheduleValidationPanel
+                  v-if="isNativePublishPlatform(pkg.platform)"
+                  :platform="pkg.platform"
+                  :content-package="pkg"
+                />
                 <PlatformPublishGuide
+                  v-else
                   :platforms="[pkg.platform]"
                   variant="cards"
                   title="Publish requirements"
-                  subtitle="Match your draft media and caption to what this platform accepts."
+                  subtitle="This platform uses embed/sync rather than native scheduling."
                 />
                 <p class="text-sm text-slate-800 whitespace-pre-wrap leading-6 mt-3">{{ pkg.caption }}</p>
 
@@ -612,7 +644,14 @@ import {
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
 import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
+import ScheduleValidationPanel from '../components/ScheduleValidationPanel.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import {
+  draftHasPublishIssue,
+  draftIssueSummary,
+  isNativePublishPlatform,
+  validateDraftForNativePublish,
+} from '../utils/scheduleContentValidation';
 
 const route = useRoute();
 const router = useRouter();
@@ -672,6 +711,17 @@ const campaignForm = reactive({
 const packages = computed(() => campaign.value?.content_packages || []);
 const platformCount = computed(() => splitList(campaignForm.platformsText).length);
 const approvedCount = computed(() => packages.value.filter((pkg) => pkg.status === 'approved').length);
+
+const draftIssueCount = computed(() => packages.value.filter((pkg) => draftHasPublishIssue(pkg)).length);
+
+function draftIsPublishReady(pkg) {
+  const { publishReady, embedOnly } = validateDraftForNativePublish(pkg);
+  return !embedOnly && publishReady === true;
+}
+
+function draftPublishIssues(pkg) {
+  return validateDraftForNativePublish(pkg).issues;
+}
 
 const briefSummaryLine = computed(() => {
   const tone = campaignForm.tone?.trim() || 'No tone';
@@ -1195,6 +1245,10 @@ async function addManualUrl(pkg) {
 }
 
 function schedulePackage(pkg) {
+  if (draftHasPublishIssue(pkg)) {
+    toast.error(draftIssueSummary(pkg) || 'Fix publish requirements before scheduling.');
+    return;
+  }
   router.push({ path: '/calendar', query: { content_package_id: pkg.id } });
 }
 
@@ -1372,6 +1426,31 @@ async function pickVariantWinner(pkg) {
   border: 1px solid #e6ebf2;
   background: #fff;
   overflow: hidden;
+  border-left: 3px solid transparent;
+}
+
+.campaign-draft-card--issue {
+  border-left-color: #ef4444;
+  background: linear-gradient(90deg, rgba(254, 242, 242, 0.45) 0%, #fff 12%);
+}
+
+.campaign-draft-card--ready {
+  border-left-color: #10b981;
+}
+
+.campaign-draft-issue-stat {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.campaign-draft-issue-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #b91c1c;
+  font-weight: 500;
 }
 
 .campaign-draft-card--expanded {
