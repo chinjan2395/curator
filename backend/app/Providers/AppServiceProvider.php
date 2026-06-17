@@ -16,7 +16,11 @@ use App\Services\AI\AiProviderInterface;
 use App\Services\Content\AssetTaggingService;
 use App\Services\AI\GroqAiProvider;
 use App\Services\AI\OllamaAiProvider;
-use App\Services\AI\StubAiProvider;
+use App\Services\AI\AiImageProviderInterface;
+use App\Services\AI\AiImageGenerationService;
+use App\Services\AI\OpenAiImageProvider;
+use App\Services\AI\StubAiImageProvider;
+use App\Support\ContentPackageMediaResolver;
 use App\Support\GoogleDriveConfig;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -46,8 +50,21 @@ class AppServiceProvider extends ServiceProvider
                 default => new StubAiProvider,
             };
         });
+        $this->app->bind(AiImageProviderInterface::class, function () {
+            return match (config('services.ai.image.driver', 'stub')) {
+                'openai' => new OpenAiImageProvider,
+                default => new StubAiImageProvider,
+            };
+        });
         $this->app->singleton(AiContentService::class, function ($app) {
             return new AiContentService($app->make(AiProviderInterface::class));
+        });
+        $this->app->singleton(AiImageGenerationService::class, function ($app) {
+            return new AiImageGenerationService(
+                $app->make(AiImageProviderInterface::class),
+                $app->make(AssetTaggingService::class),
+                new ContentPackageMediaResolver,
+            );
         });
         $this->app->singleton(AiInsightsService::class, function ($app) {
             return new AiInsightsService($app->make(AiProviderInterface::class));

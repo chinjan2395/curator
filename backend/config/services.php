@@ -76,6 +76,14 @@ return [
             'url' => env('OLLAMA_URL', 'http://127.0.0.1:11434'),
             'model' => env('OLLAMA_MODEL', 'llama3.2'),
         ],
+        'image' => [
+            'driver' => env('AI_IMAGE_DRIVER', 'stub'),
+            'openai' => [
+                'api_key' => env('OPENAI_API_KEY'),
+                'model' => env('OPENAI_IMAGE_MODEL', 'dall-e-3'),
+                'size' => env('OPENAI_IMAGE_SIZE', '1024x1024'),
+            ],
+        ],
     ],
 
 ];

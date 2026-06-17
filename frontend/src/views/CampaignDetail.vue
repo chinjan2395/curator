@@ -435,6 +435,30 @@
                     </AppFormField>
                     <AppButton size="sm" :disabled="!manualUrlValue(pkg.id).trim()" @click="addManualUrl(pkg)">Add</AppButton>
                   </div>
+
+                  <div class="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
+                    <p class="text-xs font-medium text-slate-700">AI image</p>
+                    <p class="text-2xs text-slate-500">
+                      Generate a branded image from the caption and campaign brief. Saved to your library and attached here.
+                    </p>
+                    <AppFormField label="Extra direction (optional)" class="w-full">
+                      <AppInput
+                        :model-value="imageInstructionValue(pkg.id)"
+                        placeholder="e.g. minimal flat lay, soft natural light"
+                        input-class="!text-sm"
+                        @update:model-value="(value) => setImageInstruction(pkg.id, value)"
+                      />
+                    </AppFormField>
+                    <AppButton
+                      size="sm"
+                      variant="secondary"
+                      :loading="generatingImageId === pkg.id"
+                      :disabled="generatingImageId === pkg.id || (pkg.media_urls || []).length >= 4"
+                      @click="generateImage(pkg)"
+                    >
+                      Generate image
+                    </AppButton>
+                  </div>
                 </div>
               </div>
             </AppCard>
@@ -591,6 +615,8 @@ const refineModalOpen = ref(false);
 const abVariantsModalOpen = ref(false);
 const variantGroup = ref([]);
 const generatingVariants = ref(false);
+const generatingImageId = ref(null);
+const imageInstruction = reactive({});
 const pickingWinnerId = ref(null);
 
 const selected = ref(null);
@@ -925,6 +951,37 @@ function ensurePackageMediaState(packageId) {
   if (!(key in assetPick)) assetPick[key] = '';
   if (!(key in manualUrl)) manualUrl[key] = '';
   if (!(key in mediaMode)) mediaMode[key] = 'library';
+  if (!(key in imageInstruction)) imageInstruction[key] = '';
+}
+
+function imageInstructionValue(packageId) {
+  return imageInstruction[packageKey(packageId)] ?? '';
+}
+
+function setImageInstruction(packageId, value) {
+  imageInstruction[packageKey(packageId)] = value;
+}
+
+async function generateImage(pkg) {
+  ensurePackageMediaState(pkg.id);
+  generatingImageId.value = pkg.id;
+  try {
+    const instruction = imageInstructionValue(pkg.id).trim();
+    const { data } = await axios.post(`/api/content-packages/${pkg.id}/generate-image`, {
+      instruction: instruction || undefined,
+    });
+    toast.success(data.message || 'Image generated');
+    setImageInstruction(pkg.id, '');
+    await Promise.all([
+      load({ showLoader: false, preserveSelectedId: pkg.id }),
+      loadAssets(),
+    ]);
+    expandedPackageId.value = pkg.id;
+  } catch {
+    // interceptor handles error toast
+  } finally {
+    generatingImageId.value = null;
+  }
 }
 
 function toggleExpand(packageId) {

@@ -11,11 +11,16 @@ class CapabilitiesController extends Controller
     public function show(Request $request): JsonResponse
     {
         $driver = config('services.ai.driver', 'stub');
+        $imageDriver = config('services.ai.image.driver', 'stub');
 
         return ApiResponse::success([
             'ai' => [
                 'driver' => $driver,
                 'configured' => $this->aiConfigured($driver),
+                'image' => [
+                    'driver' => $imageDriver,
+                    'configured' => $this->imageConfigured($imageDriver),
+                ],
             ],
             'publish' => [
                 'native' => [
@@ -38,8 +43,16 @@ class CapabilitiesController extends Controller
     {
         return match ($driver) {
             'groq' => (bool) config('services.ai.groq.api_key'),
-            'ollama' => (bool) config('services.ai.ollama.base_url'),
+            'ollama' => (bool) config('services.ai.ollama.url'),
             default => false,
+        };
+    }
+
+    private function imageConfigured(string $driver): bool
+    {
+        return match ($driver) {
+            'openai' => (bool) config('services.ai.image.openai.api_key'),
+            default => $driver === 'stub',
         };
     }
 }

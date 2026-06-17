@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ApiResponse;
 use App\Models\ContentPackage;
 use App\Services\AI\AiContentService;
+use App\Services\AI\AiImageGenerationService;
 use App\Services\LearningPromptService;
 use App\Support\ContentPackageMediaResolver;
 use Illuminate\Http\JsonResponse;
@@ -185,5 +186,33 @@ class ContentPackageController extends Controller
         $siblings = $contentPackage->variantSiblings();
 
         return ApiResponse::success($siblings);
+    }
+
+    /**
+     * Generate an AI image for a content package, store as asset, attach to media_urls.
+     * POST /api/content-packages/{contentPackage}/generate-image
+     */
+    public function generateImage(
+        Request $request,
+        ContentPackage $contentPackage,
+        AiImageGenerationService $imageGeneration,
+    ): JsonResponse {
+        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'instruction' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $existingCount = count($contentPackage->media_urls ?? []);
+        if ($existingCount >= 4) {
+            return ApiResponse::error('This package already has the maximum of 4 media items.', null, 422);
+        }
+
+        $package = $imageGeneration->generateForPackage(
+            $contentPackage,
+            $validated['instruction'] ?? null,
+        );
+
+        return ApiResponse::success($package, 'Image generated and attached.');
     }
 }

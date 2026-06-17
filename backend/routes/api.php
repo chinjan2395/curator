@@ -165,6 +165,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('content-packages/{contentPackage}/caption', [ContentPackageController::class, 'updateCaption']);
     Route::get('content-packages/{contentPackage}/versions', [ContentPackageController::class, 'versions']);
     Route::post('content-packages/{contentPackage}/variants', [ContentPackageController::class, 'generateVariants']);
+    Route::post('content-packages/{contentPackage}/generate-image', [ContentPackageController::class, 'generateImage']);
     Route::get('content-packages/{contentPackage}/variants', [ContentPackageController::class, 'variantGroup']);
     Route::post('content-packages/{contentPackage}/winner', [ContentPackageController::class, 'markWinner']);
 
