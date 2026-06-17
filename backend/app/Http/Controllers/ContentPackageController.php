@@ -137,4 +137,53 @@ class ContentPackageController extends Controller
 
         return ApiResponse::success($versions);
     }
+
+    /**
+     * Generate A/B variants for a content package.
+     * Creates 3 sibling packages with different tone styles.
+     * POST /api/content-packages/{contentPackage}/variants
+     */
+    public function generateVariants(Request $request, ContentPackage $contentPackage, AiContentService $ai): JsonResponse
+    {
+        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+
+        if ($contentPackage->variant_group_id !== null) {
+            return ApiResponse::error('This package already has variants. Generate variants from the original package.', null, 422);
+        }
+
+        $validated = $request->validate([
+            'count' => ['sometimes', 'integer', 'min:1', 'max:3'],
+        ]);
+
+        $variants = $ai->generateVariants($contentPackage, $validated['count'] ?? 3);
+
+        return ApiResponse::success($variants, 'Variants generated successfully.');
+    }
+
+    /**
+     * Mark a package as the winner of its A/B variant group.
+     * Approves the winner and rejects all siblings.
+     * POST /api/content-packages/{contentPackage}/winner
+     */
+    public function markWinner(Request $request, ContentPackage $contentPackage, AiContentService $ai): JsonResponse
+    {
+        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+
+        $winner = $ai->markVariantWinner($contentPackage);
+
+        return ApiResponse::success($winner, "Variant marked as winner.");
+    }
+
+    /**
+     * Return all packages in the same variant group.
+     * GET /api/content-packages/{contentPackage}/variants
+     */
+    public function variantGroup(Request $request, ContentPackage $contentPackage): JsonResponse
+    {
+        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+
+        $siblings = $contentPackage->variantSiblings();
+
+        return ApiResponse::success($siblings);
+    }
 }

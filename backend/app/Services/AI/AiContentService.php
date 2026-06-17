@@ -2,15 +2,24 @@
 
 namespace App\Services\AI;
 
-use App\Models\BrandKit;
 use App\Models\Campaign;
 use App\Models\ContentPackage;
-use App\Models\ContentTemplate;
 use App\Models\LearningSignal;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class AiContentService
 {
+    /**
+     * The three tone profiles used for A/B variant generation.
+     * variant_index => [label, style instruction]
+     */
+    private const VARIANT_STYLES = [
+        1 => ['Direct & Punchy', 'Write a direct, punchy caption. Short sentences. Hook in the first line. No fluff.'],
+        2 => ['Conversational', 'Write a warm, conversational caption. Friendly tone, relatable language, end with a question to encourage comments.'],
+        3 => ['Story-driven', 'Write a story-driven caption. Open with a scenario or problem, build briefly, close with a clear call-to-action.'],
+    ];
+
     public function __construct(
         private readonly AiProviderInterface $provider,
     ) {}
@@ -54,6 +63,114 @@ class AiContentService
         ]);
 
         return $packages;
+    }
+
+    /**
+     * Generate A/B variants for an existing content package.
+     *
+     * Creates up to 3 new sibling packages with the same variant_group_id.
+     * The original package itself is stamped with the group ID and index 0.
+     * Returns all packages in the group (original + variants), ordered by index.
+     *
+     * @return list<ContentPackage>
+     */
+    public function generateVariants(ContentPackage $original, int $count = 3): array
+    {
+        $count = min($count, count(self::VARIANT_STYLES));
+
+        $original->loadMissing('campaign.user');
+        $context = $this->buildContext(
+            $original->campaign?->user,
+            $original->campaign,
+            ['platform' => $original->platform],
+        );
+
+        $groupId = Str::uuid()->toString();
+
+        // Stamp the original with index 0 in the new group
+        $original->update([
+            'variant_group_id' => $groupId,
+            'variant_index' => 0,
+        ]);
+
+        $basePrompt = "Original caption:\n{$original->caption}\n\nProduct/brief: ".($original->campaign?->product_info ?? '');
+
+        $variants = [$original->fresh()];
+
+        foreach (array_slice(self::VARIANT_STYLES, 0, $count, true) as $index => [$label, $styleInstruction]) {
+            $prompt = "{$styleInstruction}\n\n{$basePrompt}";
+
+            try {
+                $caption = $this->provider->generateText($prompt, $context);
+            } catch (\RuntimeException) {
+                // Fall back to a stub variant so the group is still usable
+                $caption = "[{$label}] " . $original->caption;
+            }
+
+            $variant = ContentPackage::create([
+                'campaign_id' => $original->campaign_id,
+                'user_id' => $original->user_id,
+                'platform' => $original->platform,
+                'content_type' => $original->content_type,
+                'caption' => $caption,
+                'hashtags' => $original->hashtags,
+                'media_urls' => $original->media_urls,
+                'status' => 'draft',
+                'ai_score' => $original->ai_score,
+                'variant_group_id' => $groupId,
+                'variant_index' => $index,
+            ]);
+
+            $variants[] = $variant;
+        }
+
+        LearningSignal::create([
+            'user_id' => $original->user_id,
+            'action' => 'ab_variants_generated',
+            'platform' => $original->platform,
+            'content_type' => 'content_package',
+            'metadata' => [
+                'original_id' => $original->id,
+                'variant_group_id' => $groupId,
+                'variant_count' => $count,
+            ],
+        ]);
+
+        return $variants;
+    }
+
+    /**
+     * Mark one package as the winner of its variant group.
+     * All other packages in the group are rejected.
+     */
+    public function markVariantWinner(ContentPackage $winner): ContentPackage
+    {
+        if (! $winner->variant_group_id) {
+            $winner->update(['is_winner' => true]);
+
+            return $winner->fresh();
+        }
+
+        ContentPackage::query()
+            ->where('variant_group_id', $winner->variant_group_id)
+            ->where('id', '!=', $winner->id)
+            ->update(['is_winner' => false, 'status' => 'rejected']);
+
+        $winner->update(['is_winner' => true, 'status' => 'approved']);
+
+        LearningSignal::create([
+            'user_id' => $winner->user_id,
+            'action' => 'ab_winner_selected',
+            'platform' => $winner->platform,
+            'content_type' => 'content_package',
+            'metadata' => [
+                'winner_id' => $winner->id,
+                'variant_index' => $winner->variant_index,
+                'variant_group_id' => $winner->variant_group_id,
+            ],
+        ]);
+
+        return $winner->fresh();
     }
 
     public function refine(ContentPackage $package, string $instruction): ContentPackage
