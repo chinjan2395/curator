@@ -32,11 +32,9 @@ class AiContentService
         $context = $this->buildContext($campaign->user, $campaign);
 
         foreach ($platforms as $platform) {
+            $platformContext = array_merge($context, ['platform' => $platform]);
             $basePrompt = $this->buildGenerationPrompt($campaign, $platform);
-            $caption = $this->provider->generateText(
-                $basePrompt,
-                array_merge($context, ['platform' => $platform]),
-            );
+            $caption = $this->provider->generateText($basePrompt, $platformContext);
 
             $package = ContentPackage::create([
                 'campaign_id' => $campaign->id,
@@ -46,7 +44,7 @@ class AiContentService
                 'caption' => $caption,
                 'hashtags' => $this->suggestHashtags($campaign, $platform, $context),
                 'status' => 'draft',
-                'ai_score' => 0.75,
+                'ai_score' => $this->scoreCaption($caption, $platformContext),
             ]);
 
             $packages[] = $package;
@@ -78,7 +76,7 @@ class AiContentService
     {
         $count = min($count, count(self::VARIANT_STYLES));
 
-        $original->loadMissing('campaign.user');
+        $original->loadMissing('campaign.user', 'campaign.brandKit');
         $context = $this->buildContext(
             $original->campaign?->user,
             $original->campaign,
@@ -104,7 +102,7 @@ class AiContentService
                 $caption = $this->provider->generateText($prompt, $context);
             } catch (\RuntimeException) {
                 // Fall back to a stub variant so the group is still usable
-                $caption = "[{$label}] " . $original->caption;
+                $caption = "[{$label}] ".$original->caption;
             }
 
             $variant = ContentPackage::create([
@@ -116,7 +114,7 @@ class AiContentService
                 'hashtags' => $original->hashtags,
                 'media_urls' => $original->media_urls,
                 'status' => 'draft',
-                'ai_score' => $original->ai_score,
+                'ai_score' => $this->scoreCaption($caption, $context),
                 'variant_group_id' => $groupId,
                 'variant_index' => $index,
             ]);
@@ -175,7 +173,7 @@ class AiContentService
 
     public function refine(ContentPackage $package, string $instruction): ContentPackage
     {
-        $package->loadMissing('campaign.user');
+        $package->loadMissing('campaign.user', 'campaign.brandKit');
         $context = $this->buildContext(
             $package->campaign?->user,
             $package->campaign,
@@ -197,7 +195,7 @@ class AiContentService
             'status' => 'draft',
             'version' => $package->version + 1,
             'parent_id' => $package->id,
-            'ai_score' => $package->ai_score,
+            'ai_score' => $this->scoreCaption($caption, $context),
         ]);
     }
 
@@ -225,22 +223,55 @@ class AiContentService
             'tone' => $campaign?->tone,
             'goals' => $campaign?->goals,
             'campaign_name' => $campaign?->name,
+            'description' => $campaign?->description,
             'prompt_overrides' => $user?->ai_prompt_overrides,
         ];
 
-        // Inject brand kit colors and fonts so providers can reference them in the system prompt
         if ($campaign?->brandKit) {
             $kit = $campaign->brandKit;
-            if (!empty($kit->colors['primary'])) {
-                $context['brand_primary_color'] = $kit->colors['primary'];
-            }
-            if (!empty($kit->fonts['heading']) && $kit->fonts['heading'] !== 'inherit') {
-                $context['brand_font'] = $kit->fonts['heading'];
-            }
             $context['brand_kit_name'] = $kit->name;
+
+            $colors = is_array($kit->colors) ? $kit->colors : [];
+            foreach (['primary', 'secondary', 'accent', 'background', 'text'] as $colorKey) {
+                if (! empty($colors[$colorKey])) {
+                    $context['brand_color_'.$colorKey] = $colors[$colorKey];
+                }
+            }
+
+            $fonts = is_array($kit->fonts) ? $kit->fonts : [];
+            if (! empty($fonts['heading']) && $fonts['heading'] !== 'inherit') {
+                $context['brand_font_heading'] = $fonts['heading'];
+            }
+            if (! empty($fonts['body']) && $fonts['body'] !== 'inherit') {
+                $context['brand_font_body'] = $fonts['body'];
+            }
         }
 
         return array_filter(array_merge($context, $extra), static fn ($v) => $v !== null && $v !== '');
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function scoreCaption(string $caption, array $context): float
+    {
+        if ($this->provider->name() === 'stub') {
+            return round(min(1.0, max(0.1, strlen($caption) / 200)), 2);
+        }
+
+        try {
+            $platform = (string) ($context['platform'] ?? 'social');
+            $response = $this->provider->generateText(
+                "Rate this {$platform} caption from 0.0 to 1.0 based on relevance, tone, platform fit, and CTA clarity.\n\nCaption:\n{$caption}\n\nReturn only a decimal number between 0 and 1.",
+                $context,
+            );
+
+            if (preg_match('/\b(0(?:\.\d+)?|1(?:\.0*)?)\b/', $response, $matches)) {
+                return round(min(1.0, max(0.0, (float) $matches[1])), 2);
+            }
+        } catch (\Throwable) {
+            // fall through to default
+        }
+
+        return 0.5;
     }
 
     /** @return list<string> */

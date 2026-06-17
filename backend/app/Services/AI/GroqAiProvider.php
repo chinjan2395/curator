@@ -2,13 +2,13 @@
 
 namespace App\Services\AI;
 
+use App\Services\AI\Concerns\BuildsAiSystemPrompt;
 use App\Services\AI\Concerns\CallsLlmApi;
-use App\Services\AI\Concerns\FormatsAiPromptContext;
 
 class GroqAiProvider implements AiProviderInterface
 {
+    use BuildsAiSystemPrompt;
     use CallsLlmApi;
-    use FormatsAiPromptContext;
 
     public function name(): string
     {
@@ -33,37 +33,5 @@ class GroqAiProvider implements AiProviderInterface
             'temperature' => 0.7,
             'max_tokens' => 1024,
         ], $apiKey);
-    }
-
-    /** @param  array<string, mixed>  $context */
-    private function buildSystemPrompt(array $context): string
-    {
-        $parts = ['You are a social media copywriter. Write concise, platform-appropriate captions.'];
-
-        foreach (['brand_voice', 'target_audience', 'tone', 'goals', 'campaign_name', 'platform'] as $key) {
-            $formatted = $this->formatPromptContextValue($context[$key] ?? null);
-            if ($formatted !== '') {
-                $label = str_replace('_', ' ', $key);
-                $parts[] = ucfirst($label).': '.$formatted;
-            }
-        }
-
-        // Brand kit context
-        if (!empty($context['brand_kit_name'])) {
-            $parts[] = 'Brand kit: '.$context['brand_kit_name'];
-        }
-        if (!empty($context['brand_primary_color'])) {
-            $parts[] = 'Brand primary color: '.$context['brand_primary_color'];
-        }
-        if (!empty($context['brand_font'])) {
-            $parts[] = 'Brand font style: '.$context['brand_font'];
-        }
-
-        $overrides = $this->formatPromptContextValue($context['prompt_overrides'] ?? null);
-        if ($overrides !== '') {
-            $parts[] = 'User style preferences: '.$overrides;
-        }
-
-        return implode("\n", $parts);
     }
 }

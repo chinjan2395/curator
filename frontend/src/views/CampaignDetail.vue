@@ -269,6 +269,13 @@
                     <SocialPlatformLabel :type="pkg.platform" size="md" />
                     <span class="text-2xs text-slate-400 font-medium">v{{ pkg.version }}</span>
                     <AppBadge :variant="draftStatusVariant(pkg.status)">{{ formatStatusLabel(pkg.status) }}</AppBadge>
+                    <AppBadge
+                      v-if="pkg.ai_score != null"
+                      :variant="aiScoreBadgeVariant(pkg.ai_score)"
+                      :title="'AI quality score'"
+                    >
+                      {{ formatAiScore(pkg.ai_score) }}
+                    </AppBadge>
                     <AppBadge v-if="pkg.is_winner" variant="success">
                       <AppIcon name="star" class="w-2.5 h-2.5 mr-0.5" />Winner
                     </AppBadge>
@@ -647,8 +654,16 @@ const draftPlatformOptions = computed(() => {
 });
 
 const filteredPackages = computed(() => {
-  if (platformFilter.value === 'all') return packages.value;
-  return packages.value.filter((p) => p.platform === platformFilter.value);
+  const list = platformFilter.value === 'all'
+    ? packages.value
+    : packages.value.filter((p) => p.platform === platformFilter.value);
+
+  return [...list].sort((a, b) => {
+    const scoreA = a.ai_score ?? -1;
+    const scoreB = b.ai_score ?? -1;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return (b.id ?? 0) - (a.id ?? 0);
+  });
 });
 
 const campaignPayload = computed(() => ({
@@ -969,6 +984,17 @@ function draftStatusVariant(status) {
   if (status === 'rejected') return 'danger';
   if (status === 'in_review') return 'info';
   if (status === 'generated') return 'purple';
+  return 'default';
+}
+
+function formatAiScore(score) {
+  return `${Math.round(Number(score) * 100)}%`;
+}
+
+function aiScoreBadgeVariant(score) {
+  const value = Number(score);
+  if (value >= 0.8) return 'success';
+  if (value >= 0.6) return 'info';
   return 'default';
 }
 
