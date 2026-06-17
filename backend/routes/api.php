@@ -46,11 +46,13 @@ use App\Http\Controllers\Admin\TrendsController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\DevToolsController;
 use App\Http\Controllers\CapabilitiesController;
+use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\SetupStatusController;
 
 // OAuth callbacks (public, no auth)
 Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
 Route::get('social/callback/google', [SocialConnectController::class, 'callbackGoogle']);
+Route::get('social/callback/google-drive', [GoogleDriveController::class, 'callback']);
 Route::get('social/callback/facebook', [SocialConnectController::class, 'callbackFacebook']);
 Route::get('social/callback/twitter', [SocialConnectController::class, 'callbackTwitter']);
 Route::get('social/callback/tiktok', [SocialConnectController::class, 'callbackTikTok']);
@@ -115,6 +117,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('oauth-app-configs', [OAuthAppConfigController::class, 'upsert']);
     Route::post('oauth-app-configs/promote-my-user-configs-to-shared', [OAuthAppConfigController::class, 'promoteMyUserConfigsToShared']);
     Route::delete('oauth-app-configs/{provider}', [OAuthAppConfigController::class, 'destroy']);
+
+    Route::get('google-drive', [GoogleDriveController::class, 'status']);
+    Route::middleware('admin')->group(function () {
+        Route::post('google-drive/connect', [GoogleDriveController::class, 'connect']);
+        Route::delete('google-drive', [GoogleDriveController::class, 'disconnect']);
+    });
 });
 
 // Public routes (legacy + spec aliases)

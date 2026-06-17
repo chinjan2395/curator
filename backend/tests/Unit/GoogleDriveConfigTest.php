@@ -2,11 +2,14 @@
 
 namespace Tests\Unit;
 
+use App\Models\GoogleDriveConnection;
 use App\Support\GoogleDriveConfig;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class GoogleDriveConfigTest extends TestCase
 {
+    use RefreshDatabase;
     public function test_is_not_configured_when_refresh_token_is_an_access_token(): void
     {
         config([
@@ -47,11 +50,32 @@ class GoogleDriveConfigTest extends TestCase
             $this->assertSame('client-from-env', $resolved['clientId']);
             $this->assertSame('secret-from-env', $resolved['clientSecret']);
             $this->assertSame('1//refresh-from-env', $resolved['refreshToken']);
+            $this->assertSame('env', $resolved['source']);
             $this->assertTrue(GoogleDriveConfig::isConfigured());
         } finally {
             putenv('GOOGLE_DRIVE_CLIENT_ID');
             putenv('GOOGLE_DRIVE_CLIENT_SECRET');
             putenv('GOOGLE_DRIVE_REFRESH_TOKEN');
         }
+    }
+
+    public function test_database_connection_takes_precedence_over_env_refresh_token(): void
+    {
+        config([
+            'filesystems.disks.googledrive.clientId' => 'client-id',
+            'filesystems.disks.googledrive.clientSecret' => 'client-secret',
+            'filesystems.disks.googledrive.refreshToken' => '1//env-token',
+        ]);
+
+        \App\Models\GoogleDriveConnection::query()->create([
+            'refresh_token' => '1//db-token',
+            'token_health' => 'valid',
+            'connected_at' => now(),
+        ]);
+
+        $resolved = GoogleDriveConfig::resolve();
+
+        $this->assertSame('1//db-token', $resolved['refreshToken']);
+        $this->assertSame('database', $resolved['source']);
     }
 }

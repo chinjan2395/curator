@@ -28,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ->cron('*/45 * * * *')
             ->withoutOverlapping();
 
+        $schedule->command('google-drive:refresh-token')
+            ->cron('*/45 * * * *')
+            ->withoutOverlapping();
+
         $schedule->command('social:sync-metadata')
             ->dailyAt('03:00')
             ->withoutOverlapping();

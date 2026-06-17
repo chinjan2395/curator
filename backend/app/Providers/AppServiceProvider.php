@@ -20,6 +20,7 @@ use App\Services\AI\AiImageProviderInterface;
 use App\Services\AI\AiImageGenerationService;
 use App\Services\AI\OpenAiImageProvider;
 use App\Services\AI\StubAiImageProvider;
+use App\Models\GoogleDriveConnection;
 use App\Support\ContentPackageMediaResolver;
 use App\Support\GoogleDriveConfig;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -128,7 +129,20 @@ class AppServiceProvider extends ServiceProvider
             $accessToken = $client->fetchAccessTokenWithRefreshToken($config['refreshToken']);
             if (isset($accessToken['error'])) {
                 $message = $accessToken['error_description'] ?? $accessToken['error'];
+                if (($config['source'] ?? null) === 'database') {
+                    GoogleDriveConnection::current()?->markNeedsReauth($message);
+                }
                 throw new \RuntimeException('Google Drive authentication failed: '.$message);
+            }
+
+            if (($config['source'] ?? null) === 'database') {
+                $connection = GoogleDriveConnection::current();
+                if ($connection) {
+                    $connection->access_token = $accessToken['access_token'] ?? null;
+                    $expiresIn = (int) ($accessToken['expires_in'] ?? 3600);
+                    $connection->expires_at = now()->addSeconds($expiresIn);
+                    $connection->markValid();
+                }
             }
 
             $client->setAccessToken($accessToken);
