@@ -2,8 +2,8 @@
   <div class="space-y-4">
     <AppPageHeader title="Unified curator feed" subtitle="All synced posts across workspaces." icon="grid" />
     <div class="flex gap-2">
-      <AppSelect v-model="sort" :options="sortOptions" @update:modelValue="load" />
-      <AppSelect v-model="platform" :options="platformOptions" @update:modelValue="load" />
+      <AppSelect v-model="sort" :options="sortOptions" :show-placeholder="false" />
+      <AppSelect v-model="platform" :options="platformOptions" :show-placeholder="false" />
     </div>
 
     <AppLoader v-if="loading" label="Loading feed…" />
@@ -33,10 +33,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { AppAlert, AppCard, AppEmptyState, AppLoader, AppSelect } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import { getPlatformLabel } from '../constants/socialPlatforms';
 
 const posts = ref([]);
 const loading = ref(true);
@@ -48,11 +49,10 @@ const sortOptions = [
   { value: 'most_liked', label: 'Most liked' },
   { value: 'most_viewed', label: 'Most viewed' },
 ];
+const platformTypes = ['youtube', 'instagram', 'facebook', 'twitter', 'tiktok', 'threads', 'rss'];
 const platformOptions = [
   { value: '', label: 'All platforms' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'twitter', label: 'X / Twitter' },
+  ...platformTypes.map((type) => ({ value: type, label: getPlatformLabel(type) })),
 ];
 
 async function load() {
@@ -63,13 +63,14 @@ async function load() {
       params: { sort: sort.value, platform: platform.value || undefined },
       skipErrorToast: true,
     });
-    const payload = data.data;
-    posts.value = payload?.data ?? (Array.isArray(payload) ? payload : []);
+    posts.value = data.data?.data ?? (Array.isArray(data.data) ? data.data : []);
   } catch (e) {
     error.value = e.response?.data?.message || 'Failed to load curator feed';
   } finally {
     loading.value = false;
   }
 }
+
+watch([sort, platform], load);
 onMounted(load);
 </script>
