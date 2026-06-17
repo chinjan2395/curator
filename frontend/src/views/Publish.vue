@@ -240,7 +240,12 @@
               <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
               <div class="flex flex-wrap items-end gap-2">
                 <div class="flex-1 min-w-[10rem]">
-                  <AppSelect v-model="brandKitImportId" :show-placeholder="false" select-class="w-full">
+                  <AppSelect
+                    :model-value="brandKitImportId"
+                    :show-placeholder="false"
+                    select-class="w-full"
+                    @update:model-value="selectAndApplyBrandKit"
+                  >
                     <option value="">Select brand kit…</option>
                     <option v-for="kit in brandKitsForImport" :key="kit.id" :value="String(kit.id)">
                       {{ kit.name }}{{ kit.is_default ? ' (default)' : '' }}
@@ -253,7 +258,7 @@
                   :disabled="!brandKitImportId"
                   @click="applyBrandKit"
                 >
-                  Apply
+                  Re-apply
                 </AppButton>
               </div>
             </div>
@@ -1663,12 +1668,13 @@ const previewColorCssVars = computed(() => {
   const b = c.post_border || {};
   const g = c.post_bg || {};
   const post = a.post || {};
+  const widget = a.widget || {};
   const shareColorMode = String(post.showcase_share_icon_color_mode || 'post_icon');
   let shareColor = c.post_icon;
   if (shareColorMode === 'post_text') shareColor = c.post_text;
   else if (shareColorMode === 'post_button') shareColor = c.post_button;
   else if (shareColorMode === 'custom') shareColor = post.showcase_share_icon_color || c.post_icon;
-  return {
+  const vars = {
     '--crt-icon': c.post_icon,
     '--crt-text': c.post_text,
     '--crt-date': c.post_date,
@@ -1679,6 +1685,9 @@ const previewColorCssVars = computed(() => {
     '--crt-border': b.enabled !== false ? b.color || '#e2e8f0' : 'transparent',
     '--crt-card-bg': g.enabled !== false ? g.color || '#ffffff' : 'transparent',
   };
+  const font = widget.font_family;
+  if (font && font !== 'inherit') vars['--crt-font'] = font;
+  return vars;
 });
 
 const previewInnerStyle = computed(() => {
@@ -1896,27 +1905,46 @@ async function loadBrandKitsForImport() {
   }
 }
 
+function selectAndApplyBrandKit(value) {
+  brandKitImportId.value = value;
+  applyBrandKit();
+}
+
 function applyBrandKit() {
   if (!appearance.value || !brandKitImportId.value) return;
   const kit = brandKitsForImport.value.find((k) => String(k.id) === brandKitImportId.value);
   if (!kit) return;
 
   const colors = kit.colors || {};
-  if (colors.primary) appearance.value.colors.post_button = colors.primary;
-  if (colors.primary) appearance.value.colors.post_link = colors.primary;
-  if (colors.text) appearance.value.colors.post_text = colors.text;
-  if (colors.text) appearance.value.colors.post_icon = colors.text;
+  if (colors.primary) {
+    appearance.value.colors.post_button = colors.primary;
+    appearance.value.colors.post_link = colors.primary;
+  }
+  if (colors.text) {
+    appearance.value.colors.post_text = colors.text;
+    appearance.value.colors.post_icon = colors.text;
+  }
   if (colors.background) {
     appearance.value.colors.post_bg.enabled = true;
     appearance.value.colors.post_bg.color = colors.background;
   }
   if (colors.secondary) appearance.value.colors.post_date = colors.secondary;
+  if (colors.accent) {
+    appearance.value.colors.post_border.enabled = true;
+    appearance.value.colors.post_border.color = colors.accent;
+  }
 
   const fonts = kit.fonts || {};
   if (fonts.body && fonts.body !== 'inherit') {
     appearance.value.widget.font_family = fonts.body;
   } else if (fonts.heading && fonts.heading !== 'inherit') {
     appearance.value.widget.font_family = fonts.heading;
+  }
+
+  const logoUrl = kit.logo_url || '';
+  if (logoUrl) {
+    appearance.value.branding.media_badge.image_source = 'custom';
+    appearance.value.branding.media_badge.custom_url = logoUrl;
   }
 
   toast.success(`Brand kit "${kit.name}" applied — save to publish changes.`);

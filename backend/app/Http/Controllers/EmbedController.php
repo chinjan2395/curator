@@ -14,7 +14,7 @@ class EmbedController extends Controller
 
         $css = <<<'CSS'
 .crt-wrap{
-  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  font-family:var(--crt-font,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji");
   color:var(--crt-text,#0f172a);
   background:transparent;
 }

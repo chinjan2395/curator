@@ -520,6 +520,10 @@
 
   function applyColorVars(el) {
     var c = colors;
+    var fontFamily = String((SETTINGS.widget && SETTINGS.widget.font_family) || '');
+    if (fontFamily && fontFamily !== 'inherit') {
+      el.style.setProperty('--crt-font', fontFamily);
+    }
     el.style.setProperty('--crt-icon', c.post_icon || '#64748b');
     el.style.setProperty('--crt-text', c.post_text || '#0f172a');
     el.style.setProperty('--crt-date', c.post_date || '#64748b');
