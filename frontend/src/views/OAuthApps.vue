@@ -236,8 +236,9 @@
             {{ googleDrive.status?.last_error || 'The refresh token expired or was revoked. An admin must reconnect Google Drive.' }}
           </AppAlert>
 
-          <AppAlert v-else-if="!oauthConfigExists && oauthProviderKey === 'google'" variant="info" title="Configure Google OAuth first">
-            Save Google client ID and secret above, then add
+          <AppAlert v-else-if="!canConnectGoogleDrive" variant="info" title="Configure Google OAuth first">
+            Save Google client ID and secret in OAuth Apps (Google / YouTube provider) or set
+            <code class="font-mono text-slate-700">GOOGLE_CLIENT_ID</code> in the environment, then add
             <code class="oauth-code-pill">/api/social/callback/google-drive</code>
             as an authorized redirect URI in Google Cloud Console.
           </AppAlert>
@@ -254,9 +255,9 @@
             <div class="flex flex-wrap items-center gap-2">
               <AppButton
                 v-if="oauthApps.isAdmin"
-                variant="secondary"
+                :variant="googleDrive.needsReconnect ? 'primary' : 'secondary'"
                 size="sm"
-                :disabled="googleDrive.connecting || !oauthConfigExists"
+                :disabled="googleDrive.connecting || !canConnectGoogleDrive"
                 @click="connectGoogleDrive"
               >
                 {{ googleDrive.connecting ? 'Redirecting…' : googleDrive.isConnected ? 'Reconnect Google Drive' : 'Connect Google Drive' }}
@@ -352,6 +353,14 @@ const activeScopeConfig = computed(() => (oauthScope.value === 'shared'
   : oauthApps.userConfigFor(oauthProviderKey.value)));
 const saveButtonLabel = computed(() => (oauthScope.value === 'shared' ? 'Save shared default' : 'Save my override'));
 const canSaveOauth = computed(() => supportsOAuthApp.value && Boolean(oauthForm.client_id?.trim()) && !oauthApps.saving);
+const googleOAuthConfigExists = computed(() => Boolean(oauthApps.effectiveConfigFor('google')));
+const canConnectGoogleDrive = computed(() => {
+  if (googleDrive.status?.oauth_ready != null) {
+    return Boolean(googleDrive.status.oauth_ready);
+  }
+
+  return googleOAuthConfigExists.value;
+});
 const driveStatusLabel = computed(() => {
   if (googleDrive.loading && !googleDrive.status) return 'Loading…';
   if (!googleDrive.isConnected) return 'Not connected';
