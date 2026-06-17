@@ -435,14 +435,7 @@ import { useToastStore } from '../stores/toast';
 
 // Temporarily hidden sidebar items — remove IDs from this set to show them again.
 const HIDDEN_SIDEBAR_ITEM_IDS = new Set([
-  'curator',
-  'campaigns',
-  'schedule',
-  'content-library',
-  'inbox',
-  'admin-system',
-  'admin-trends',
-  'admin-moderation',
+  // Add item IDs here to temporarily hide sidebar links without removing routes.
 ]);
 
 function isSidebarItemHidden(id) {

@@ -234,6 +234,30 @@
               </div>
             </div>
 
+            <!-- Import from brand kit -->
+            <div class="space-y-3 py-5">
+              <h3 class="text-sm font-semibold text-slate-900">Import from brand kit</h3>
+              <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
+              <div class="flex flex-wrap items-end gap-2">
+                <div class="flex-1 min-w-[10rem]">
+                  <AppSelect v-model="brandKitImportId" :show-placeholder="false" select-class="w-full">
+                    <option value="">Select brand kit…</option>
+                    <option v-for="kit in brandKitsForImport" :key="kit.id" :value="String(kit.id)">
+                      {{ kit.name }}{{ kit.is_default ? ' (default)' : '' }}
+                    </option>
+                  </AppSelect>
+                </div>
+                <AppButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!brandKitImportId"
+                  @click="applyBrandKit"
+                >
+                  Apply
+                </AppButton>
+              </div>
+            </div>
+
             <!-- Colors Section -->
             <div class="space-y-4 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Colors</h3>
@@ -1171,6 +1195,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
@@ -1277,6 +1302,10 @@ const previewClickTrackedAt = new Map();
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
+
+/** Brand kit import */
+const brandKitsForImport = ref([]);
+const brandKitImportId = ref('');
 
 const FEED_STYLES_WITH_MIN_WIDTH = new Set(['grid', 'grid_carousel']);
 
@@ -1853,7 +1882,45 @@ onMounted(async () => {
   } else if (!workspaceId.value && workspaces.list.length) {
     workspaceId.value = String(workspaces.list[0].id);
   }
+  loadBrandKitsForImport();
 });
+
+async function loadBrandKitsForImport() {
+  try {
+    const { data } = await axios.get('/api/content/brand-kits', { skipErrorToast: true });
+    brandKitsForImport.value = data.data || data || [];
+    const def = brandKitsForImport.value.find((k) => k.is_default);
+    if (def) brandKitImportId.value = String(def.id);
+  } catch {
+    brandKitsForImport.value = [];
+  }
+}
+
+function applyBrandKit() {
+  if (!appearance.value || !brandKitImportId.value) return;
+  const kit = brandKitsForImport.value.find((k) => String(k.id) === brandKitImportId.value);
+  if (!kit) return;
+
+  const colors = kit.colors || {};
+  if (colors.primary) appearance.value.colors.post_button = colors.primary;
+  if (colors.primary) appearance.value.colors.post_link = colors.primary;
+  if (colors.text) appearance.value.colors.post_text = colors.text;
+  if (colors.text) appearance.value.colors.post_icon = colors.text;
+  if (colors.background) {
+    appearance.value.colors.post_bg.enabled = true;
+    appearance.value.colors.post_bg.color = colors.background;
+  }
+  if (colors.secondary) appearance.value.colors.post_date = colors.secondary;
+
+  const fonts = kit.fonts || {};
+  if (fonts.body && fonts.body !== 'inherit') {
+    appearance.value.widget.font_family = fonts.body;
+  } else if (fonts.heading && fonts.heading !== 'inherit') {
+    appearance.value.widget.font_family = fonts.heading;
+  }
+
+  toast.success(`Brand kit "${kit.name}" applied — save to publish changes.`);
+}
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handlePreviewShareOutsideClick);
