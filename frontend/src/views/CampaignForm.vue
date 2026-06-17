@@ -24,7 +24,6 @@
 
     <AppCard padding="none" class="cf-brief-card">
       <form id="campaign-form" class="space-y-3 p-4" @submit.prevent="submit">
-
         <!-- Basics -->
         <div class="cf-panel">
           <div class="cf-panel-header">
@@ -53,6 +52,14 @@
               size="sm"
             />
           </div>
+          <PlatformPublishGuide
+            v-if="parsedPlatforms.length"
+            class="mt-3"
+            :platforms="parsedPlatforms"
+            variant="compact"
+            title="What you can publish"
+            subtitle="Based on each platform's official API and Curator's native publisher."
+          />
         </div>
 
         <!-- Message -->
@@ -100,7 +107,6 @@
             </AppFormField>
           </div>
         </div>
-
       </form>
     </AppCard>
   </div>
@@ -113,6 +119,7 @@ import { useCampaignsStore } from '../stores/campaigns';
 import { AppButton, AppCard, AppFormField, AppIcon, AppInput } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 
 const router = useRouter();

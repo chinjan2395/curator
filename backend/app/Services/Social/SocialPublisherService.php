@@ -4,6 +4,7 @@ namespace App\Services\Social;
 
 use App\Models\ScheduledPost;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\Log;
 use App\Services\Social\Publishers\PublisherInterface;
 use App\Services\Social\Publishers\FacebookPublisher;
 use App\Services\Social\Publishers\InstagramPublisher;
@@ -15,6 +16,16 @@ use App\Services\Social\Publishers\TwitterPublisher;
 
 class SocialPublisherService
 {
+    /** @var list<string> */
+    public const NATIVE_PUBLISH_PROVIDERS = [
+        'twitter',
+        'facebook',
+        'instagram',
+        'tiktok',
+        'threads',
+        'linkedin',
+    ];
+
     /** @var array<string, PublisherInterface> */
     private array $publishers = [];
 
@@ -65,6 +76,13 @@ class SocialPublisherService
                 'error_message' => $message,
                 'retry_count' => $retry,
                 'scheduled_at' => $retry < 3 ? now()->addMinutes(15) : $scheduledPost->scheduled_at,
+            ]);
+
+            Log::warning('Scheduled post publish failed', [
+                'scheduled_post_id' => $scheduledPost->id,
+                'provider' => $provider,
+                'retry_count' => $retry,
+                'error' => $message,
             ]);
 
             $scheduledPost->loadMissing('user');

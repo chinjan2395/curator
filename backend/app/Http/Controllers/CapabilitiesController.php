@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
+use App\Support\PlatformPublishSpecs;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,15 +24,8 @@ class CapabilitiesController extends Controller
                 ],
             ],
             'publish' => [
-                'native' => [
-                    'twitter' => ['enabled' => true, 'reason' => null],
-                    'facebook' => ['enabled' => true, 'reason' => null],
-                    'instagram' => ['enabled' => true, 'reason' => 'Requires public HTTPS image URL on content package'],
-                    'youtube' => ['enabled' => false, 'reason' => 'Embed publishing only — use workspace publish'],
-                    'tiktok' => ['enabled' => true, 'reason' => 'Requires public HTTPS video URL; video.publish scope; verify URL domain in TikTok developer portal'],
-                    'threads' => ['enabled' => true, 'reason' => 'Text, image, or HTTPS video via content package; threads_content_publish scope'],
-                    'linkedin' => ['enabled' => true, 'reason' => 'Text or article URL in media_urls; w_member_social scope'],
-                ],
+                'native' => PlatformPublishSpecs::nativeMatrix(),
+                'content_specs' => PlatformPublishSpecs::all(),
             ],
             'inbox' => [
                 'sync_mode' => 'stub',

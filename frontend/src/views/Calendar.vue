@@ -62,7 +62,7 @@
 
         <form class="space-y-4" @submit.prevent="submitSchedule">
           <div class="grid gap-4 sm:grid-cols-2">
-            <AppFormField label="Social account" required id="schedule-credential">
+            <AppFormField id="schedule-credential" label="Social account" required>
               <AppSelect
                 id="schedule-credential"
                 v-model="form.social_credential_id"
@@ -75,10 +75,10 @@
             </AppFormField>
 
             <AppFormField
+              id="schedule-at"
               label="Publish time"
               required
               hint="Shown and scheduled in your local timezone."
-              id="schedule-at"
             >
               <AppInput
                 id="schedule-at"
@@ -91,9 +91,10 @@
           </div>
 
           <AppFormField
-            label="Content package"
-            hint="Optional — link an approved package from Campaigns."
             id="schedule-package"
+            label="Content package"
+            hint="Required — approved package with caption text for native publish."
+            required
           >
             <AppSelect
               id="schedule-package"
@@ -101,19 +102,26 @@
               select-class="w-full"
               :show-placeholder="false"
             >
-              <option value="">No content package</option>
+              <option value="">Select content package</option>
               <option v-for="pkg in approvedPackages" :key="pkg.id" :value="String(pkg.id)">
                 {{ packageLabel(pkg) }}
               </option>
             </AppSelect>
           </AppFormField>
 
+          <PlatformPublishGuide
+            v-if="selectedSchedulePlatform"
+            :platforms="[selectedSchedulePlatform]"
+            variant="cards"
+            title="Content requirements for this account"
+          />
+
           <div class="flex flex-wrap items-center justify-end gap-2 pt-4 border-t border-slate-100">
             <AppButton variant="secondary" type="button" @click="closeForm">Cancel</AppButton>
             <AppButton
               variant="primary"
               type="submit"
-              :disabled="scheduling || !form.social_credential_id || !form.scheduled_at"
+              :disabled="scheduling || !form.social_credential_id || !form.content_package_id || !form.scheduled_at"
               :loading="scheduling"
             >
               <AppIcon name="send" class="w-3.5 h-3.5 mr-1.5" />
@@ -150,12 +158,20 @@
               :key="post.id"
               class="sched-post-row"
             >
-              <div class="sched-post-accent" :class="postAccentClass(post.status)" />
+              <div class="sched-post-accent" :class="postAccentClass(displayStatus(post))" />
               <div class="sched-post-main">
                 <div class="flex flex-wrap items-center gap-2">
                   <div class="sched-post-time">
                     <AppIcon name="clock" class="w-3.5 h-3.5 text-slate-400" />
-                    {{ formatScheduledAt(post.scheduled_at) }}
+                    <template v-if="displayStatus(post) === 'published' && post.published_at">
+                      Published {{ formatScheduledAt(post.published_at) }}
+                    </template>
+                    <template v-else-if="displayStatus(post) === 'retrying'">
+                      Next attempt {{ formatScheduledAt(post.scheduled_at) }}
+                    </template>
+                    <template v-else>
+                      Scheduled for {{ formatScheduledAt(post.scheduled_at) }}
+                    </template>
                   </div>
                   <SocialPlatformLabel
                     v-if="post.social_credential?.provider"
@@ -166,9 +182,15 @@
                 <p v-if="post.content_package?.caption" class="sched-post-caption">
                   {{ post.content_package.caption.slice(0, 90) }}{{ post.content_package.caption.length > 90 ? '…' : '' }}
                 </p>
+                <p v-if="post.retry_count > 0" class="sched-post-retry">
+                  Attempt {{ post.retry_count }} of 3
+                  <span v-if="displayStatus(post) === 'retrying'">— retrying automatically in 15 minutes</span>
+                  <span v-else-if="post.status === 'failed'">— no more automatic retries</span>
+                </p>
+                <p v-if="post.error_message" class="sched-post-error">{{ post.error_message }}</p>
               </div>
               <div class="sched-post-side">
-                <AppBadge :variant="statusBadgeVariant(post.status)">{{ post.status }}</AppBadge>
+                <AppBadge :variant="statusBadgeVariant(displayStatus(post))">{{ statusLabel(post) }}</AppBadge>
                 <button
                   v-if="post.status === 'scheduled'"
                   class="sched-cancel-btn"
@@ -194,6 +216,7 @@ import { useToastStore } from '../stores/toast';
 import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppFormField, AppIcon, AppInput, AppLoader, AppSelect, AppTitle } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
+import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
 import {
@@ -241,9 +264,28 @@ const grouped = computed(() => {
   return Object.keys(map).sort().map((day) => ({ day, items: map[day] }));
 });
 
-const scheduledCount = computed(() => posts.value.filter((p) => p.status === 'scheduled').length);
+const scheduledCount = computed(() => posts.value.filter((p) => displayStatus(p) === 'scheduled').length);
 const publishedCount = computed(() => posts.value.filter((p) => p.status === 'published').length);
-const failedCount = computed(() => posts.value.filter((p) => ['failed', 'retrying'].includes(p.status)).length);
+const failedCount = computed(() => posts.value.filter((p) => ['failed', 'retrying'].includes(displayStatus(p))).length);
+
+const selectedSchedulePlatform = computed(() => {
+  const id = Number(form.value.social_credential_id);
+  if (!id) return null;
+  const cred = credentials.value.find((c) => c.id === id);
+  return cred?.provider ?? null;
+});
+
+function displayStatus(post) {
+  if (post.status === 'failed') return 'failed';
+  if (post.status === 'published') return 'published';
+  if (post.status === 'scheduled' && post.retry_count > 0) return 'retrying';
+  return 'scheduled';
+}
+
+function statusLabel(post) {
+  const map = { failed: 'Failed', published: 'Published', retrying: 'Retrying', scheduled: 'Scheduled' };
+  return map[displayStatus(post)];
+}
 
 function packageLabel(pkg) {
   const name = pkg.campaign?.name || 'Campaign';
@@ -441,6 +483,18 @@ onMounted(load);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.sched-post-retry {
+  font-size: 0.72rem;
+  color: #b45309;
+}
+
+.sched-post-error {
+  font-size: 0.72rem;
+  color: #dc2626;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .sched-post-side {

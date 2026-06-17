@@ -24,7 +24,8 @@ class DevToolsController extends Controller
         'migrate'          => 'migrate',
         'migrate:status'   => 'migrate:status',
         'queue:restart'    => 'queue:restart',
-        'schedule:run'     => 'schedule:run',
+        'schedule:run'              => 'schedule:run',
+        'social:publish-scheduled'  => 'social:publish-scheduled',
     ];
 
     /** Return the list of allowed commands so the UI can render them. */
