@@ -1,0 +1,50 @@
+---
+description: Laravel backend conventions — architecture patterns, testing, AI drivers
+globs: backend/**/*.php
+alwaysApply: false
+---
+
+# Backend Conventions (Laravel 12)
+
+## Architecture layers (strict)
+- **Controllers** → receive, delegate, return only. No business logic, no Eloquent queries.
+- **FormRequests** → all validation lives here (one per action). Never inline `$request->validate()`.
+- **Services** → business logic. One service per domain area.
+- **Repositories** → all Eloquent queries. Controllers and services never query models directly.
+- **DTOs** → typed input across layer boundaries. Services accept DTOs, not raw arrays.
+- **API Resources** → all responses wrapped in `ApiResponse::success()` / `ApiResponse::error()`.
+
+## File locations
+| Layer | Path |
+|-------|------|
+| Controllers | `backend/app/Http/Controllers/` |
+| FormRequests | `backend/app/Http/Requests/` |
+| Services | `backend/app/Services/` |
+| Repositories | `backend/app/Repositories/` |
+| DTOs | `backend/app/DTOs/` |
+| API Resources | `backend/app/Http/Resources/` |
+| Models | `backend/app/Models/` |
+| Support classes | `backend/app/Support/` |
+
+## AI driver
+Always use `AiProviderInterface` — never call Groq/Ollama directly.
+The active driver is resolved via `AI_DRIVER=stub|groq|ollama` env var.
+Stub provider must always work without any API keys (used in tests).
+
+## Social publishers
+Each publisher lives in `backend/app/Services/Social/Publishers/`.
+Implement `PublisherInterface`. Register in `SocialPublisherService`.
+Use `MediaUrlClassifier` to validate media URLs before publishing.
+
+## Testing
+- Feature tests in `backend/tests/Feature/`, unit tests in `backend/tests/Unit/`
+- Always use `RefreshDatabase` + `Sanctum::actingAs()` for authenticated endpoints
+- Mock HTTP calls with `Http::fake()` — never hit real APIs in tests
+- Run: `docker compose exec backend php artisan test`
+
+## Code quality
+```bash
+composer lint       # pint --test (dry-run check)
+composer lint:fix   # pint (auto-format)
+composer analyse    # phpstan level 6
+```

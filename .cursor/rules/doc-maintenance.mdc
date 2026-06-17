@@ -1,0 +1,40 @@
+---
+description: Documentation update rules — which file to edit when development phases or features change
+alwaysApply: true
+---
+
+# Documentation Maintenance
+
+## Single source of truth → `docs/STATUS.md`
+
+**Always update `docs/STATUS.md`** when completing a feature, phase, or significant change.
+Never update the historical reports for current status — they are read-only audit trail.
+
+### What to update in STATUS.md
+1. **Module health table** — change the status cell if a module moved from Partial → Mostly done → Done
+2. **"What's left" section** — remove or deprioritize items that are now complete
+3. **Change log table** — add a row with today's date and a one-line summary
+
+### When to also update the roadmap
+Update `docs/reports/omnipresence-development-roadmap.md` **only** when:
+- A named Phase 4 roadmap step (Step 1–6) is completed — mark it ✅ in the changelog table
+- The overall phase coverage % changes meaningfully
+
+### Never edit these (historical, read-only)
+- `docs/reports/omnipresence-gap-report-baseline.md`
+- `docs/reports/omnipresence-alignment-completion-report.md`
+- `docs/reports/omnipresence-modify-gaps-completion-report.md`
+
+### Do NOT create new report files
+If you need to record new status, add a row to `docs/STATUS.md` → Change log.
+Do not generate new `.md` report files in `docs/reports/`.
+
+## Quick reference
+
+| Task completed | File(s) to update |
+|----------------|-------------------|
+| Any feature shipped | `docs/STATUS.md` (module table + change log) |
+| Named roadmap step done | `docs/STATUS.md` + `docs/reports/omnipresence-development-roadmap.md` changelog |
+| Module status changed | `docs/STATUS.md` module health table |
+| New platform added | `docs/STATUS.md` native publishing matrix |
+| Phase upgraded | `docs/STATUS.md` phase summary + coverage % |

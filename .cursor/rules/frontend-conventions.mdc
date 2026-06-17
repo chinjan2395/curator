@@ -1,0 +1,48 @@
+---
+description: Vue 3 frontend conventions — component system, stores, composables, API calls
+globs: frontend/src/**/*.{vue,js}
+alwaysApply: false
+---
+
+# Frontend Conventions (Vue 3 + Pinia)
+
+## Component system — always use App* components
+Never use raw HTML elements in views or feature components.
+Use the design system from `frontend/src/components/ui/` and `frontend/src/components/layout/`.
+
+| Raw element | Use instead |
+|-------------|-------------|
+| `<button>` | `<AppButton>` |
+| `<input>` | `<AppInput>` |
+| `<select>` | `<AppSelect>` |
+| `<table>` | `<AppTable>` |
+| `<div class="modal">` | `<AppModal>` |
+| Loading spinner | `<AppLoader>` |
+| Empty state | `<AppEmptyState>` |
+| Page header | `<AppPageHeader>` (from layout/) |
+
+Import via barrel: `import { AppButton, AppInput } from '../components/ui'`
+
+## Stores (Pinia)
+All API state lives in `frontend/src/stores/`. Views read from stores, not raw axios.
+Available stores: `auth`, `feeds`, `publish`, `campaigns`, `credentials`, `notifications`, `posts`, `workspaces`, `syncOps`, `oauthApps`, `users`, `toast`, `activityLog`.
+
+## API calls
+- Axios is only allowed in stores and composables. Never import axios in a view directly.
+- All `/api/*` calls are relative paths — Vite proxies them in dev.
+
+## Composables
+Reusable async/form logic → `frontend/src/composables/`.
+Available: `useForm`, `useToast`, `useConfirm`, `useAsync`.
+
+## Script style
+Always use `<script setup>` — no Options API, no `export default {}`.
+
+## Social platform display
+Use `<SocialPlatformLabel type="instagram" />` for any platform label/icon — never hardcode platform strings in templates.
+
+## Lint
+```bash
+npm run lint        # check
+npm run lint:fix    # auto-fix
+```
