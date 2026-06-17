@@ -2,12 +2,14 @@
 
 namespace App\Support;
 
+use App\Models\GoogleDriveConnection;
+use App\Models\OAuthAppConfig;
+
 class GoogleDriveConfig
 {
     /**
-     * Resolve Google Drive credentials from Laravel config, falling back to process
-     * environment variables. On hosts like Render, config:cache during build can
-     * bake empty values while runtime env vars are set on the web service only.
+     * Resolve Google Drive credentials from the in-app connection, Laravel config,
+     * or process environment variables.
      *
      * @return array{
      *     clientId: string,
@@ -15,38 +17,125 @@ class GoogleDriveConfig
      *     refreshToken: string,
      *     folder: string,
      *     teamDriveId: ?string,
-     *     sharedFolderId: ?string
+     *     sharedFolderId: ?string,
+     *     source: 'database'|'env'|null
      * }
      */
     public static function resolve(): array
     {
+        $connection = GoogleDriveConnection::current();
+        $refreshToken = self::normalizeRefreshToken($connection?->refresh_token ?? '');
+        $source = null;
+
+        if ($refreshToken !== '') {
+            $source = 'database';
+        } else {
+            $refreshToken = self::normalizeRefreshToken(
+                self::resolveValue('refreshToken', 'GOOGLE_DRIVE_REFRESH_TOKEN')
+            );
+            if ($refreshToken !== '') {
+                $source = 'env';
+            }
+        }
+
         return [
-            'clientId' => self::resolveValue('clientId', 'GOOGLE_DRIVE_CLIENT_ID'),
-            'clientSecret' => self::resolveValue('clientSecret', 'GOOGLE_DRIVE_CLIENT_SECRET'),
-            'refreshToken' => self::resolveValue('refreshToken', 'GOOGLE_DRIVE_REFRESH_TOKEN'),
+            'clientId' => self::resolveClientId(),
+            'clientSecret' => self::resolveClientSecret(),
+            'refreshToken' => $refreshToken,
             'folder' => self::resolveValue('folder', 'GOOGLE_DRIVE_FOLDER', '/'),
             'teamDriveId' => self::resolveOptional('teamDriveId', 'GOOGLE_DRIVE_TEAM_DRIVE_ID'),
             'sharedFolderId' => self::resolveOptional('sharedFolderId', 'GOOGLE_DRIVE_SHARED_FOLDER_ID'),
+            'source' => $source,
         ];
+    }
+
+    public static function resolveClientId(): string
+    {
+        $fromDisk = self::resolveValue('clientId', 'GOOGLE_DRIVE_CLIENT_ID');
+        if ($fromDisk !== '') {
+            return $fromDisk;
+        }
+
+        return trim((string) config('services.google.client_id', ''));
+    }
+
+    public static function resolveClientSecret(): string
+    {
+        $fromDisk = self::resolveValue('clientSecret', 'GOOGLE_DRIVE_CLIENT_SECRET');
+        if ($fromDisk !== '') {
+            return $fromDisk;
+        }
+
+        return trim((string) config('services.google.client_secret', ''));
     }
 
     public static function isConfigured(): bool
     {
         $credentials = self::resolve();
-        $clientId = $credentials['clientId'];
-        $clientSecret = $credentials['clientSecret'];
-        $refreshToken = $credentials['refreshToken'];
 
-        if ($clientId === '' || $clientSecret === '' || $refreshToken === '') {
+        return self::isValidRefreshToken($credentials['refreshToken'])
+            && $credentials['clientId'] !== ''
+            && $credentials['clientSecret'] !== '';
+    }
+
+    public static function status(): array
+    {
+        $connection = GoogleDriveConnection::current();
+
+        if ($connection && self::isValidRefreshToken($connection->refresh_token ?? '')) {
+            return $connection->toStatusArray();
+        }
+
+        $credentials = self::resolve();
+
+        if (self::isConfigured() && ($credentials['source'] ?? null) === 'env') {
+            return [
+                'connected' => true,
+                'account_email' => null,
+                'account_label' => 'Environment configuration',
+                'token_health' => 'valid',
+                'last_error' => null,
+                'connected_at' => null,
+                'expires_at' => null,
+                'source' => 'env',
+            ];
+        }
+
+        return [
+            'connected' => false,
+            'account_email' => null,
+            'account_label' => null,
+            'token_health' => $connection?->token_health ?? 'disconnected',
+            'last_error' => $connection?->last_error,
+            'connected_at' => $connection?->connected_at?->toIso8601String(),
+            'expires_at' => null,
+            'source' => null,
+        ];
+    }
+
+    public static function sharedOAuthConfigured(): bool
+    {
+        return OAuthAppConfig::query()
+            ->where('scope', OAuthAppConfig::SCOPE_SHARED)
+            ->whereNull('user_id')
+            ->where('provider', 'google')
+            ->exists();
+    }
+
+    private static function isValidRefreshToken(string $refreshToken): bool
+    {
+        $refreshToken = self::normalizeRefreshToken($refreshToken);
+
+        if ($refreshToken === '') {
             return false;
         }
 
-        // Access tokens (ya29.*) expire quickly and cannot be used as refresh tokens.
-        if (str_starts_with($refreshToken, 'ya29.')) {
-            return false;
-        }
+        return ! str_starts_with($refreshToken, 'ya29.');
+    }
 
-        return true;
+    private static function normalizeRefreshToken(?string $refreshToken): string
+    {
+        return trim((string) $refreshToken);
     }
 
     private static function resolveValue(string $configKey, string $envKey, string $default = ''): string

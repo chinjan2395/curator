@@ -200,18 +200,103 @@
         </form>
       </div>
     </AppCard>
+
+    <AppCard class="oauth-settings-shell p-4 md:p-5">
+      <div class="oauth-config-layout">
+        <aside class="oauth-overview-panel">
+          <div class="oauth-provider-hero">
+            <div class="min-w-0 flex-1">
+              <p class="oauth-section-kicker">Asset storage</p>
+              <p class="text-sm-pro font-semibold text-slate-800">Google Drive uploads</p>
+              <p class="text-2xs text-slate-500 mt-1">
+                Connect once to store uploaded assets on Google Drive. Access tokens refresh automatically; click reconnect if Google revokes access.
+              </p>
+            </div>
+          </div>
+
+          <div class="oauth-overview-grid">
+            <div class="oauth-overview-stat">
+              <span class="oauth-overview-stat__label">Status</span>
+              <div class="oauth-status-pill" :class="googleDrive.isConnected && !googleDrive.needsReconnect ? 'oauth-status-pill--ok' : ''">
+                <span class="oauth-status-pill__dot" />
+                {{ driveStatusLabel }}
+              </div>
+            </div>
+            <div v-if="googleDrive.status?.account_label" class="oauth-overview-stat oauth-overview-stat--wide">
+              <span class="oauth-overview-stat__label">Connected account</span>
+              <span class="oauth-overview-stat__value">{{ googleDrive.status.account_label }}</span>
+            </div>
+            <div v-if="googleDrive.status?.source" class="oauth-overview-stat">
+              <span class="oauth-overview-stat__label">Source</span>
+              <span class="oauth-overview-stat__value">{{ googleDrive.status.source === 'database' ? 'In-app OAuth' : 'Environment' }}</span>
+            </div>
+          </div>
+
+          <AppAlert v-if="googleDrive.needsReconnect" variant="warning" title="Google Drive needs reconnection">
+            {{ googleDrive.status?.last_error || 'The refresh token expired or was revoked. An admin must reconnect Google Drive.' }}
+          </AppAlert>
+
+          <AppAlert v-else-if="!oauthConfigExists && oauthProviderKey === 'google'" variant="info" title="Configure Google OAuth first">
+            Save Google client ID and secret above, then add
+            <code class="oauth-code-pill">/api/social/callback/google-drive</code>
+            as an authorized redirect URI in Google Cloud Console.
+          </AppAlert>
+
+          <div v-else class="oauth-callback-preview">
+            <span class="oauth-callback-preview__label">Drive storage callback path</span>
+            <code class="oauth-callback-preview__path">/api/social/callback/google-drive</code>
+            <p class="text-2xs text-slate-500">Add this redirect URI to the same Google OAuth client used for YouTube/Google connect.</p>
+          </div>
+        </aside>
+
+        <div class="space-y-4">
+          <div class="oauth-action-bar">
+            <div class="flex flex-wrap items-center gap-2">
+              <AppButton
+                v-if="oauthApps.isAdmin"
+                variant="secondary"
+                size="sm"
+                :disabled="googleDrive.connecting || !oauthConfigExists"
+                @click="connectGoogleDrive"
+              >
+                {{ googleDrive.connecting ? 'Redirecting…' : googleDrive.isConnected ? 'Reconnect Google Drive' : 'Connect Google Drive' }}
+              </AppButton>
+              <AppButton
+                v-if="oauthApps.isAdmin && googleDrive.isConnected && googleDrive.status?.source === 'database'"
+                variant="secondary"
+                size="sm"
+                @click="disconnectGoogleDrive"
+              >
+                Disconnect
+              </AppButton>
+            </div>
+            <p v-if="!oauthApps.isAdmin" class="text-2xs text-slate-500">
+              Only admins can connect or disconnect Google Drive storage.
+            </p>
+            <div v-if="googleDrive.error" class="text-2xs text-red-600">{{ googleDrive.error }}</div>
+          </div>
+        </div>
+      </div>
+    </AppCard>
   </div>
 </template>
 
 <script setup>
 import { computed, inject, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useOAuthAppsStore } from '../stores/oauthApps';
 import { useCredentialsStore } from '../stores/credentials';
+import { useGoogleDriveStore } from '../stores/googleDrive';
+import { useToastStore } from '../stores/toast';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { AppPageHeader } from '../components/layout/index.js';
 import { AppAlert, AppButton, AppCard, AppFormField, AppInput } from '../components/ui';
 
 const oauthApps = useOAuthAppsStore();
+const googleDrive = useGoogleDriveStore();
+const toast = useToastStore();
+const route = useRoute();
+const router = useRouter();
 const { confirm } = inject('confirm');
 const creds = useCredentialsStore();
 const provider = ref('youtube');
@@ -267,6 +352,12 @@ const activeScopeConfig = computed(() => (oauthScope.value === 'shared'
   : oauthApps.userConfigFor(oauthProviderKey.value)));
 const saveButtonLabel = computed(() => (oauthScope.value === 'shared' ? 'Save shared default' : 'Save my override'));
 const canSaveOauth = computed(() => supportsOAuthApp.value && Boolean(oauthForm.client_id?.trim()) && !oauthApps.saving);
+const driveStatusLabel = computed(() => {
+  if (googleDrive.loading && !googleDrive.status) return 'Loading…';
+  if (!googleDrive.isConnected) return 'Not connected';
+  if (googleDrive.needsReconnect) return 'Needs reconnection';
+  return 'Connected';
+});
 
 function hydrateOauthForm() {
   if (!supportsOAuthApp.value) {
@@ -282,9 +373,10 @@ function hydrateOauthForm() {
 }
 
 onMounted(async () => {
-  await Promise.all([oauthApps.fetchAll(), creds.fetchAll()]);
+  await Promise.all([oauthApps.fetchAll(), creds.fetchAll(), googleDrive.fetchStatus().catch(() => {})]);
   oauthScope.value = oauthApps.isAdmin ? 'shared' : 'user';
   hydrateOauthForm();
+  handleOAuthReturnQuery();
 });
 
 watch(provider, () => {
@@ -314,6 +406,36 @@ async function removeOauth() {
   if (await confirm({ title: 'Remove OAuth settings?', message: 'Remove OAuth app settings?', confirmLabel: 'Remove' })) {
     await oauthApps.remove(oauthProviderKey.value, oauthScope.value);
     hydrateOauthForm();
+  }
+}
+
+function handleOAuthReturnQuery() {
+  const connected = route.query.connected;
+  const error = route.query.error;
+  const message = route.query.message;
+  if (connected === 'google_drive') {
+    toast.success('Google Drive connected for asset storage');
+    googleDrive.fetchStatus().catch(() => {});
+    router.replace({ query: {} });
+    return;
+  }
+  if (error) {
+    toast.error(typeof message === 'string' && message ? message : 'Google Drive connection failed');
+    router.replace({ query: {} });
+  }
+}
+
+async function connectGoogleDrive() {
+  await googleDrive.connect();
+}
+
+async function disconnectGoogleDrive() {
+  if (await confirm({
+    title: 'Disconnect Google Drive?',
+    message: 'New uploads will use local storage until Google Drive is connected again.',
+    confirmLabel: 'Disconnect',
+  })) {
+    await googleDrive.disconnect();
   }
 }
 
