@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Models\SyncLog;
+use App\Services\DuplicateDetectionService;
 use App\Support\ActivityLogger;
 use App\Sync\FacebookSyncer;
 use App\Sync\InstagramSyncer;
@@ -88,6 +89,11 @@ class FeedSyncService
             ->count();
 
         $this->writeLog($feed, $userId, 'success', $newPosts, null, $startedAt, $triggeredBy);
+
+        $workspace = $feed->workspace ?? $feed->load('workspace')->workspace;
+        if ($workspace) {
+            app(DuplicateDetectionService::class)->detectForWorkspace($workspace);
+        }
 
         return $result;
     }
