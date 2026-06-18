@@ -234,8 +234,8 @@
               </div>
             </div>
 
-            <!-- Import from brand kit -->
-            <div class="space-y-3 py-5">
+            <!-- Import from brand kit (UI hidden — does not change saved embed settings) -->
+            <div v-if="SHOW_BRAND_KIT_IMPORT" class="space-y-3 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Import from brand kit</h3>
               <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
               <div class="flex flex-wrap items-end gap-2">
@@ -1308,6 +1308,9 @@ const previewClickTrackedAt = new Map();
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
 
+/** Brand kit import — set to true to show the import UI on the publish page */
+const SHOW_BRAND_KIT_IMPORT = false;
+
 /** Brand kit import */
 const brandKitsForImport = ref([]);
 const brandKitImportId = ref('');
@@ -1891,7 +1894,7 @@ onMounted(async () => {
   } else if (!workspaceId.value && workspaces.list.length) {
     workspaceId.value = String(workspaces.list[0].id);
   }
-  loadBrandKitsForImport();
+  if (SHOW_BRAND_KIT_IMPORT) loadBrandKitsForImport();
 });
 
 async function loadBrandKitsForImport() {
