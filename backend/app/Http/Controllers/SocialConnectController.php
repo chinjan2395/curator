@@ -278,6 +278,7 @@ class SocialConnectController extends Controller
             'state' => $state,
             'code_challenge' => $challenge,
             'code_challenge_method' => 'S256',
+            'prompt' => 'consent',
         ], '', '&', PHP_QUERY_RFC3986);
 
         $authUrl = self::X_OAUTH_AUTHORIZE_URL.'?'.$query;
@@ -665,6 +666,12 @@ class SocialConnectController extends Controller
                 $twitterAccountId,
                 $twitterLabel
             );
+
+            $scopeRaw = $tokenResp->json('scope');
+            if (is_string($scopeRaw) && trim($scopeRaw) !== '') {
+                $credential->scopes = preg_split('/\s+/', trim($scopeRaw)) ?: [];
+                $credential->save();
+            }
 
             if ($user = User::find((int) $payload['user_id'])) {
                 ActivityLogger::log($user, 'credential.connected', 'Connected Twitter / X', 'credential', $credential->id, $credential->account_label ?? 'Twitter');

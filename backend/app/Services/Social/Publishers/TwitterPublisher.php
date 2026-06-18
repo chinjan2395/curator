@@ -34,6 +34,13 @@ class TwitterPublisher implements PublisherInterface
             throw new RuntimeException('X / Twitter token has expired. Reconnect the account in Credentials.');
         }
 
+        $scopes = $credential->scopes ?? [];
+        if ($scopes !== [] && ! in_array('tweet.write', $scopes, true)) {
+            throw new RuntimeException(
+                'Connected X account is missing tweet.write permission. Reconnect Twitter in Credentials after enabling Read and write in the X Developer Portal.'
+            );
+        }
+
         $package = $scheduledPost->contentPackage;
         if (! $package) {
             throw new RuntimeException('Schedule a content package with caption text for X / Twitter publishing.');
@@ -68,6 +75,13 @@ class TwitterPublisher implements PublisherInterface
                 ?? $response->json('title')
                 ?? $response->json('errors.0.message')
                 ?? $response->body();
+
+            if ($response->status() === 403) {
+                throw new RuntimeException(
+                    'X API publish denied: '.$detail.'. '
+                    .'In the X Developer Portal, set App permissions to Read and write, confirm your API plan includes POST /2/tweets (the Free tier cannot post), then reconnect Twitter in Credentials.'
+                );
+            }
 
             throw new RuntimeException('X API publish failed: '.$detail);
         }
