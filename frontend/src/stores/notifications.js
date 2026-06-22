@@ -34,5 +34,14 @@ export const useNotificationsStore = defineStore('notifications', {
         throw e;
       }
     },
+    pushNotification(notification, unreadCount) {
+      if (!notification) return;
+      this.items = [notification, ...this.items.filter((n) => n.id !== notification.id)];
+      if (typeof unreadCount === 'number') {
+        this.unreadCount = unreadCount;
+      } else {
+        this.unreadCount += 1;
+      }
+    },
   },
 });

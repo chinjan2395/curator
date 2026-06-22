@@ -157,13 +157,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import { useSyncOpsStore } from '../../stores/syncOps';
+import { useRealtimeStore } from '../../stores/realtime';
 import { AppButton, AppCard, AppIcon, AppLoader, AppSelect, AppTable } from '../../components/ui';
 import { AppPageHeader } from '../../components/layout/index.js';
 
 const syncOps = useSyncOpsStore();
+const realtime = useRealtimeStore();
 const toast = ref(null);
+let unsubscribeAdminSync = null;
 const logFilters = reactive({ provider: '', status: '', triggered_by: '' });
 const brokenColumns = [
   { key: 'user', label: 'User' },
@@ -189,6 +192,18 @@ onMounted(() => {
   syncOps.fetchStatus();
   syncOps.fetchLogs(1);
   syncOps.fetchBrokenCredentials();
+  unsubscribeAdminSync = realtime.on('adminSync', (event) => {
+    syncOps.handleAdminSyncEvent(event);
+    if (event.status === 'completed') {
+      showToast(event.message || 'Sync complete');
+    } else if (event.status === 'failed') {
+      showToast(event.message || 'Sync failed', 'error');
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (unsubscribeAdminSync) unsubscribeAdminSync();
 });
 
 function applyFilters() {
@@ -203,11 +218,7 @@ function goToPage(page) {
 async function doRunAll() {
   const result = await syncOps.runAll();
   if (result.success) {
-    showToast('Sync started — logs will appear shortly.');
-    setTimeout(() => {
-      syncOps.fetchStatus();
-      syncOps.fetchLogs(1);
-    }, 3000);
+    showToast('Sync started — progress updates live.');
   } else {
     showToast(result.message, 'error');
   }
@@ -216,21 +227,7 @@ async function doRunAll() {
 async function doResync(cred) {
   const result = await syncOps.resyncCredential(cred.id);
   if (result.success) {
-    const { status, feeds_found, results } = result.data;
-    const synced = results?.filter(r => r.synced).length ?? 0;
-    if (status === 'active') {
-      const detail = feeds_found === 0
-        ? 'No feeds linked yet — credential restored to active.'
-        : `${synced} of ${feeds_found} feed(s) synced successfully.`;
-      showToast(`Resync successful — ${detail}`);
-    } else {
-      showToast(
-        'Token is revoked — please reconnect this account from the Credentials page.',
-        'error',
-      );
-    }
-    syncOps.fetchStatus();
-    syncOps.fetchLogs(1);
+    showToast('Credential re-sync queued — you will be notified when complete.');
   } else {
     showToast(result.message, 'error');
   }
@@ -239,8 +236,7 @@ async function doResync(cred) {
 async function doSyncFeed(log) {
   const result = await syncOps.syncFeed(log.feed_id);
   if (result.success) {
-    showToast(`Synced "${log.feed_name}".`);
-    syncOps.fetchLogs(syncOps.logsPage);
+    showToast(`Feed sync queued for "${log.feed_name}".`);
   } else {
     showToast(result.message, 'error');
   }

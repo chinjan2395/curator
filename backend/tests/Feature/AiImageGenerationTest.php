@@ -49,15 +49,13 @@ class AiImageGenerationTest extends TestCase
         Sanctum::actingAs($user);
         $package = $this->makePackage($user);
 
-        $response = $this->postJson("/api/content-packages/{$package->id}/generate-image", [
+        $this->postJson("/api/content-packages/{$package->id}/generate-image", [
             'instruction' => 'Minimal product flat lay on marble.',
-        ]);
+        ])->assertAccepted()
+            ->assertJsonPath('message', 'Image generation started.');
 
-        $response->assertOk()
-            ->assertJsonPath('message', 'Image generated and attached.');
-
-        $updated = $response->json('data');
-        $this->assertNotEmpty($updated['media_urls']);
+        $updated = $package->fresh();
+        $this->assertNotEmpty($updated->media_urls);
 
         $asset = Asset::query()->where('user_id', $user->id)->latest('id')->first();
         $this->assertNotNull($asset);

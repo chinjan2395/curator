@@ -7,6 +7,7 @@ use App\Http\Requests\StoreSocialCredentialRequest;
 use App\Http\Requests\UpdateSocialCredentialRequest;
 use App\Http\Resources\ApiResponse;
 use App\Http\Resources\SocialCredentialResource;
+use App\Jobs\SyncFeedJob;
 use App\Models\Feed;
 use App\Models\SocialCredential;
 use App\Repositories\Contracts\SocialCredentialRepositoryInterface;
@@ -79,9 +80,8 @@ class SocialCredentialController extends Controller
 
         $synced = 0;
         foreach ($feeds as $feed) {
-            if ($this->syncService->syncFeed($feed, 'user') !== null) {
-                $synced++;
-            }
+            SyncFeedJob::dispatch($feed->id, 'user');
+            $synced++;
         }
 
         $socialCredential->refresh();
@@ -90,7 +90,7 @@ class SocialCredentialController extends Controller
         ActivityLogger::log(
             $request->user(),
             'credential.synced',
-            "Synced {$synced} feed(s) for {$socialCredential->provider} account \"{$label}\"",
+            "Queued sync for {$synced} feed(s) for {$socialCredential->provider} account \"{$label}\"",
             'credential', $socialCredential->id, $label,
         );
 
@@ -98,7 +98,8 @@ class SocialCredentialController extends Controller
             'synced' => $synced,
             'total'  => $feeds->count(),
             'status' => $socialCredential->status,
-        ], $synced > 0 ? "Synced {$synced} feed(s) successfully." : 'Sync complete.');
+            'queued' => true,
+        ], $synced > 0 ? "Sync started for {$synced} feed(s)." : 'Sync complete.');
     }
 
     public function destroy(Request $request, SocialCredential $socialCredential): JsonResponse

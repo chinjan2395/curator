@@ -101,12 +101,19 @@ export const useFeedsStore = defineStore('feeds', {
       this.syncing = true;
       try {
         const { data } = await axios.post(`/api/workspaces/${workspaceId}/feeds/${feedId}/sync`, { count });
+        const payload = data.data || data;
         const i = this.list.findIndex((f) => f.id === feedId);
-        if (i !== -1) {
-          this.list[i] = { ...this.list[i], last_synced_at: data.last_synced_at };
+        if (i !== -1 && payload.last_synced_at) {
+          this.list[i] = { ...this.list[i], last_synced_at: payload.last_synced_at };
         }
-        if (!silent) useToastStore().success(`Synced feed (${data.created} posts)`);
-        return data;
+        if (!silent) {
+          if (payload.queued) {
+            useToastStore().info('Feed sync started…');
+          } else {
+            useToastStore().success(`Synced feed (${payload.created ?? 0} posts)`);
+          }
+        }
+        return payload;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to sync feed';
         useToastStore().error(msg);

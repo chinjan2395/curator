@@ -36,10 +36,10 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
     loading.value = true;
     error.value = null;
     try {
-      const res = await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/scan`);
-      list.value = res.data?.data ?? res.data ?? [];
+      await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/scan`);
     } catch (e) {
       error.value = e?.response?.data?.message ?? 'Scan failed.';
+      throw e;
     } finally {
       loading.value = false;
     }

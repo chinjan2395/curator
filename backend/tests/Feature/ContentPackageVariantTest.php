@@ -41,11 +41,15 @@ class ContentPackageVariantTest extends TestCase
         Sanctum::actingAs($user);
         $package = $this->makePackage($user);
 
-        $response = $this->postJson("/api/content-packages/{$package->id}/variants");
+        $this->postJson("/api/content-packages/{$package->id}/variants")
+            ->assertAccepted();
 
-        $response->assertOk();
-
-        $data = $response->json('data');
+        $package->refresh();
+        $data = ContentPackage::query()
+            ->where('variant_group_id', $package->variant_group_id)
+            ->orderBy('variant_index')
+            ->get()
+            ->toArray();
         $this->assertCount(4, $data); // original + 3 variants
 
         // Original is stamped with index 0
@@ -68,7 +72,7 @@ class ContentPackageVariantTest extends TestCase
         $package = $this->makePackage($user);
 
         // First generation is fine
-        $this->postJson("/api/content-packages/{$package->id}/variants")->assertOk();
+        $this->postJson("/api/content-packages/{$package->id}/variants")->assertAccepted();
 
         // Re-fetching the original (now has variant_group_id) must be rejected
         $package->refresh();
@@ -81,7 +85,7 @@ class ContentPackageVariantTest extends TestCase
         Sanctum::actingAs($user);
         $package = $this->makePackage($user);
 
-        $this->postJson("/api/content-packages/{$package->id}/variants")->assertOk();
+        $this->postJson("/api/content-packages/{$package->id}/variants")->assertAccepted();
         $package->refresh();
 
         $response = $this->getJson("/api/content-packages/{$package->id}/variants");
@@ -96,7 +100,7 @@ class ContentPackageVariantTest extends TestCase
         Sanctum::actingAs($user);
         $package = $this->makePackage($user);
 
-        $this->postJson("/api/content-packages/{$package->id}/variants")->assertOk();
+        $this->postJson("/api/content-packages/{$package->id}/variants")->assertAccepted();
 
         // Get all siblings and pick the second variant as winner
         $group = ContentPackage::query()

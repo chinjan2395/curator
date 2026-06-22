@@ -8,6 +8,7 @@ use App\Http\Requests\Sync\TestInstagramRequest;
 use App\Http\Requests\Sync\TestRssRequest;
 use App\Http\Requests\Sync\TestYouTubeRequest;
 use App\Http\Resources\ApiResponse;
+use App\Jobs\SyncFeedJob;
 use App\Models\Feed;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
@@ -223,12 +224,13 @@ class FeedSyncController extends Controller
         $feed->load('socialCredential');
 
         if (in_array($feed->type, ['youtube', 'rss', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'], true)) {
-            $result = $this->syncService->syncFeed($feed, 'user');
-            if ($result !== null) {
-                ActivityLogger::log($request->user(), 'feed.synced', "Synced {$feed->type} feed \"{$feed->name}\"", 'feed', $feed->id, $feed->name);
-            }
+            SyncFeedJob::dispatch($feed->id, 'user');
 
-            return $result ?? ApiResponse::error('Credential expired or revoked. Reconnect in Credentials.');
+            return ApiResponse::success(
+                ['feed_id' => $feed->id, 'queued' => true],
+                'Feed sync started.',
+                202,
+            );
         }
 
         return $this->syncStub($request, $feed);

@@ -22,7 +22,7 @@
             </AppButton>
             <AppButton variant="primary" :disabled="generating || savingCampaign" @click="generate">
               <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
-              {{ generating ? 'Generating…' : 'Generate content' }}
+              {{ generating ? (generationProgress || 'Generating…') : 'Generate content' }}
             </AppButton>
           </div>
         </template>
@@ -623,10 +623,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { useCampaignsStore } from '../stores/campaigns';
+import { useRealtimeStore } from '../stores/realtime';
 import { useToastStore } from '../stores/toast';
 import {
   AppAlert,
@@ -657,12 +658,15 @@ const route = useRoute();
 const router = useRouter();
 const store = useCampaignsStore();
 const toast = useToastStore();
+const realtime = useRealtimeStore();
+let unsubscribeAi = null;
 
 const campaign = ref(null);
 const loading = ref(true);
 const loadError = ref(null);
 const campaignError = ref('');
 const generating = ref(false);
+const generationProgress = ref('');
 const savingCampaign = ref(false);
 const autoPilotEnabled = ref(false);
 const autoPilotLoading = ref(false);
@@ -805,7 +809,101 @@ const canSaveCampaign = computed(
 
 onMounted(async () => {
   await Promise.all([load(), loadAssets(), loadBrandKits(), loadContentTemplates(), loadContentBlocks()]);
+  unsubscribeAi = realtime.on('aiGeneration', handleAiGeneration);
 });
+
+onUnmounted(() => {
+  if (unsubscribeAi) unsubscribeAi();
+});
+
+function handleAiGeneration(event) {
+  const campaignId = Number(route.params.id);
+
+  if (event.job_type === 'campaign_generate' && Number(event.resource_id) === campaignId) {
+    if (event.status === 'started') {
+      generating.value = true;
+      generationProgress.value = event.message || '';
+      return;
+    }
+    if (event.status === 'progress') {
+      generating.value = true;
+      const { platform, step, total } = event.data || {};
+      generationProgress.value = platform
+        ? `Generating ${platform} (${step}/${total})…`
+        : (event.message || 'Generating…');
+      return;
+    }
+    generating.value = false;
+    generationProgress.value = '';
+    if (event.status === 'completed') {
+      toast.success(event.message || 'Content generated');
+      load({ showLoader: false }).then(() => {
+        activeTab.value = 'drafts';
+        platformFilter.value = 'all';
+        if (packages.value.length === 1) {
+          expandedPackageId.value = packages.value[0].id;
+        }
+      });
+    } else if (event.status === 'failed') {
+      toast.error(event.message || 'Content generation failed');
+    }
+    return;
+  }
+
+  if (event.job_type === 'refine' && selected.value && Number(event.resource_id) === Number(selected.value.id)) {
+    if (event.status === 'started') {
+      refining.value = true;
+      return;
+    }
+    refining.value = false;
+    if (event.status === 'completed') {
+      refinedCaption.value = event.data?.package?.caption || '';
+      toast.success(event.message || 'Caption refined');
+      load({ showLoader: false, preserveSelectedId: selected.value.id }).then(() => {
+        expandedPackageId.value = selected.value.id;
+      });
+    } else if (event.status === 'failed') {
+      toast.error(event.message || 'Refine failed');
+    }
+    return;
+  }
+
+  if (event.job_type === 'variants') {
+    const pkgId = Number(event.resource_id);
+    if (event.status === 'started') {
+      generatingVariants.value = true;
+      abVariantsModalOpen.value = true;
+      variantGroup.value = [];
+      return;
+    }
+    generatingVariants.value = false;
+    if (event.status === 'completed') {
+      variantGroup.value = event.data?.variants || [];
+      toast.success(event.message || 'A/B variants generated');
+      load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+    } else if (event.status === 'failed') {
+      toast.error(event.message || 'Failed to generate variants');
+      abVariantsModalOpen.value = false;
+    }
+    return;
+  }
+
+  if (event.job_type === 'image' && Number(event.resource_id) === Number(generatingImageId.value)) {
+    if (event.status === 'started') return;
+    generatingImageId.value = null;
+    if (event.status === 'completed') {
+      toast.success(event.message || 'Image generated');
+      Promise.all([
+        load({ showLoader: false, preserveSelectedId: event.resource_id }),
+        loadAssets(),
+      ]).then(() => {
+        expandedPackageId.value = event.resource_id;
+      });
+    } else if (event.status === 'failed') {
+      toast.error(event.message || 'Image generation failed');
+    }
+  }
+}
 
 watch(
   () => packages.value.length,
@@ -1044,19 +1142,12 @@ async function generateImage(pkg) {
   generatingImageId.value = pkg.id;
   try {
     const instruction = imageInstructionValue(pkg.id).trim();
-    const { data } = await axios.post(`/api/content-packages/${pkg.id}/generate-image`, {
+    await axios.post(`/api/content-packages/${pkg.id}/generate-image`, {
       instruction: instruction || undefined,
     });
-    toast.success(data.message || 'Image generated');
+    toast.info('Image generation started…');
     setImageInstruction(pkg.id, '');
-    await Promise.all([
-      load({ showLoader: false, preserveSelectedId: pkg.id }),
-      loadAssets(),
-    ]);
-    expandedPackageId.value = pkg.id;
   } catch {
-    // interceptor handles error toast
-  } finally {
     generatingImageId.value = null;
   }
 }
@@ -1166,13 +1257,7 @@ async function generate() {
   generating.value = true;
   try {
     await store.generate(route.params.id);
-    await load({ showLoader: false });
-    activeTab.value = 'drafts';
-    platformFilter.value = 'all';
-    if (packages.value.length === 1) {
-      expandedPackageId.value = packages.value[0].id;
-    }
-  } finally {
+  } catch {
     generating.value = false;
   }
 }
@@ -1190,15 +1275,10 @@ async function refine() {
   if (!selected.value || !instruction.value.trim()) return;
   refining.value = true;
   try {
-    const { data } = await axios.post(`/api/content-packages/${selected.value.id}/refine`, {
+    await axios.post(`/api/content-packages/${selected.value.id}/refine`, {
       instruction: instruction.value.trim(),
     });
-    const refined = data.data || data;
-    refinedCaption.value = refined.caption;
-    toast.success('Caption refined');
-    await load({ showLoader: false, preserveSelectedId: selected.value.id });
-    expandedPackageId.value = selected.value.id;
-  } finally {
+  } catch {
     refining.value = false;
   }
 }
@@ -1280,15 +1360,11 @@ async function generateVariantsForPackage(pkg) {
   generatingVariants.value = true;
   variantGroup.value = [];
   try {
-    const { data } = await axios.post(`/api/content-packages/${pkg.id}/variants`);
-    variantGroup.value = data.data || data || [];
-    toast.success('A/B variants generated');
-    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+    await axios.post(`/api/content-packages/${pkg.id}/variants`);
+    toast.info('Variant generation started…');
   } catch {
-    toast.error('Failed to generate variants');
-    abVariantsModalOpen.value = false;
-  } finally {
     generatingVariants.value = false;
+    abVariantsModalOpen.value = false;
   }
 }
 

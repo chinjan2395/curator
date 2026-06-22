@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
 use App\Http\Resources\DuplicateGroupResource;
+use App\Jobs\DuplicateScanJob;
 use App\Models\Post;
 use App\Models\PostDuplicateGroup;
 use App\Models\Workspace;
@@ -31,14 +32,13 @@ class DuplicateGroupController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $this->detector->detectForWorkspace($workspace);
+        DuplicateScanJob::dispatch($workspace->id, (int) $request->user()->id, 'scan');
 
-        $groups = PostDuplicateGroup::where('workspace_id', $workspace->id)
-            ->where('status', 'open')
-            ->with(['posts'])
-            ->get();
-
-        return ApiResponse::success(DuplicateGroupResource::collection($groups), 'Scan complete.');
+        return ApiResponse::success(
+            ['workspace_id' => $workspace->id, 'queued' => true],
+            'Duplicate scan started.',
+            202,
+        );
     }
 
     public function keep(Request $request, Workspace $workspace, PostDuplicateGroup $group, Post $post): JsonResponse

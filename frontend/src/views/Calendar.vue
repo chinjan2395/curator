@@ -218,6 +218,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useToastStore } from '../stores/toast';
+import { useRealtimeWithFallback } from '../composables/useRealtimeWithFallback';
 import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppFormField, AppIcon, AppInput, AppLoader, AppSelect, AppTitle } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
@@ -437,6 +438,26 @@ async function cancel(post) {
     // interceptor toasts
   }
 }
+
+function applyCalendarPost(post) {
+  if (!post?.id) return;
+  if (post.status === 'cancelled') {
+    posts.value = posts.value.filter((p) => p.id !== post.id);
+    return;
+  }
+  const idx = posts.value.findIndex((p) => p.id === post.id);
+  if (idx !== -1) {
+    posts.value[idx] = post;
+  } else if (['scheduled', 'failed', 'published'].includes(post.status)) {
+    posts.value = [post, ...posts.value];
+  }
+}
+
+useRealtimeWithFallback({
+  event: 'scheduledPost',
+  onEvent: ({ post }) => applyCalendarPost(post),
+  poll: () => load(),
+});
 
 onMounted(load);
 </script>

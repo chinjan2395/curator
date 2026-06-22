@@ -27,29 +27,40 @@ class AiContentService
     public function generateForCampaign(Campaign $campaign): array
     {
         $campaign->loadMissing(['user', 'brandKit', 'template']);
-        $packages = [];
         $platforms = $campaign->platforms ?? ['instagram', 'twitter'];
-        $context = $this->buildContext($campaign->user, $campaign);
+        $packages = [];
 
         foreach ($platforms as $platform) {
-            $platformContext = array_merge($context, ['platform' => $platform]);
-            $basePrompt = $this->buildGenerationPrompt($campaign, $platform);
-            $caption = $this->provider->generateText($basePrompt, $platformContext);
-
-            $package = ContentPackage::create([
-                'campaign_id' => $campaign->id,
-                'user_id' => $campaign->user_id,
-                'platform' => $platform,
-                'content_type' => $campaign->template?->content_type ?? 'post',
-                'caption' => $caption,
-                'hashtags' => $this->suggestHashtags($campaign, $platform, $context),
-                'status' => 'draft',
-                'ai_score' => $this->scoreCaption($caption, $platformContext),
-            ]);
-
-            $packages[] = $package;
+            $packages[] = $this->generateForCampaignPlatform($campaign, $platform);
         }
 
+        $this->finalizeCampaignGeneration($campaign);
+
+        return $packages;
+    }
+
+    public function generateForCampaignPlatform(Campaign $campaign, string $platform): ContentPackage
+    {
+        $campaign->loadMissing(['user', 'brandKit', 'template']);
+        $context = $this->buildContext($campaign->user, $campaign);
+        $platformContext = array_merge($context, ['platform' => $platform]);
+        $basePrompt = $this->buildGenerationPrompt($campaign, $platform);
+        $caption = $this->provider->generateText($basePrompt, $platformContext);
+
+        return ContentPackage::create([
+            'campaign_id' => $campaign->id,
+            'user_id' => $campaign->user_id,
+            'platform' => $platform,
+            'content_type' => $campaign->template?->content_type ?? 'post',
+            'caption' => $caption,
+            'hashtags' => $this->suggestHashtags($campaign, $platform, $context),
+            'status' => 'draft',
+            'ai_score' => $this->scoreCaption($caption, $platformContext),
+        ]);
+    }
+
+    public function finalizeCampaignGeneration(Campaign $campaign): void
+    {
         $campaign->update(['status' => 'generated', 'ai_strategy' => ['provider' => $this->provider->name()]]);
 
         LearningSignal::create([
@@ -59,8 +70,6 @@ class AiContentService
             'content_type' => 'campaign',
             'metadata' => ['campaign_id' => $campaign->id],
         ]);
-
-        return $packages;
     }
 
     /**

@@ -184,13 +184,24 @@
             <div class="analytics-section-icon analytics-section-icon--emerald">
               <AppIcon name="sparkles" class="w-4 h-4" />
             </div>
-            <div>
+            <div class="flex-1">
               <AppTitle size="sm">AI insights</AppTitle>
               <p class="analytics-section-copy">Quick takeaways from your content activity</p>
             </div>
+            <AppButton
+              size="sm"
+              variant="secondary"
+              :loading="insightsLoading"
+              :disabled="insightsLoading"
+              @click="requestInsights"
+            >
+              {{ insightsLoading ? 'Generating…' : 'Refresh insights' }}
+            </AppButton>
           </div>
 
-          <ul v-if="insights.length" class="mt-4 space-y-2">
+          <AppLoader v-if="insightsLoading && !insights.length" class="mt-4" size="sm" label="Generating AI insights…" />
+
+          <ul v-else-if="insights.length" class="mt-4 space-y-2">
             <li v-for="(line, index) in insights" :key="index" class="analytics-insight">
               <span class="analytics-insight__bullet">
                 <AppIcon name="sparkles" class="w-3.5 h-3.5" />
@@ -204,7 +215,7 @@
               <AppIcon name="sparkles" class="w-5 h-5" />
             </div>
             <p class="analytics-empty__title">Insights on the way</p>
-            <p class="analytics-empty__copy">Insights appear once you have synced posts or scheduled content.</p>
+            <p class="analytics-empty__copy">Click refresh to generate AI insights from your analytics data.</p>
           </div>
         </AppCard>
       </div>
@@ -213,17 +224,23 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import axios from 'axios';
-import { AppAlert, AppCard, AppIcon, AppLoader, AppTitle } from '../components/ui';
+import { AppAlert, AppButton, AppCard, AppIcon, AppLoader, AppTitle } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { getPlatformMeta } from '../constants/socialPlatforms';
+import { useRealtimeStore } from '../stores/realtime';
+import { useToastStore } from '../stores/toast';
 
 const overview = ref(null);
 const insights = ref([]);
 const loading = ref(true);
+const insightsLoading = ref(false);
 const error = ref(null);
+const realtime = useRealtimeStore();
+const toast = useToastStore();
+let unsubscribeInsights = null;
 
 const metricCards = computed(() => [
   {
@@ -326,21 +343,47 @@ function campaignProgress(campaign) {
   return Math.min(100, Math.round((approved / total) * 100));
 }
 
+function handleInsightsEvent(event) {
+  if (event.status === 'started') {
+    insightsLoading.value = true;
+    return;
+  }
+  insightsLoading.value = false;
+  if (event.status === 'completed' && Array.isArray(event.insights)) {
+    insights.value = event.insights;
+    toast.success(event.message || 'AI insights ready');
+  } else if (event.status === 'failed') {
+    toast.error(event.message || 'Failed to generate insights');
+  }
+}
+
+async function requestInsights() {
+  insightsLoading.value = true;
+  try {
+    await axios.get('/api/analytics/insights', { skipErrorToast: true });
+  } catch (e) {
+    insightsLoading.value = false;
+    toast.error(e.response?.data?.message || 'Failed to start insights generation');
+  }
+}
+
 onMounted(async () => {
   loading.value = true;
   error.value = null;
+  unsubscribeInsights = realtime.on('analyticsInsights', handleInsightsEvent);
   try {
-    const [overviewResponse, insightsResponse] = await Promise.all([
-      axios.get('/api/analytics/overview', { skipErrorToast: true }),
-      axios.get('/api/analytics/insights', { skipErrorToast: true }),
-    ]);
+    const overviewResponse = await axios.get('/api/analytics/overview', { skipErrorToast: true });
     overview.value = overviewResponse.data.data || overviewResponse.data;
-    insights.value = (insightsResponse.data.data || insightsResponse.data).insights || [];
+    await requestInsights();
   } catch (e) {
     error.value = e.response?.data?.message || 'Failed to load analytics';
   } finally {
     loading.value = false;
   }
+});
+
+onUnmounted(() => {
+  if (unsubscribeInsights) unsubscribeInsights();
 });
 </script>
 

@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Events;
+
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class AiGenerationUpdated implements ShouldBroadcast
+{
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
+    /**
+     * @param  'started'|'progress'|'completed'|'failed'  $status
+     * @param  'campaign_generate'|'refine'|'variants'|'image'  $jobType
+     * @param  array<string, mixed>|null  $data
+     */
+    public function __construct(
+        public int $userId,
+        public string $jobType,
+        public int $resourceId,
+        public string $status,
+        public ?array $data = null,
+        public ?string $message = null,
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('user.'.$this->userId),
+        ];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'ai-generation.updated';
+    }
+
+    /** @return array<string, mixed> */
+    public function broadcastWith(): array
+    {
+        return [
+            'job_type' => $this->jobType,
+            'resource_id' => $this->resourceId,
+            'status' => $this->status,
+            'data' => $this->data,
+            'message' => $this->message,
+        ];
+    }
+}

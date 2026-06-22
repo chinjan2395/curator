@@ -174,7 +174,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import axios from 'axios';
 import { AppAlert, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
@@ -182,6 +182,7 @@ import CapabilityBanner from '../components/CapabilityBanner.vue';
 import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { useToastStore } from '../stores/toast';
+import { useRealtimeWithFallback } from '../composables/useRealtimeWithFallback';
 import { formatScheduledAt } from '../utils/datetime';
 
 const toast = useToastStore();
@@ -190,7 +191,6 @@ const loading = ref(true);
 const error = ref(null);
 const retrying = reactive({});
 const cancelling = reactive({});
-let pollTimer = null;
 
 /** 'retrying' = scheduled but has already failed at least once */
 function statusKey(post) {
@@ -261,12 +261,27 @@ async function cancel(post) {
   }
 }
 
-onMounted(() => {
-  load();
-  pollTimer = setInterval(load, 30_000);
+function applyQueuePost(post) {
+  if (!post?.id) return;
+  if (post.status === 'cancelled') {
+    queue.value = queue.value.filter((p) => p.id !== post.id);
+    return;
+  }
+  const idx = queue.value.findIndex((p) => p.id === post.id);
+  if (idx !== -1) {
+    queue.value[idx] = post;
+  } else if (['scheduled', 'failed', 'published'].includes(post.status)) {
+    queue.value = [post, ...queue.value];
+  }
+}
+
+useRealtimeWithFallback({
+  event: 'scheduledPost',
+  onEvent: ({ post }) => applyQueuePost(post),
+  poll: () => load(),
 });
 
-onUnmounted(() => clearInterval(pollTimer));
+onMounted(load);
 </script>
 
 <style scoped>

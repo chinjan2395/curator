@@ -3,6 +3,7 @@
 namespace App\Services\Social;
 
 use App\Models\ScheduledPost;
+use App\Events\ScheduledPostStatusChanged;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 use App\Services\Social\Publishers\PublisherInterface;
@@ -71,6 +72,8 @@ class SocialPublisherService
                 "Your scheduled post was published to {$provider}.",
                 ['scheduled_post_id' => $scheduledPost->id],
             );
+
+            event(ScheduledPostStatusChanged::fromModel($scheduledPost->fresh()));
         } catch (\Throwable $e) {
             $message = $e->getMessage();
             if ($publisher instanceof StubPublisher && ! app()->environment('local')) {
@@ -100,6 +103,8 @@ class SocialPublisherService
                 $message,
                 ['scheduled_post_id' => $scheduledPost->id],
             );
+
+            event(ScheduledPostStatusChanged::fromModel($scheduledPost->fresh()));
         }
     }
 }

@@ -45,15 +45,17 @@ class AiContentScoringTest extends TestCase
         Sanctum::actingAs($user);
         $campaign = $this->makeCampaign($user);
 
-        $response = $this->postJson("/api/campaigns/{$campaign->id}/generate");
+        $this->postJson("/api/campaigns/{$campaign->id}/generate")
+            ->assertAccepted()
+            ->assertJsonPath('data.queued', true);
 
-        $response->assertOk();
-        $packages = $response->json('data');
+        $packages = ContentPackage::query()->where('campaign_id', $campaign->id)->get();
         $this->assertCount(1, $packages);
-        $this->assertNotNull($packages[0]['ai_score']);
-        $this->assertNotSame(0.75, $packages[0]['ai_score']);
-        $this->assertGreaterThan(0, $packages[0]['ai_score']);
-        $this->assertLessThanOrEqual(1, $packages[0]['ai_score']);
+        $package = $packages->first();
+        $this->assertNotNull($package->ai_score);
+        $this->assertNotSame(0.75, $package->ai_score);
+        $this->assertGreaterThan(0, $package->ai_score);
+        $this->assertLessThanOrEqual(1, $package->ai_score);
     }
 
     public function test_refine_updates_ai_score(): void
@@ -66,14 +68,17 @@ class AiContentScoringTest extends TestCase
             'ai_score' => 0.2,
         ]);
 
-        $response = $this->postJson("/api/content-packages/{$package->id}/refine", [
+        $this->postJson("/api/content-packages/{$package->id}/refine", [
             'instruction' => 'Make it shorter and punchier.',
-        ]);
+        ])->assertAccepted();
 
-        $response->assertOk();
-        $refined = $response->json('data');
-        $this->assertNotNull($refined['ai_score']);
-        $this->assertNotSame($package->ai_score, $refined['ai_score']);
+        $refined = ContentPackage::query()
+            ->where('parent_id', $package->id)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($refined);
+        $this->assertNotNull($refined->ai_score);
+        $this->assertNotSame($package->ai_score, $refined->ai_score);
     }
 
     public function test_variants_get_individual_scores(): void
@@ -86,13 +91,17 @@ class AiContentScoringTest extends TestCase
             'ai_score' => 0.33,
         ]);
 
-        $response = $this->postJson("/api/content-packages/{$package->id}/variants");
+        $this->postJson("/api/content-packages/{$package->id}/variants")
+            ->assertAccepted();
 
-        $response->assertOk();
-        $group = $response->json('data');
+        $package->refresh();
+        $group = ContentPackage::query()
+            ->where('variant_group_id', $package->variant_group_id)
+            ->orderBy('variant_index')
+            ->get();
         $this->assertCount(4, $group);
 
-        $variantScores = collect($group)
+        $variantScores = $group
             ->where('variant_index', '>', 0)
             ->pluck('ai_score')
             ->all();

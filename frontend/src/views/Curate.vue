@@ -360,12 +360,13 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { usePostsStore } from '../stores/posts';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useToastStore } from '../stores/toast';
+import { useRealtimeWithFallback } from '../composables/useRealtimeWithFallback';
 import { useDuplicateGroupsStore } from '../stores/duplicateGroups';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import SocialIcon from '../components/SocialIcon.vue';
@@ -398,7 +399,6 @@ const previewPost = computed(() => {
 });
 const viewMode = ref('cards');
 const brokenThumbnails = ref(new Set());
-const autoRefreshTimer = ref(null);
 const selectedPostIds = ref(new Set());
 
 const hasSelection = computed(() => selectedPostIds.value.size > 0);
@@ -600,28 +600,56 @@ async function syncNow() {
 }
 
 
+async function handleFeedSync(payload) {
+  if (Number(payload.workspace_id) !== Number(workspaceId.value)) return;
+  if (payload.status === 'started') return;
+  if (document.hidden || posts.loading || feeds.syncing) return;
+  try {
+    if (payload.status === 'success' && payload.posts_synced > 0) {
+      toast.info(`${payload.posts_synced} new post${payload.posts_synced !== 1 ? 's' : ''} synced`);
+    }
+    await refresh({ incremental: payload.status === 'success' });
+    if (payload.status === 'success') {
+      await duplicateGroups.fetch(workspaceId.value);
+    }
+    if (payload.last_synced_at) {
+      const i = feeds.list.findIndex((f) => f.id === payload.feed_id);
+      if (i !== -1) {
+        feeds.list[i] = { ...feeds.list[i], last_synced_at: payload.last_synced_at };
+      }
+    }
+  } catch {
+    // Background refresh should not interrupt curation.
+  } finally {
+    feeds.syncing = false;
+  }
+}
+
+async function handleDuplicateScan(payload) {
+  if (Number(payload.workspace_id) !== Number(workspaceId.value)) return;
+  await duplicateGroups.fetch(workspaceId.value);
+  if (payload.triggered_by === 'scan') {
+    const count = payload.group_count ?? 0;
+    toast.success(`Duplicate scan complete — ${count} group${count === 1 ? '' : 's'} found`);
+  }
+}
+
+useRealtimeWithFallback({
+  event: 'feedSync',
+  onEvent: handleFeedSync,
+  poll: () => refresh({ incremental: true }),
+});
+
+useRealtimeWithFallback({
+  event: 'duplicateScan',
+  onEvent: handleDuplicateScan,
+});
+
 onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
   if (!feeds.list.length && workspaceId.value) await feeds.fetchAll(workspaceId.value);
   await refresh();
   await duplicateGroups.fetch(workspaceId.value);
-
-  // Keep Curate list fresh while scheduler/background sync adds posts.
-  autoRefreshTimer.value = window.setInterval(async () => {
-    if (document.hidden || posts.loading || feeds.syncing) return;
-    try {
-      await refresh({ incremental: true });
-    } catch {
-      // Background refresh should not interrupt curation.
-    }
-  }, 30000);
-});
-
-onBeforeUnmount(() => {
-  if (autoRefreshTimer.value) {
-    window.clearInterval(autoRefreshTimer.value);
-    autoRefreshTimer.value = null;
-  }
 });
 
 watch([filterStatus, filterPlatform], () => {
@@ -662,8 +690,12 @@ async function dismissGroup(groupId) {
 }
 
 async function scanDuplicates() {
-  await duplicateGroups.scan(workspaceId.value);
-  toast.success('Duplicate scan complete.');
+  try {
+    await duplicateGroups.scan(workspaceId.value);
+    toast.info('Duplicate scan started…');
+  } catch {
+    toast.error('Failed to start duplicate scan.');
+  }
 }
 
 async function setStatus(p, status) {

@@ -297,15 +297,15 @@
             type="button"
             class="relative p-2 rounded-lg transition-colors"
             :class="syncUnreadCount > 0 ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'"
-            title="Sync notifications"
-            @click="openSyncNotifications"
+            title="Notifications"
+            @click="openNotifications"
           >
             <AppIcon name="bell" class="w-5 h-5" />
             <span
-              v-if="syncUnreadCount > 0"
+              v-if="headerUnreadCount > 0"
               class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-blue-600 text-white text-[10px] leading-[1.1rem] font-semibold text-center"
             >
-              {{ syncUnreadCount > 99 ? '99+' : syncUnreadCount }}
+              {{ headerUnreadCount > 99 ? '99+' : headerUnreadCount }}
             </span>
           </button>
 
@@ -432,6 +432,8 @@ import { useAuthStore } from '../stores/auth';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useActivityLogStore } from '../stores/activityLog';
 import { useToastStore } from '../stores/toast';
+import { useNotificationsStore } from '../stores/notifications';
+import { useRealtimeStore } from '../stores/realtime';
 
 // Temporarily hidden sidebar items — remove IDs from this set to show them again.
 const HIDDEN_SIDEBAR_ITEM_IDS = new Set([
@@ -451,6 +453,8 @@ function isSidebarItemHidden(id) {
 
 const auth = useAuthStore();
 const toast = useToastStore();
+const notifications = useNotificationsStore();
+const realtime = useRealtimeStore();
 const router = useRouter();
 const route = useRoute();
 const workspaces = useWorkspacesStore();
@@ -461,6 +465,8 @@ const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const headerBreadcrumbs = ref([]);
 const syncUnreadCount = computed(() => Number(auth.syncSummary?.scheduler_unread_count || 0));
+const headerUnreadCount = computed(() => syncUnreadCount.value + Number(notifications.unreadCount || 0));
+let unsubscribeHandlers = [];
 provide('setHeaderBreadcrumbs', (crumbs) => { headerBreadcrumbs.value = crumbs; });
 
 watch(() => route.path, () => {
@@ -626,6 +632,19 @@ function isMainNavActive(item) {
 onMounted(async () => {
   await workspaces.fetchAll();
   await auth.fetchSyncSummary();
+  notifications.fetchAll();
+  unsubscribeHandlers.push(realtime.on('notification', ({ notification, unread_count: unreadCount }) => {
+    notifications.pushNotification(notification, unreadCount);
+    if (notification?.title) {
+      toast.info(notification.title);
+    }
+  }));
+  unsubscribeHandlers.push(realtime.on('feedSync', (payload) => {
+    if (payload.triggered_by === 'scheduler' && payload.status === 'success' && payload.posts_synced > 0) {
+      auth.syncSummary.scheduler_unread_count = Number(auth.syncSummary.scheduler_unread_count || 0) + payload.posts_synced;
+      auth.syncSummary.scheduler_synced_post_count = Number(auth.syncSummary.scheduler_synced_post_count || 0) + payload.posts_synced;
+    }
+  }));
   localStorage.removeItem('curator_nav_mode');
   const savedCollapse = localStorage.getItem('curator_sidebar_collapsed');
   if (savedCollapse === null) {
@@ -641,6 +660,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', onClickOutside);
+  unsubscribeHandlers.forEach((fn) => fn());
+  unsubscribeHandlers = [];
 });
 
 async function logoutFromProfile() {
@@ -664,15 +685,20 @@ async function resendVerification() {
   }
 }
 
-async function openSyncNotifications() {
-  const unread = syncUnreadCount.value;
-  const totalSinceLogin = Number(auth.syncSummary?.scheduler_synced_post_count || 0);
-  if (unread > 0) {
-    toast.info(`${unread} new post${unread !== 1 ? 's' : ''} synced by scheduler/job.`);
+async function openNotifications() {
+  const syncUnread = syncUnreadCount.value;
+  const appUnread = Number(notifications.unreadCount || 0);
+  if (syncUnread > 0) {
+    toast.info(`${syncUnread} new post${syncUnread !== 1 ? 's' : ''} synced by scheduler/job.`);
     await auth.acknowledgeSyncNotifications();
+  }
+  if (appUnread > 0) {
+    router.push('/notifications');
     return;
   }
-  toast.info(`No new scheduler/job sync posts right now. ${totalSinceLogin} synced since your last login.`);
+  if (syncUnread > 0) return;
+  const totalSinceLogin = Number(auth.syncSummary?.scheduler_synced_post_count || 0);
+  toast.info(`No new notifications right now. ${totalSinceLogin} posts synced since your last login.`);
 }
 </script>
 

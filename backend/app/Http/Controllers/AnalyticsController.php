@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
-use App\Services\AI\AiInsightsService;
+use App\Jobs\GenerateAnalyticsInsightsJob;
 use App\Services\AnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,14 +24,14 @@ class AnalyticsController extends Controller
         return ApiResponse::success($analytics->byPlatform($request->user(), $platform));
     }
 
-    public function insights(Request $request, AnalyticsService $analytics, AiInsightsService $aiInsights): JsonResponse
+    public function insights(Request $request): JsonResponse
     {
-        $overview = $analytics->overview($request->user());
-        $heuristic = $analytics->insights($request->user());
-        $llm = $aiInsights->generateInsights($overview);
+        GenerateAnalyticsInsightsJob::dispatch((int) $request->user()->id);
 
-        return ApiResponse::success([
-            'insights' => array_values(array_unique(array_merge($llm, $heuristic))),
-        ]);
+        return ApiResponse::success(
+            ['queued' => true],
+            'Insights generation started.',
+            202,
+        );
     }
 }

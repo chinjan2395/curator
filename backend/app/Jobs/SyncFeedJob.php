@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\FeedSyncUpdated;
 use App\Models\Feed;
 use App\Services\FeedSyncService;
 use Illuminate\Bus\Queueable;
@@ -17,15 +18,31 @@ class SyncFeedJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public function __construct(public int $feedId) {}
+    public int $timeout = 600;
+
+    public function __construct(
+        public int $feedId,
+        public string $triggeredBy = 'queue',
+    ) {}
 
     public function handle(FeedSyncService $syncService): void
     {
-        $feed = Feed::query()->with('socialCredential')->find($this->feedId);
+        $feed = Feed::query()->with(['socialCredential', 'workspace'])->find($this->feedId);
         if (! $feed instanceof Feed) {
             return;
         }
 
-        $syncService->syncFeed($feed, 'queue');
+        $userId = (int) ($feed->workspace?->owner_id ?? 0);
+        if ($userId > 0) {
+            event(new FeedSyncUpdated($userId, [
+                'feed_id' => $feed->id,
+                'workspace_id' => $feed->workspace_id,
+                'status' => 'started',
+                'posts_synced' => 0,
+                'triggered_by' => $this->triggeredBy,
+            ]));
+        }
+
+        $syncService->syncFeed($feed, $this->triggeredBy);
     }
 }
