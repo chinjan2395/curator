@@ -14,7 +14,15 @@
       </template>
     </AppPageHeader>
 
-    <AppLoader v-if="workspaces.loading" label="Loading…" />
+    <div v-if="workspaces.loading && !workspaces.list.length" class="space-y-3">
+      <AppCard class="p-4">
+        <div class="space-y-3">
+          <AppSkeleton variant="line" />
+          <AppSkeleton variant="line" />
+          <AppSkeleton variant="line" />
+        </div>
+      </AppCard>
+    </div>
 
     <AppAlert v-else-if="workspaces.error" variant="danger">{{ workspaces.error }}</AppAlert>
 
@@ -62,7 +70,7 @@
 <script setup>
 import { inject, onMounted } from 'vue'
 import { useWorkspacesStore } from '../stores/workspaces'
-import { AppAlert, AppEmptyState, AppButton, AppIcon, AppLoader, AppTable } from '../components/ui/index.js'
+import { AppAlert, AppEmptyState, AppButton, AppCard, AppIcon, AppSkeleton, AppTable } from '../components/ui/index.js'
 import { AppPageHeader, AppSection, AppStack } from '../components/layout/index.js'
 
 const workspaces = useWorkspacesStore()

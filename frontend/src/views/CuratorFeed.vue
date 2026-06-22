@@ -6,7 +6,12 @@
       <AppSelect v-model="platform" :options="platformOptions" :show-placeholder="false" />
     </div>
 
-    <AppLoader v-if="loading" label="Loading feed…" />
+    <div v-if="loading" class="grid gap-3 md:grid-cols-3">
+      <AppCard v-for="n in 6" :key="n" class="p-3 space-y-3">
+        <AppSkeleton variant="block" />
+        <AppSkeleton variant="line" :lines="2" />
+      </AppCard>
+    </div>
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <AppEmptyState
@@ -35,7 +40,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import axios from 'axios';
-import { AppAlert, AppCard, AppEmptyState, AppLoader, AppSelect } from '../components/ui';
+import { AppAlert, AppCard, AppEmptyState, AppSelect, AppSkeleton } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import { getPlatformLabel } from '../constants/socialPlatforms';
 

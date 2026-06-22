@@ -41,9 +41,18 @@
       </div>
     </div>
 
-    <div v-if="publish.loading && !publish.stats" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <span class="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-      Loading…
+    <div v-if="publish.loading && !publish.stats" class="grid grid-cols-1 lg:grid-cols-[minmax(0,550px)_minmax(0,1fr)] gap-6 items-start">
+      <AppCard class="p-6 space-y-4">
+        <AppSkeleton variant="line" :lines="2" />
+        <AppSkeleton variant="block" />
+        <AppSkeleton variant="block" />
+        <AppSkeleton variant="block" />
+      </AppCard>
+      <AppCard class="p-6 space-y-4">
+        <AppSkeleton variant="line" :lines="2" />
+        <AppSkeleton variant="block" />
+        <AppSkeleton variant="block" />
+      </AppCard>
     </div>
 
     <AppCard v-else-if="!workspaceId" class="p-6 text-sm-pro text-slate-600">
@@ -1206,7 +1215,7 @@ import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
-import { AppButton, AppCard, AppCheckbox, AppIcon, AppInput, AppSelect } from '../components/ui';
+import { AppButton, AppCard, AppCheckbox, AppIcon, AppInput, AppSelect, AppSkeleton } from '../components/ui';
 import { fetchPreviewPosts } from '../composables/usePublishApi';
 import { postLinkHref, trackEmbedPostEvent } from '../composables/useEmbedAnalytics';
 import { absolutePageAssetUrl, apiUrlFromAny } from '../config/api.js';
@@ -1968,7 +1977,6 @@ watch(showEmbedPreview, (open) => {
 });
 
 watch(workspaceId, async (id) => {
-  publish.clear();
   previewPosts.value = [];
   hasLoadedPreviewOnce.value = false;
   if (id) {
@@ -1985,7 +1993,7 @@ watch(workspaceId, async (id) => {
 async function saveAppearance() {
   if (!workspaceId.value || !appearance.value) return;
   await publish.savePublishSettings(workspaceId.value, appearance.value);
-  await publish.fetchCode(workspaceId.value);
+  await publish.fetchCode(workspaceId.value, { force: true, background: false });
   embedPreviewVersion.value += 1;
 }
 
@@ -1993,8 +2001,8 @@ async function refresh() {
   if (!workspaceId.value) return;
   previewLoading.value = true;
   try {
-    await publish.fetchStats(workspaceId.value);
-    await publish.fetchCode(workspaceId.value);
+    await publish.fetchStats(workspaceId.value, { force: true, background: false });
+    await publish.fetchCode(workspaceId.value, { force: true, background: false });
     await loadPreview();
   } catch {
     previewLoading.value = false;
@@ -2014,7 +2022,7 @@ async function autoPublishIfNeeded() {
   try {
     const result = await publish.publish(workspaceId.value);
     publishedCount.value = result?.published ?? 0;
-    await publish.fetchCode(workspaceId.value);
+    await publish.fetchCode(workspaceId.value, { force: true, background: false });
     await loadPreview();
   } finally {
     autoPublishInFlight.value = false;
@@ -2025,7 +2033,7 @@ async function publishNow() {
   if (!workspaceId.value) return;
   const result = await publish.publish(workspaceId.value);
   publishedCount.value = result?.published ?? 0;
-  await publish.fetchCode(workspaceId.value);
+  await publish.fetchCode(workspaceId.value, { force: true, background: false });
   await loadPreview();
 }
 

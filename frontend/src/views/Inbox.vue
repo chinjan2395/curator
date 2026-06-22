@@ -10,7 +10,11 @@
       Inbox sync is in preview mode. With a healthy X / Twitter credential, Sync now ingests sample mentions until live API ingest is enabled.
     </AppAlert>
 
-    <AppLoader v-if="loading" label="Loading inbox…" />
+    <AppCard v-if="loading" class="p-4 space-y-3">
+      <AppSkeleton variant="line" :lines="2" />
+      <AppSkeleton variant="block" />
+      <AppSkeleton variant="line" :lines="3" />
+    </AppCard>
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <AppCard v-else class="p-4 space-y-2">
@@ -42,7 +46,7 @@
 import { onMounted, ref } from 'vue';
 import axios from 'axios';
 import { useToastStore } from '../stores/toast';
-import { AppAlert, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
+import { AppAlert, AppButton, AppCard, AppEmptyState, AppSkeleton } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 

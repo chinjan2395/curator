@@ -168,8 +168,31 @@
       @dismiss="dismissGroup"
     />
 
-    <div v-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
-      <AppLoader size="sm" label="Loading posts..." />
+    <div v-if="posts.loading && !posts.list.length" class="space-y-4">
+      <div class="curate-toolbar">
+        <div class="curate-toolbar__filters">
+          <AppSkeleton variant="line" />
+          <AppSkeleton variant="line" />
+        </div>
+        <div class="flex gap-3">
+          <AppSkeleton variant="block" />
+          <AppSkeleton variant="block" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <AppCard v-for="n in 4" :key="`status-${n}`" class="p-4">
+          <AppSkeleton variant="line" :lines="2" />
+        </AppCard>
+      </div>
+      <div class="curate-posts-grid gap-3">
+        <AppCard v-for="n in 6" :key="n" class="p-3 space-y-3">
+          <AppSkeleton variant="block" />
+          <AppSkeleton variant="line" :lines="3" />
+        </AppCard>
+      </div>
+    </div>
+    <div v-else-if="posts.loading" class="surface-card-soft flex items-center gap-2 text-sm-pro text-slate-500 px-4 py-3">
+      <AppLoader size="sm" label="Refreshing posts..." />
     </div>
     <div v-else-if="posts.error" class="text-sm-pro text-red-600">{{ posts.error }}</div>
     <AppCard v-else-if="!posts.list.length" class="p-6 text-center text-sm-pro text-slate-500">
@@ -373,7 +396,7 @@ import SocialIcon from '../components/SocialIcon.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import DuplicateGroupPanel from '../components/curate/DuplicateGroupPanel.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
-import { AppBadge, AppButton, AppCard, AppIcon, AppLoader, AppModal, AppSelect } from '../components/ui';
+import { AppBadge, AppButton, AppCard, AppIcon, AppLoader, AppModal, AppSelect, AppSkeleton } from '../components/ui';
 
 defineOptions({ name: 'CurateView' });
 
@@ -563,20 +586,20 @@ function getLatestUpdatedAt() {
   return latest ? latest.toISOString() : null;
 }
 
-async function refresh({ incremental = false } = {}) {
-  if (!incremental) {
+async function refresh({ incremental = false, force = false } = {}) {
+  if (!incremental && !posts.list.length) {
     clearSelection();
-    posts.clearList();
   }
 
   const fetched = await posts.fetchWorkspace(workspaceId.value, {
     feedId: feedId.value ? Number(feedId.value) : null,
     since: incremental ? getLatestUpdatedAt() : null,
-    silent: incremental,
+    silent: incremental || posts.list.length > 0,
+    force,
   });
 
   if (incremental) {
-    posts.mergePosts(fetched);
+    posts.mergePosts(fetched, workspaceId.value, feedId.value ? Number(feedId.value) : null);
     return;
   }
 
@@ -595,8 +618,8 @@ async function syncNow() {
     }
   }
   toast.success(`Sync complete — ${totalCreated} new post${totalCreated !== 1 ? 's' : ''} found`);
-  await refresh();
-  await duplicateGroups.fetch(workspaceId.value);
+  await refresh({ force: true });
+  await duplicateGroups.fetch(workspaceId.value, { force: true, background: false });
 }
 
 
