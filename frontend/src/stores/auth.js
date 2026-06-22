@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
+import { useRealtimeStore } from './realtime';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -33,6 +34,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('token', this.token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
         this.fetchSyncSummary();
+        useRealtimeStore().connect(this.token, this.user?.id, this.user?.role);
       } catch (err) {
         this.error = err.response?.data?.message || 'Login failed';
       }
@@ -46,6 +48,7 @@ export const useAuthStore = defineStore('auth', {
         this.error = null;
         localStorage.setItem('token', this.token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
+        useRealtimeStore().connect(this.token, this.user?.id, this.user?.role);
       } catch (err) {
         this.error = err.response?.data?.message || 'Registration failed';
       }
@@ -61,6 +64,7 @@ export const useAuthStore = defineStore('auth', {
       this.brokenCredentials = [];
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
+      useRealtimeStore().disconnect();
 
       try {
         if (token) {
@@ -96,6 +100,9 @@ export const useAuthStore = defineStore('auth', {
       this.user = payload.user;
       localStorage.setItem('token', this.token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
+      if (this.user?.id) {
+        useRealtimeStore().connect(this.token, this.user.id, this.user?.role);
+      }
     },
     async fetchSyncSummary() {
       try {

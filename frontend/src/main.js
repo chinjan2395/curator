@@ -7,6 +7,7 @@ import { createPinia } from 'pinia';
 import { useAuthStore } from './stores/auth';
 import { apiBrowserBaseUrl } from './config/api.js';
 import { setupAxiosInterceptors } from './plugins/axios.js';
+import { useRealtimeStore } from './stores/realtime';
 
 if (apiBrowserBaseUrl) {
   axios.defaults.baseURL = apiBrowserBaseUrl;
@@ -21,6 +22,10 @@ app.use(pinia);
 
 const auth = useAuthStore(pinia);
 auth.init();
-auth.fetchUser();
+auth.fetchUser().then(() => {
+  if (auth.token && auth.user?.id) {
+    useRealtimeStore(pinia).connect(auth.token, auth.user.id, auth.user?.role);
+  }
+});
 
 app.mount('#app');

@@ -46,6 +46,13 @@ class DuplicateGroupTest extends TestCase
         ], $attrs));
     }
 
+    private function runScan(Workspace $workspace): void
+    {
+        $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan")
+            ->assertAccepted()
+            ->assertJsonPath('data.queued', true);
+    }
+
     public function test_url_match_creates_group(): void
     {
         $user = User::factory()->create();
@@ -58,12 +65,7 @@ class DuplicateGroupTest extends TestCase
         $this->makePost($feed1, ['post_url' => 'https://example.com/video/123']);
         $this->makePost($feed2, ['post_url' => 'https://example.com/video/123']);
 
-        $response = $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan");
-
-        $response->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Scan complete.')
-            ->assertJsonCount(1, 'data');
+        $this->runScan($workspace);
 
         $this->assertDatabaseHas('post_duplicate_groups', [
             'workspace_id' => $workspace->id,
@@ -84,10 +86,7 @@ class DuplicateGroupTest extends TestCase
         $this->makePost($feed1, ['video_url' => 'https://cdn.example.com/clip.mp4']);
         $this->makePost($feed2, ['video_url' => 'https://cdn.example.com/clip.mp4']);
 
-        $response = $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan");
-
-        $response->assertOk()
-            ->assertJsonCount(1, 'data');
+        $this->runScan($workspace);
 
         $this->assertDatabaseHas('post_duplicate_groups', [
             'workspace_id' => $workspace->id,
@@ -109,10 +108,7 @@ class DuplicateGroupTest extends TestCase
         $this->makePost($feed1, ['content' => $base]);
         $this->makePost($feed2, ['content' => $base . ' Join us!']);
 
-        $response = $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan");
-
-        $response->assertOk()
-            ->assertJsonCount(1, 'data');
+        $this->runScan($workspace);
 
         $this->assertDatabaseHas('post_duplicate_groups', [
             'workspace_id' => $workspace->id,
@@ -134,7 +130,7 @@ class DuplicateGroupTest extends TestCase
         $this->makePost($feed2, ['post_url' => 'https://example.com/article/42']);
 
         // First scan — creates open group
-        $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan")->assertOk();
+        $this->runScan($workspace);
 
         $group = PostDuplicateGroup::where('workspace_id', $workspace->id)->first();
         $this->assertNotNull($group);
@@ -144,10 +140,7 @@ class DuplicateGroupTest extends TestCase
             ->assertOk();
 
         // Second scan — dismissed group must not recreate as open
-        $response = $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan");
-
-        $response->assertOk()
-            ->assertJsonCount(0, 'data');
+        $this->runScan($workspace);
 
         $this->assertEquals(0, PostDuplicateGroup::where('workspace_id', $workspace->id)->where('status', 'open')->count());
     }
@@ -164,7 +157,7 @@ class DuplicateGroupTest extends TestCase
         $post1 = $this->makePost($feed1, ['post_url' => 'https://example.com/keep-test']);
         $post2 = $this->makePost($feed2, ['post_url' => 'https://example.com/keep-test']);
 
-        $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan")->assertOk();
+        $this->runScan($workspace);
 
         $group = PostDuplicateGroup::where('workspace_id', $workspace->id)->where('status', 'open')->first();
         $this->assertNotNull($group);
@@ -191,7 +184,7 @@ class DuplicateGroupTest extends TestCase
         $post1 = $this->makePost($feed1, ['post_url' => 'https://example.com/dismiss-test']);
         $post2 = $this->makePost($feed2, ['post_url' => 'https://example.com/dismiss-test']);
 
-        $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan")->assertOk();
+        $this->runScan($workspace);
 
         $group = PostDuplicateGroup::where('workspace_id', $workspace->id)->where('status', 'open')->first();
 
@@ -234,11 +227,11 @@ class DuplicateGroupTest extends TestCase
         $this->makePost($feed1, ['post_url' => 'https://example.com/scan-test']);
         $this->makePost($feed2, ['post_url' => 'https://example.com/scan-test']);
 
-        $response = $this->postJson("/api/workspaces/{$workspace->id}/duplicate-groups/scan");
+        $this->runScan($workspace);
 
-        $response->assertOk()
+        $this->getJson("/api/workspaces/{$workspace->id}/duplicate-groups")
+            ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Scan complete.')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.match_type', 'url');
     }

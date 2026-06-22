@@ -166,7 +166,7 @@ class FeedAutoPublishTest extends TestCase
             ], 200),
         ]);
 
-        $this->actingAs($user)->postJson("/api/workspaces/{$workspace->id}/feeds/{$feed->id}/sync")->assertOk();
+        $this->actingAs($user)->postJson("/api/workspaces/{$workspace->id}/feeds/{$feed->id}/sync")->assertAccepted();
 
         $post = Post::query()->where('feed_id', $feed->id)->where('external_id', 'video-auto-1')->first();
         $this->assertNotNull($post);

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\CuratorNotificationMail;
+use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\NotificationPreference;
 use App\Models\User;
@@ -21,6 +22,11 @@ class NotificationService
         ]);
 
         $this->sendEmailIfEnabled($user, $type, $title, $body);
+
+        event(NotificationCreated::fromModel(
+            $notification,
+            $this->unreadCount($user),
+        ));
 
         return $notification;
     }

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
@@ -73,6 +74,8 @@ Route::middleware('throttle:embed-analytics')->group(function () {
 Route::get('content/assets/{asset}/file', [AssetController::class, 'file'])
     ->name('content.assets.file')
     ->middleware('signed');
+
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // Sanctum authentication routes
 Route::middleware('auth:sanctum')->group(function () {

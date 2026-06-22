@@ -5,6 +5,10 @@ namespace App\Services;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Models\SyncLog;
+use App\Models\Workspace;
+use App\Events\DuplicateScanCompleted;
+use App\Events\FeedSyncUpdated;
+use App\Models\PostDuplicateGroup;
 use App\Services\DuplicateDetectionService;
 use App\Support\ActivityLogger;
 use App\Sync\FacebookSyncer;
@@ -93,6 +97,7 @@ class FeedSyncService
         $workspace = $feed->workspace ?? $feed->load('workspace')->workspace;
         if ($workspace) {
             app(DuplicateDetectionService::class)->detectForWorkspace($workspace);
+            $this->broadcastDuplicateScan($workspace, $userId, $triggeredBy);
         }
 
         return $result;
@@ -119,12 +124,12 @@ class FeedSyncService
             'triggered_by'  => $triggeredBy,
         ]);
 
-        if (in_array($triggeredBy, ['queue', 'scheduler'], true)) {
+        if (in_array($triggeredBy, ['queue', 'scheduler', 'user'], true)) {
             $feedName = $feed->name ?? $feed->type;
             match ($status) {
                 'success'      => ActivityLogger::logForUserId(
                     $userId,
-                    'feed.auto_synced',
+                    $triggeredBy === 'user' ? 'feed.synced' : 'feed.auto_synced',
                     "Auto-synced {$feed->type} feed \"{$feedName}\" ({$postsSynced} new post(s))",
                     'feed', $feed->id, $feedName,
                 ),
@@ -143,5 +148,31 @@ class FeedSyncService
                 default        => null,
             };
         }
+
+        if ($userId) {
+            event(new FeedSyncUpdated($userId, [
+                'feed_id' => $feed->id,
+                'workspace_id' => $feed->workspace_id,
+                'status' => $status,
+                'posts_synced' => $postsSynced,
+                'triggered_by' => $triggeredBy,
+                'error_message' => $errorMessage,
+                'last_synced_at' => $feed->fresh()?->last_synced_at?->toIso8601String(),
+            ]));
+        }
+    }
+
+    private function broadcastDuplicateScan(Workspace $workspace, ?int $userId, string $triggeredBy): void
+    {
+        if (! $userId) {
+            return;
+        }
+
+        $groupCount = PostDuplicateGroup::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'open')
+            ->count();
+
+        event(new DuplicateScanCompleted($userId, $workspace->id, $groupCount, $triggeredBy));
     }
 }

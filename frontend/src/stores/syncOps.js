@@ -12,6 +12,7 @@ export const useSyncOpsStore = defineStore('syncOps', {
     logFilters: { provider: '', status: '', triggered_by: '' },
     logsPage: 1,
     actionLoading: {},
+    runAllProgress: null,
   }),
   actions: {
     async fetchStatus() {
@@ -64,9 +65,10 @@ export const useSyncOpsStore = defineStore('syncOps', {
 
     async runAll() {
       this.loading.runAll = true;
+      this.runAllProgress = null;
       try {
         await axios.post('/api/admin/sync/run-all');
-        return { success: true };
+        return { success: true, queued: true };
       } catch (err) {
         return { success: false, message: err.response?.data?.message || 'Failed to start sync' };
       } finally {
@@ -78,8 +80,7 @@ export const useSyncOpsStore = defineStore('syncOps', {
       this.actionLoading[credentialId] = true;
       try {
         const { data } = await axios.post(`/api/admin/sync/credentials/${credentialId}/resync`);
-        await this.fetchBrokenCredentials();
-        return { success: true, data };
+        return { success: true, queued: true, data };
       } catch (err) {
         return { success: false, message: err.response?.data?.message || 'Resync failed' };
       } finally {
@@ -91,11 +92,25 @@ export const useSyncOpsStore = defineStore('syncOps', {
       this.actionLoading[`feed_${feedId}`] = true;
       try {
         await axios.post(`/api/admin/sync/feeds/${feedId}`);
-        return { success: true };
+        return { success: true, queued: true };
       } catch (err) {
         return { success: false, message: err.response?.data?.message || 'Sync failed' };
       } finally {
         delete this.actionLoading[`feed_${feedId}`];
+      }
+    },
+
+    handleAdminSyncEvent(event) {
+      if (event.job_type === 'run_all' && event.status === 'progress') {
+        this.runAllProgress = event.data;
+      }
+      if (event.status === 'completed' || event.status === 'failed') {
+        this.runAllProgress = null;
+        this.fetchStatus();
+        this.fetchLogs(1);
+        if (event.job_type === 'resync_credential') {
+          this.fetchBrokenCredentials();
+        }
       }
     },
   },

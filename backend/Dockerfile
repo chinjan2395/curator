@@ -6,7 +6,7 @@ USER root
 RUN apt-get update && \
     apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev zip git unzip ffmpeg iputils-ping ghostscript libmagickwand-dev libpq-dev && \
     docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd pdo pdo_mysql pdo_pgsql pgsql bcmath intl exif
+    docker-php-ext-install gd pdo pdo_mysql pdo_pgsql pgsql bcmath intl exif pcntl
 
 # Install PHP Imagick extension.
 RUN pecl install imagick && docker-php-ext-enable imagick

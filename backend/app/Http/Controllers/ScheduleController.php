@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
+use App\Events\ScheduledPostStatusChanged;
 use App\Models\ContentPackage;
 use App\Models\ScheduledPost;
 use App\Models\SocialCredential;
@@ -77,6 +78,8 @@ class ScheduleController extends Controller
             'status' => 'scheduled',
         ]);
 
+        event(ScheduledPostStatusChanged::fromModel($post->load(['socialCredential', 'contentPackage'])));
+
         return ApiResponse::success($post, 'Post scheduled.', 201);
     }
 
@@ -84,6 +87,8 @@ class ScheduleController extends Controller
     {
         abort_if($scheduledPost->user_id !== $request->user()->id, 403);
         $scheduledPost->update(['status' => 'cancelled']);
+
+        event(ScheduledPostStatusChanged::fromModel($scheduledPost->fresh()));
 
         return ApiResponse::success($scheduledPost->fresh(), 'Schedule cancelled.');
     }
@@ -112,8 +117,11 @@ class ScheduleController extends Controller
             'error_message' => null,
         ]);
 
+        $fresh = $scheduledPost->fresh(['socialCredential', 'contentPackage']);
+        event(ScheduledPostStatusChanged::fromModel($fresh));
+
         return ApiResponse::success(
-            $scheduledPost->fresh(['socialCredential', 'contentPackage']),
+            $fresh,
             'Post queued for retry. It will publish within a minute.'
         );
     }

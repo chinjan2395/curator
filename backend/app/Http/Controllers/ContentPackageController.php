@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
+use App\Jobs\GenerateImageJob;
+use App\Jobs\GenerateVariantsJob;
+use App\Jobs\RefineContentPackageJob;
 use App\Models\ContentPackage;
 use App\Services\AI\AiContentService;
-use App\Services\AI\AiImageGenerationService;
 use App\Services\LearningPromptService;
 use App\Support\ContentPackageMediaResolver;
 use Illuminate\Http\JsonResponse;
@@ -69,7 +71,7 @@ class ContentPackageController extends Controller
         return ApiResponse::success($contentPackage->fresh(), 'Media updated.');
     }
 
-    public function refine(Request $request, ContentPackage $contentPackage, AiContentService $ai, LearningPromptService $learning): JsonResponse
+    public function refine(Request $request, ContentPackage $contentPackage): JsonResponse
     {
         abort_if($contentPackage->user_id !== $request->user()->id, 403);
 
@@ -77,14 +79,17 @@ class ContentPackageController extends Controller
             'instruction' => ['required', 'string', 'max:2000'],
         ]);
 
-        $refined = $ai->refine($contentPackage, $validated['instruction']);
+        RefineContentPackageJob::dispatch(
+            $contentPackage->id,
+            (int) $request->user()->id,
+            $validated['instruction'],
+        );
 
-        $learning->recordAndRefresh($request->user(), 'refined', $contentPackage->platform, [
-            'content_package_id' => $contentPackage->id,
-            'instruction' => $validated['instruction'],
-        ]);
-
-        return ApiResponse::success($refined, 'Content refined.');
+        return ApiResponse::success(
+            ['content_package_id' => $contentPackage->id, 'queued' => true],
+            'Refine started.',
+            202,
+        );
     }
 
     public function updateStatus(Request $request, ContentPackage $contentPackage, LearningPromptService $learning): JsonResponse
@@ -144,7 +149,7 @@ class ContentPackageController extends Controller
      * Creates 3 sibling packages with different tone styles.
      * POST /api/content-packages/{contentPackage}/variants
      */
-    public function generateVariants(Request $request, ContentPackage $contentPackage, AiContentService $ai): JsonResponse
+    public function generateVariants(Request $request, ContentPackage $contentPackage): JsonResponse
     {
         abort_if($contentPackage->user_id !== $request->user()->id, 403);
 
@@ -156,9 +161,17 @@ class ContentPackageController extends Controller
             'count' => ['sometimes', 'integer', 'min:1', 'max:3'],
         ]);
 
-        $variants = $ai->generateVariants($contentPackage, $validated['count'] ?? 3);
+        GenerateVariantsJob::dispatch(
+            $contentPackage->id,
+            (int) $request->user()->id,
+            $validated['count'] ?? 3,
+        );
 
-        return ApiResponse::success($variants, 'Variants generated successfully.');
+        return ApiResponse::success(
+            ['content_package_id' => $contentPackage->id, 'queued' => true],
+            'Variant generation started.',
+            202,
+        );
     }
 
     /**
@@ -195,7 +208,6 @@ class ContentPackageController extends Controller
     public function generateImage(
         Request $request,
         ContentPackage $contentPackage,
-        AiImageGenerationService $imageGeneration,
     ): JsonResponse {
         abort_if($contentPackage->user_id !== $request->user()->id, 403);
 
@@ -208,11 +220,16 @@ class ContentPackageController extends Controller
             return ApiResponse::error('This package already has the maximum of 4 media items.', null, 422);
         }
 
-        $package = $imageGeneration->generateForPackage(
-            $contentPackage,
+        GenerateImageJob::dispatch(
+            $contentPackage->id,
+            (int) $request->user()->id,
             $validated['instruction'] ?? null,
         );
 
-        return ApiResponse::success($package, 'Image generated and attached.');
+        return ApiResponse::success(
+            ['content_package_id' => $contentPackage->id, 'queued' => true],
+            'Image generation started.',
+            202,
+        );
     }
 }

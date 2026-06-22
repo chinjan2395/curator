@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ApiResponse;
+use App\Jobs\GenerateCampaignContentJob;
 use App\Models\BrandKit;
 use App\Models\Campaign;
-use App\Services\AI\AiContentService;
-use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -98,20 +97,17 @@ class CampaignController extends Controller
         return ApiResponse::success(null, 'Campaign deleted.');
     }
 
-    public function generate(Request $request, Campaign $campaign, AiContentService $ai, NotificationService $notifications): JsonResponse
+    public function generate(Request $request, Campaign $campaign): JsonResponse
     {
         $this->authorizeCampaign($request, $campaign);
-        $packages = $ai->generateForCampaign($campaign);
 
-        $notifications->notify(
-            $request->user(),
-            'campaign_generated',
-            'Campaign content generated',
-            "AI generated content for campaign \"{$campaign->name}\".",
-            ['campaign_id' => $campaign->id],
+        GenerateCampaignContentJob::dispatch($campaign->id, (int) $request->user()->id);
+
+        return ApiResponse::success(
+            ['campaign_id' => $campaign->id, 'queued' => true],
+            'Content generation started.',
+            202,
         );
-
-        return ApiResponse::success($packages, 'Content generated.');
     }
 
     private function authorizeCampaign(Request $request, Campaign $campaign): void

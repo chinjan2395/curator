@@ -2,30 +2,30 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\SyncFeedJob;
 use App\Models\Feed;
-use App\Services\FeedSyncService;
 use Illuminate\Console\Command;
 
 class SyncScheduledFeedsCommand extends Command
 {
     protected $signature = 'feeds:sync-scheduled';
 
-    protected $description = 'Sync all feeds on the scheduler interval (runs inline, no queue worker required)';
+    protected $description = 'Queue sync jobs for all feeds on the scheduler interval';
 
-    public function handle(FeedSyncService $syncService): int
+    public function handle(): int
     {
-        $synced = 0;
+        $queued = 0;
 
         Feed::query()
             ->with(['socialCredential', 'workspace'])
-            ->chunkById(50, function ($feeds) use ($syncService, &$synced): void {
+            ->chunkById(50, function ($feeds) use (&$queued): void {
                 foreach ($feeds as $feed) {
-                    $syncService->syncFeed($feed, 'scheduler');
-                    $synced++;
+                    SyncFeedJob::dispatch($feed->id, 'scheduler');
+                    $queued++;
                 }
             });
 
-        $this->info("Scheduled sync finished for {$synced} feed(s).");
+        $this->info("Queued scheduled sync for {$queued} feed(s).");
 
         return self::SUCCESS;
     }

@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Events;
+
+use App\Models\Notification;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class NotificationCreated implements ShouldBroadcast
+{
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
+    /** @param  array<string, mixed>  $notification */
+    public function __construct(
+        public int $userId,
+        public array $notification,
+        public int $unreadCount,
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('user.'.$this->userId),
+        ];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'notification.created';
+    }
+
+    /** @return array<string, mixed> */
+    public function broadcastWith(): array
+    {
+        return [
+            'notification' => $this->notification,
+            'unread_count' => $this->unreadCount,
+        ];
+    }
+
+    public static function fromModel(Notification $notification, int $unreadCount): self
+    {
+        return new self(
+            (int) $notification->user_id,
+            $notification->toArray(),
+            $unreadCount,
+        );
+    }
+}
