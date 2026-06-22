@@ -27,8 +27,15 @@
       </div>
     </div>
 
-    <div v-if="isPageLoading" class="surface-card-soft px-4 py-3">
-      <AppLoader size="sm" label="Loading connected accounts and OAuth settings…" />
+    <div v-if="isPageLoading && !providerCards.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <AppCard v-for="n in 6" :key="n" class="p-4 space-y-3">
+        <AppSkeleton variant="line" :lines="2" />
+        <AppSkeleton variant="block" />
+        <AppSkeleton variant="line" :lines="3" />
+      </AppCard>
+    </div>
+    <div v-else-if="isPageLoading" class="surface-card-soft px-4 py-3">
+      <AppLoader size="sm" label="Refreshing connected accounts and OAuth settings…" />
     </div>
     <div v-else-if="pageError" class="text-sm-pro text-red-600">{{ pageError }}</div>
     <AppCard v-else-if="!providerCards.length" class="p-6 text-center text-sm-pro text-slate-500">
@@ -200,7 +207,7 @@ import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
 import { AppPageHeader } from '../components/layout/index.js';
-import { AppButton, AppCard, AppIcon, AppInput, AppLoader } from '../components/ui';
+import { AppButton, AppCard, AppIcon, AppInput, AppLoader, AppSkeleton } from '../components/ui';
 
 defineOptions({ name: 'CredentialsView' });
 
@@ -225,17 +232,6 @@ const socialProviders = [
 ];
 const providerUi = Object.fromEntries(socialProviders.map((item) => [item.type, item]));
 
-const providerLabels = {
-  youtube: 'YouTube',
-  google: 'Google',
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  twitter: 'Twitter / X',
-  tiktok: 'TikTok',
-  threads: 'Threads',
-  linkedin: 'LinkedIn',
-  other: 'Other',
-};
 const implementedProviders = ['youtube', 'google', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads', 'linkedin'];
 const publishGuidePlatforms = [
   'twitter',

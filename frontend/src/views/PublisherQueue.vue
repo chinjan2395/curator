@@ -19,7 +19,13 @@
       />
     </AppCard>
 
-    <AppLoader v-if="loading && !queue.length" label="Loading queue…" />
+    <div v-if="loading && !queue.length" class="space-y-3">
+      <AppCard class="p-4"><AppSkeleton variant="line" :lines="2" /></AppCard>
+      <AppCard v-for="n in 4" :key="n" class="p-4 space-y-3">
+        <AppSkeleton variant="line" :lines="2" />
+        <AppSkeleton variant="block" />
+      </AppCard>
+    </div>
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <template v-else>
@@ -176,7 +182,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import axios from 'axios';
-import { AppAlert, AppButton, AppCard, AppEmptyState, AppLoader } from '../components/ui';
+import { AppAlert, AppButton, AppCard, AppEmptyState, AppSkeleton } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
 import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';

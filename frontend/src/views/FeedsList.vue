@@ -23,8 +23,15 @@
       </AppButton>
     </template>
 
-    <div v-if="feeds.loading" class="surface-card-soft px-4 py-3">
-      <AppLoader size="sm" label="Loading..." />
+    <div v-if="feeds.loading && !feeds.list.length" class="space-y-3">
+      <AppCard class="p-4">
+        <div class="space-y-3">
+          <AppSkeleton variant="line" />
+          <AppSkeleton variant="line" />
+          <AppSkeleton variant="line" />
+          <AppSkeleton variant="line" />
+        </div>
+      </AppCard>
     </div>
     <div v-else-if="feeds.error" class="text-sm-pro text-red-600">{{ feeds.error }}</div>
     <AppCard v-else-if="!feeds.list.length" class="p-6">
@@ -39,7 +46,8 @@
         </AppButton>
       </AppEmptyState>
     </AppCard>
-    <div v-if="!feeds.loading && feeds.list.length" class="feed-table-shell">
+    <div v-if="feeds.list.length" class="feed-table-shell">
+      <div v-if="feeds.loading" class="mb-2 text-xs text-slate-400">Refreshing feeds…</div>
       <AppTable :columns="tableColumns" :rows="feeds.list" row-key="id">
         <template #cell-name="{ row }">
           <div class="flex items-center gap-2 min-w-0">
@@ -90,7 +98,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { getPlatformLabel } from '../constants/socialPlatforms';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
-import { AppButton, AppCard, AppEmptyState, AppIcon, AppLoader, AppTable } from '../components/ui';
+import { AppButton, AppCard, AppEmptyState, AppIcon, AppSkeleton, AppTable } from '../components/ui';
 
 const route = useRoute();
 const feeds = useFeedsStore();
@@ -136,7 +144,6 @@ onMounted(async () => {
 
 watch(workspaceId, async (id) => {
   if (id) {
-    feeds.clearList();
     await feeds.fetchAll(id);
     loadTrendSnapshot();
   }

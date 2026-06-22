@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { usePostsStore } from './posts';
+import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
+
+const DUPLICATE_GROUPS_TTL_MS = 2 * 60 * 1000;
+
+function duplicateGroupsCacheKey(workspaceId) {
+  return `duplicate-groups:${workspaceId}`;
+}
 
 export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
   const list = ref([]);
@@ -19,14 +26,42 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
     return ids;
   });
 
-  async function fetch(workspaceId) {
+  async function fetch(workspaceId, { force = false, background = true } = {}) {
+    const cacheKey = duplicateGroupsCacheKey(workspaceId);
+    const cached = hydrateFromSession(cacheKey);
+
+    if (cached) {
+      list.value = cached.value;
+    }
+
+    if (!force && cached && isFresh(cached, DUPLICATE_GROUPS_TTL_MS)) {
+      return cached.value;
+    }
+
+    if (!force && cached && background) {
+      revalidate(workspaceId).catch(() => {});
+      return cached.value;
+    }
+
+    return revalidate(workspaceId);
+  }
+
+  async function revalidate(workspaceId) {
+    const cacheKey = duplicateGroupsCacheKey(workspaceId);
     loading.value = true;
     error.value = null;
     try {
-      const res = await window.axios.get(`/api/workspaces/${workspaceId}/duplicate-groups`);
-      list.value = res.data?.data ?? res.data ?? [];
+      const groups = await withDedupe(cacheKey, async () => {
+        const res = await window.axios.get(`/api/workspaces/${workspaceId}/duplicate-groups`);
+        const next = res.data?.data ?? res.data ?? [];
+        persistToSession(cacheKey, next);
+        return next;
+      });
+      list.value = groups;
+      return groups;
     } catch (e) {
       error.value = e?.response?.data?.message ?? 'Failed to load duplicate groups.';
+      throw e;
     } finally {
       loading.value = false;
     }
@@ -37,6 +72,7 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
     error.value = null;
     try {
       await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/scan`);
+      invalidate(duplicateGroupsCacheKey(workspaceId));
     } catch (e) {
       error.value = e?.response?.data?.message ?? 'Scan failed.';
       throw e;
@@ -46,26 +82,23 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
   }
 
   async function keepPost(workspaceId, groupId, postId) {
-    try {
-      await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/keep/${postId}`);
-      list.value = list.value.filter((g) => g.id !== groupId);
-      // Refresh posts so rejected ones update in the grid
-      const postsStore = usePostsStore();
-      const res = await window.axios.get(`/api/workspaces/${workspaceId}/posts`);
-      postsStore.list = res.data?.data ?? res.data ?? postsStore.list;
-    } catch (e) {
-      // Re-throw so the component can show a toast
-      throw e;
+    const group = list.value.find((entry) => entry.id === groupId);
+    await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/keep/${postId}`);
+    list.value = list.value.filter((g) => g.id !== groupId);
+    persistToSession(duplicateGroupsCacheKey(workspaceId), list.value);
+    const postsStore = usePostsStore();
+    const updates = (group?.posts ?? [])
+      .filter((post) => Number(post.id) !== Number(postId))
+      .map((post) => ({ ...post, status: 'rejected' }));
+    if (updates.length) {
+      postsStore.mergePosts(updates, workspaceId);
     }
   }
 
   async function dismiss(workspaceId, groupId) {
-    try {
-      await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/dismiss`);
-      list.value = list.value.filter((g) => g.id !== groupId);
-    } catch (e) {
-      throw e;
-    }
+    await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/dismiss`);
+    list.value = list.value.filter((g) => g.id !== groupId);
+    persistToSession(duplicateGroupsCacheKey(workspaceId), list.value);
   }
 
   return { list, loading, error, duplicatedPostIds, fetch, scan, keepPost, dismiss };

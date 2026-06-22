@@ -3,7 +3,11 @@
     <AppPageHeader title="Platform analytics" subtitle="Platform-specific metrics." icon="chart" />
     <SocialPlatformLabel :type="platform" size="md" class="-mt-3 mb-2" />
 
-    <AppLoader v-if="loading" label="Loading…" />
+    <div v-if="loading" class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+      <AppCard v-for="n in 5" :key="n" class="p-4 space-y-3">
+        <AppSkeleton variant="line" :lines="2" />
+      </AppCard>
+    </div>
     <AppAlert v-else-if="error" variant="danger">{{ error }}</AppAlert>
 
     <div v-else-if="stats" class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
@@ -20,7 +24,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
-import { AppAlert, AppCard, AppLoader } from '../components/ui';
+import { AppAlert, AppCard, AppSkeleton } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 

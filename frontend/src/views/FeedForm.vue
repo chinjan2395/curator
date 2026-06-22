@@ -199,10 +199,13 @@
                       variant="secondary"
                       size="sm"
                       :disabled="loadingYoutubeChannels || !form.social_credential_id"
-                      @click="loadYoutubeChannels"
+                      @click="loadYoutubeChannels(true)"
                     >
                       {{ loadingYoutubeChannels ? 'Loading…' : 'Refresh' }}
                     </AppButton>
+                  </div>
+                  <div v-if="loadingYoutubeChannels" class="mt-2">
+                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
               </div>
@@ -262,10 +265,13 @@
                       variant="secondary"
                       size="sm"
                       :disabled="loadingFacebookPages || !form.social_credential_id"
-                      @click="loadFacebookPages"
+                      @click="loadFacebookPages(true)"
                     >
                       {{ loadingFacebookPages ? 'Loading…' : 'Refresh' }}
                     </AppButton>
+                  </div>
+                  <div v-if="loadingFacebookPages" class="mt-2">
+                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -337,10 +343,13 @@
                       variant="secondary"
                       size="sm"
                       :disabled="loadingInstagramAccounts || !form.social_credential_id"
-                      @click="loadInstagramAccounts"
+                      @click="loadInstagramAccounts(true)"
                     >
                       {{ loadingInstagramAccounts ? 'Loading…' : 'Refresh' }}
                     </AppButton>
+                  </div>
+                  <div v-if="loadingInstagramAccounts" class="mt-2">
+                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -431,10 +440,13 @@
                       variant="secondary"
                       size="sm"
                       :disabled="loadingTwitterAccount || !form.social_credential_id"
-                      @click="loadTwitterAccount"
+                      @click="loadTwitterAccount(true)"
                     >
                       {{ loadingTwitterAccount ? 'Loading…' : 'Refresh' }}
                     </AppButton>
+                  </div>
+                  <div v-if="loadingTwitterAccount" class="mt-2">
+                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
               </div>
@@ -500,10 +512,13 @@
                       variant="secondary"
                       size="sm"
                       :disabled="loadingTikTokAccount || !form.social_credential_id"
-                      @click="loadTikTokAccount"
+                      @click="loadTikTokAccount(true)"
                     >
                       {{ loadingTikTokAccount ? 'Loading…' : 'Refresh' }}
                     </AppButton>
+                  </div>
+                  <div v-if="loadingTikTokAccount" class="mt-2">
+                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -575,10 +590,13 @@
                       variant="secondary"
                       size="sm"
                       :disabled="loadingThreadsAccount || !form.social_credential_id"
-                      @click="loadThreadsAccount"
+                      @click="loadThreadsAccount(true)"
                     >
                       {{ loadingThreadsAccount ? 'Loading…' : 'Refresh' }}
                     </AppButton>
+                  </div>
+                  <div v-if="loadingThreadsAccount" class="mt-2">
+                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -717,7 +735,7 @@ import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
-import { AppAlert, AppButton, AppCard, AppCheckbox, AppFormField, AppInput, AppSelect } from '../components/ui/index.js';
+import { AppAlert, AppButton, AppCard, AppCheckbox, AppFormField, AppInput, AppSelect, AppSkeleton } from '../components/ui/index.js';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import {
   fetchFacebookPages,
@@ -938,11 +956,11 @@ function instagramAccountValue(a) {
   return `${a.facebook_page_id}|${a.instagram_business_account_id}`;
 }
 
-async function loadInstagramAccounts() {
+async function loadInstagramAccounts(force = false) {
   if (form.type !== 'instagram' || !form.social_credential_id) return;
   loadingInstagramAccounts.value = true;
   try {
-    const data = await fetchInstagramAccounts(workspaceId.value, Number(form.social_credential_id));
+    const data = await fetchInstagramAccounts(workspaceId.value, Number(form.social_credential_id), { force });
     instagramAccounts.value = data.accounts || [];
     if (form.facebook_page_id && form.instagram_business_account_id && !selectedInstagramCombo.value) {
       selectedInstagramCombo.value = instagramAccountValue({
@@ -965,11 +983,11 @@ async function loadInstagramAccounts() {
   }
 }
 
-async function loadThreadsAccount() {
+async function loadThreadsAccount(force = false) {
   if (form.type !== 'threads' || !form.social_credential_id) return;
   loadingThreadsAccount.value = true;
   try {
-    const data = await fetchThreadsAccount(workspaceId.value, Number(form.social_credential_id));
+    const data = await fetchThreadsAccount(workspaceId.value, Number(form.social_credential_id), { force });
     threadsAccounts.value = data.accounts || [];
     if (!selectedThreadsUserId.value && threadsAccounts.value.length === 1) {
       selectedThreadsUserId.value = String(threadsAccounts.value[0].id);
@@ -984,11 +1002,11 @@ async function loadThreadsAccount() {
   }
 }
 
-async function loadTikTokAccount() {
+async function loadTikTokAccount(force = false) {
   if (form.type !== 'tiktok' || !form.social_credential_id) return;
   loadingTikTokAccount.value = true;
   try {
-    const data = await fetchTikTokAccount(workspaceId.value, Number(form.social_credential_id));
+    const data = await fetchTikTokAccount(workspaceId.value, Number(form.social_credential_id), { force });
     tiktokAccounts.value = data.accounts || [];
     if (!selectedTikTokOpenId.value && tiktokAccounts.value.length === 1) {
       selectedTikTokOpenId.value = String(tiktokAccounts.value[0].open_id);
@@ -1003,11 +1021,11 @@ async function loadTikTokAccount() {
   }
 }
 
-async function loadTwitterAccount() {
+async function loadTwitterAccount(force = false) {
   if (form.type !== 'twitter' || !form.social_credential_id) return;
   loadingTwitterAccount.value = true;
   try {
-    const data = await fetchTwitterAccount(workspaceId.value, Number(form.social_credential_id));
+    const data = await fetchTwitterAccount(workspaceId.value, Number(form.social_credential_id), { force });
     twitterAccounts.value = data.accounts || [];
     if (!selectedTwitterUserId.value && twitterAccounts.value.length === 1) {
       selectedTwitterUserId.value = String(twitterAccounts.value[0].id);
@@ -1022,12 +1040,12 @@ async function loadTwitterAccount() {
   }
 }
 
-async function loadYoutubeChannels() {
+async function loadYoutubeChannels(force = false) {
   if (form.type !== 'youtube' || !form.social_credential_id) return;
   if (!youtubeCredentialIds.value.has(String(form.social_credential_id))) return;
   loadingYoutubeChannels.value = true;
   try {
-    const data = await fetchYoutubeChannels(workspaceId.value, Number(form.social_credential_id));
+    const data = await fetchYoutubeChannels(workspaceId.value, Number(form.social_credential_id), { force });
     youtubeChannels.value = data.channels || [];
     if (form.youtube_channel_id && !selectedYoutubeChannelId.value) {
       selectedYoutubeChannelId.value = String(form.youtube_channel_id);
@@ -1044,12 +1062,12 @@ async function loadYoutubeChannels() {
   }
 }
 
-async function loadFacebookPages() {
+async function loadFacebookPages(force = false) {
   if (form.type !== 'facebook' || !form.social_credential_id) return;
   if (!facebookCredentialIds.value.has(String(form.social_credential_id))) return;
   loadingFacebookPages.value = true;
   try {
-    const data = await fetchFacebookPages(workspaceId.value, Number(form.social_credential_id));
+    const data = await fetchFacebookPages(workspaceId.value, Number(form.social_credential_id), { force });
     facebookPages.value = data.pages || [];
     // If editing an existing feed, auto-select its saved page.
     if (form.facebook_page_id && !selectedFacebookPageId.value) {
