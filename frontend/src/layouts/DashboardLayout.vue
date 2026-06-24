@@ -92,7 +92,7 @@
           <div v-if="!sidebarCollapsed" class="sidebar-section-label">Administration</div>
           <div v-else class="my-3 mx-2 border-t border-white/10" />
           <ul class="mt-0.5 space-y-0.5">
-            <li>
+            <li v-if="!isSidebarItemHidden('oauth-apps')">
               <router-link
                 to="/oauth-apps"
                 class="sidebar-nav-item"
@@ -106,7 +106,7 @@
                 <span v-if="!sidebarCollapsed">OAuth Apps</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-users')">
               <router-link
                 to="/admin/users"
                 class="sidebar-nav-item"
@@ -120,7 +120,7 @@
                 <span v-if="!sidebarCollapsed">Users</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-sync-ops')">
               <router-link
                 to="/admin/sync-ops"
                 class="sidebar-nav-item"
@@ -176,7 +176,7 @@
                 <span v-if="!sidebarCollapsed">Moderation</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-activity')">
               <router-link
                 to="/admin/activity"
                 class="sidebar-nav-item"
@@ -190,7 +190,7 @@
                 <span v-if="!sidebarCollapsed">Activity</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="!isSidebarItemHidden('admin-dev-tools')">
               <router-link
                 to="/admin/dev-tools"
                 class="sidebar-nav-item"
@@ -202,6 +202,20 @@
               >
                 <AppIcon name="terminal" class="w-5 h-5 flex-shrink-0" />
                 <span v-if="!sidebarCollapsed">Dev Tools</span>
+              </router-link>
+            </li>
+            <li>
+              <router-link
+                to="/admin/navigation"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': $route.path.startsWith('/admin/navigation') },
+                  sidebarCollapsed ? 'justify-center px-2' : ''
+                ]"
+                :title="sidebarCollapsed ? 'Navigation' : ''"
+              >
+                <AppIcon name="grid" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">Navigation</span>
               </router-link>
             </li>
           </ul>
@@ -435,20 +449,11 @@ import { useToastStore } from '../stores/toast';
 import { useNotificationsStore } from '../stores/notifications';
 import { useRealtimeStore } from '../stores/realtime';
 
-// Temporarily hidden sidebar items — remove IDs from this set to show them again.
-const HIDDEN_SIDEBAR_ITEM_IDS = new Set([
-  'curator',
-  'campaigns',
-  'schedule',
-  'content-library',
-  'inbox',
-  'admin-system',
-  'admin-trends',
-  'admin-moderation',
-]);
+import { useNavigationSettingsStore } from '../stores/navigationSettings';
 
 function isSidebarItemHidden(id) {
-  return HIDDEN_SIDEBAR_ITEM_IDS.has(id);
+  const navigation = useNavigationSettingsStore();
+  return !navigation.isMenuEnabled(id);
 }
 
 const auth = useAuthStore();
@@ -630,8 +635,12 @@ function isMainNavActive(item) {
 }
 
 onMounted(async () => {
-  await workspaces.fetchAll();
-  await auth.fetchSyncSummary();
+  const navigation = useNavigationSettingsStore();
+  await Promise.all([
+    workspaces.fetchAll(),
+    auth.fetchSyncSummary(),
+    navigation.fetch(),
+  ]);
   notifications.fetchAll();
   unsubscribeHandlers.push(realtime.on('notification', ({ notification, unread_count: unreadCount }) => {
     notifications.pushNotification(notification, unreadCount);

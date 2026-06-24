@@ -243,8 +243,8 @@
               </div>
             </div>
 
-            <!-- Import from brand kit (UI hidden — does not change saved embed settings) -->
-            <div v-if="SHOW_BRAND_KIT_IMPORT" class="space-y-3 py-5">
+            <!-- Import from brand kit -->
+            <div v-if="showBrandKitImport" class="space-y-3 py-5">
               <h3 class="text-sm font-semibold text-slate-900">Import from brand kit</h3>
               <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
               <div class="flex flex-wrap items-end gap-2">
@@ -1213,6 +1213,7 @@ import axios from 'axios';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
+import { useNavigationSettingsStore } from '../stores/navigationSettings';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import { AppButton, AppCard, AppCheckbox, AppIcon, AppInput, AppSelect, AppSkeleton } from '../components/ui';
@@ -1223,6 +1224,8 @@ import { absolutePageAssetUrl, apiUrlFromAny } from '../config/api.js';
 defineOptions({ name: 'PublishView' });
 
 const toast = useToastStore();
+const navigationSettings = useNavigationSettingsStore();
+const showBrandKitImport = computed(() => navigationSettings.isFeatureEnabled('publish_brand_kit'));
 const route = useRoute();
 const router = useRouter();
 const workspaces = useWorkspacesStore();
@@ -1316,9 +1319,6 @@ const previewClickTrackedAt = new Map();
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
-
-/** Brand kit import — set to true to show the import UI on the publish page */
-const SHOW_BRAND_KIT_IMPORT = false;
 
 /** Brand kit import */
 const brandKitsForImport = ref([]);
@@ -1903,7 +1903,12 @@ onMounted(async () => {
   } else if (!workspaceId.value && workspaces.list.length) {
     workspaceId.value = String(workspaces.list[0].id);
   }
-  if (SHOW_BRAND_KIT_IMPORT) loadBrandKitsForImport();
+  if (!navigationSettings.loaded) {
+    await navigationSettings.fetch();
+  }
+  if (showBrandKitImport.value) {
+    loadBrandKitsForImport();
+  }
 });
 
 async function loadBrandKitsForImport() {

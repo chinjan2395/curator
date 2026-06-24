@@ -46,10 +46,12 @@ use App\Http\Controllers\ContentBlockController;
 use App\Http\Controllers\Admin\TrendsController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\DevToolsController;
+use App\Http\Controllers\Admin\NavigationSettingsController as AdminNavigationSettingsController;
 use App\Http\Controllers\CapabilitiesController;
 use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\SetupStatusController;
 use App\Http\Controllers\DuplicateGroupController;
+use App\Http\Controllers\NavigationSettingsController;
 
 // OAuth callbacks (public, no auth)
 Route::get('social/callback/youtube', [SocialConnectController::class, 'callbackYouTube']);
@@ -167,6 +169,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('setup/status', [SetupStatusController::class, 'show']);
     Route::get('capabilities', [CapabilitiesController::class, 'show']);
+    Route::get('navigation-settings', [NavigationSettingsController::class, 'show']);
 
     Route::get('curator/feed', [CuratorFeedController::class, 'index']);
 
@@ -253,4 +256,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     Route::get('dev-tools/commands', [DevToolsController::class, 'index']);
     Route::post('dev-tools/run', [DevToolsController::class, 'run']);
+
+    Route::get('navigation-settings', [AdminNavigationSettingsController::class, 'show']);
+    Route::put('navigation-settings', [AdminNavigationSettingsController::class, 'update']);
 });
