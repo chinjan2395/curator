@@ -188,7 +188,7 @@
     <AppCard v-if="!isPageLoading && !pageError" class="p-4">
       <PlatformPublishGuide
         :platforms="publishGuidePlatforms"
-        variant="cards"
+        variant="spotlight"
         title="What each platform supports"
         subtitle="Native publish vs embed/sync — aligned with official API documentation."
       />
