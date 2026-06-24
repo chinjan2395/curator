@@ -31,6 +31,93 @@
         </div>
       </div>
 
+      <!-- Spotlight: richer, more visual detail per platform -->
+      <div v-else-if="variant === 'spotlight'" class="ppg-spotlight-list">
+        <article
+          v-for="{ platform, spec } in entries"
+          :key="platform"
+          class="ppg-spotlight-card"
+          :class="spec.native_publish ? 'ppg-card--native' : 'ppg-card--embed'"
+        >
+          <div class="ppg-spotlight-card__top">
+            <div class="ppg-spotlight-card__identity">
+              <SocialPlatformLabel :type="platform" variant="pill" size="sm" :show-label="true" />
+              <p class="ppg-spotlight-card__eyebrow">{{ spec.native_publish ? 'Direct publishing lane' : 'Sync / embed lane' }}</p>
+            </div>
+            <AppBadge :variant="spec.native_publish ? 'success' : 'secondary'">
+              {{ spec.native_publish ? 'Native publish' : 'Embed / sync' }}
+            </AppBadge>
+          </div>
+
+          <p class="ppg-spotlight-card__summary">{{ spec.summary }}</p>
+
+          <div class="ppg-spotlight-card__stats">
+            <div class="ppg-mini-stat">
+              <span class="ppg-mini-stat__value">{{ spec.native_publish ? 'Yes' : 'No' }}</span>
+              <span class="ppg-mini-stat__label">Native publish</span>
+            </div>
+            <div class="ppg-mini-stat">
+              <span class="ppg-mini-stat__value">{{ spec.content_types?.filter((type) => type.supported).length || 0 }}</span>
+              <span class="ppg-mini-stat__label">Supported types</span>
+            </div>
+            <div class="ppg-mini-stat">
+              <span class="ppg-mini-stat__value">{{ spec.requirements?.length || 0 }}</span>
+              <span class="ppg-mini-stat__label">Requirements</span>
+            </div>
+          </div>
+
+          <div class="ppg-spotlight-card__section">
+            <div class="ppg-section-heading">
+              <p class="ppg-card__section-label">Content types</p>
+              <span class="ppg-section-heading__hint">Hover any chip for the exact limits and notes.</span>
+            </div>
+            <div class="ppg-type-matrix">
+              <div
+                v-for="type in spec.content_types"
+                :key="type.id"
+                class="ppg-type-tile"
+                :class="type.supported ? 'ppg-type-tile--yes' : 'ppg-type-tile--no'"
+                :title="typeChipTitle(type)"
+              >
+                <span class="ppg-type-tile__mark">{{ type.supported ? '✓' : '—' }}</span>
+                <div class="ppg-type-tile__body">
+                  <span class="ppg-type-tile__label">{{ type.label }}</span>
+                  <span v-if="type.limits" class="ppg-type-tile__meta">{{ type.limits }}</span>
+                  <span v-if="type.note" class="ppg-type-tile__note">{{ type.note }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ppg-spotlight-card__grid">
+            <div v-if="spec.requirements?.length" class="ppg-spotlight-card__section">
+              <p class="ppg-card__section-label">Requirements</p>
+              <ul class="ppg-bullet-list ppg-bullet-list--compact">
+                <li v-for="(item, i) in spec.requirements" :key="i">{{ item }}</li>
+              </ul>
+            </div>
+
+            <div v-if="spec.media_rules?.length" class="ppg-spotlight-card__section">
+              <p class="ppg-card__section-label">Media rules</p>
+              <ul class="ppg-bullet-list ppg-bullet-list--compact">
+                <li v-for="(item, i) in spec.media_rules" :key="i">{{ item }}</li>
+              </ul>
+            </div>
+          </div>
+
+          <a
+            v-if="spec.docs_url"
+            :href="spec.docs_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="ppg-docs-link"
+          >
+            {{ spec.docs_label || 'Official API docs' }}
+            <span aria-hidden="true">↗</span>
+          </a>
+        </article>
+      </div>
+
       <!-- Cards: full detail per platform -->
       <div v-else class="ppg-card-list">
         <article
@@ -114,7 +201,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'cards',
-    validator: (v) => ['compact', 'cards'].includes(v),
+    validator: (v) => ['compact', 'cards', 'spotlight'].includes(v),
   },
   title: {
     type: String,
@@ -353,5 +440,224 @@ function typeChipTitle(type) {
 
 .ppg-docs-link:hover {
   text-decoration: underline;
+}
+
+/* Spotlight */
+.ppg-spotlight-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+@media (min-width: 900px) {
+  .ppg-spotlight-list {
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  }
+}
+
+.ppg-spotlight-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #dbe5f0;
+  border-radius: 1rem;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 36%),
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.ppg-spotlight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 0.22rem;
+  background: linear-gradient(90deg, #2563eb, #0f172a);
+}
+
+.ppg-card--native.ppg-spotlight-card::before {
+  background: linear-gradient(90deg, #10b981, #2563eb);
+}
+
+.ppg-card--embed.ppg-spotlight-card::before {
+  background: linear-gradient(90deg, #94a3b8, #334155);
+}
+
+.ppg-spotlight-card__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ppg-spotlight-card__identity {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ppg-spotlight-card__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.ppg-spotlight-card__summary {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.ppg-spotlight-card__stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.ppg-mini-stat {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.8rem;
+  background: rgba(248, 250, 252, 0.9);
+  padding: 0.6rem 0.7rem;
+}
+
+.ppg-mini-stat__value {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.ppg-mini-stat__label {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ppg-spotlight-card__section {
+  position: relative;
+  z-index: 1;
+}
+
+.ppg-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.ppg-section-heading__hint {
+  font-size: 0.67rem;
+  color: #94a3b8;
+}
+
+.ppg-type-matrix {
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (min-width: 720px) {
+  .ppg-type-matrix {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ppg-type-tile {
+  display: flex;
+  gap: 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.8rem;
+  padding: 0.65rem 0.7rem;
+  background: #fff;
+}
+
+.ppg-type-tile--yes {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(255, 255, 255, 1));
+  border-color: rgba(16, 185, 129, 0.18);
+}
+
+.ppg-type-tile--no {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.08), rgba(255, 255, 255, 1));
+}
+
+.ppg-type-tile__mark {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-top: 0.1rem;
+}
+
+.ppg-type-tile--yes .ppg-type-tile__mark {
+  background: rgba(16, 185, 129, 0.16);
+  color: #059669;
+}
+
+.ppg-type-tile--no .ppg-type-tile__mark {
+  background: rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+}
+
+.ppg-type-tile__body {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.ppg-type-tile__label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ppg-type-tile__meta,
+.ppg-type-tile__note {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.ppg-type-tile--no .ppg-type-tile__label,
+.ppg-type-tile--no .ppg-type-tile__meta,
+.ppg-type-tile--no .ppg-type-tile__note {
+  color: #94a3b8;
+}
+
+.ppg-spotlight-card__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+@media (min-width: 720px) {
+  .ppg-spotlight-card__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ppg-bullet-list--compact {
+  padding-left: 0.9rem;
 }
 </style>
