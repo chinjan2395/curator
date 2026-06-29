@@ -13,6 +13,7 @@ use App\Repositories\WorkspaceRepository;
 use App\Services\AI\AiContentService;
 use App\Services\AI\AiInsightsService;
 use App\Services\AI\AiProviderInterface;
+use App\Services\Content\AssetStorageService;
 use App\Services\Content\AssetTaggingService;
 use App\Services\AI\GroqAiProvider;
 use App\Services\AI\OllamaAiProvider;
@@ -21,6 +22,7 @@ use App\Services\AI\AiImageGenerationService;
 use App\Services\AI\OpenAiImageProvider;
 use App\Services\AI\StubAiImageProvider;
 use App\Models\GoogleDriveConnection;
+use App\Services\Storage\GoogleDriveTokenService;
 use App\Support\ContentPackageMediaResolver;
 use App\Support\GoogleDriveConfig;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(AiImageProviderInterface::class),
                 $app->make(AssetTaggingService::class),
                 new ContentPackageMediaResolver,
+                $app->make(AssetStorageService::class),
             );
         });
         $this->app->singleton(AiInsightsService::class, function ($app) {
@@ -126,26 +129,24 @@ class AppServiceProvider extends ServiceProvider
             $client->setScopes([GoogleDrive::DRIVE_FILE]);
             $client->setAccessType('offline');
 
-            $accessToken = $client->fetchAccessTokenWithRefreshToken($config['refreshToken']);
-            if (isset($accessToken['error'])) {
-                $message = $accessToken['error_description'] ?? $accessToken['error'];
-                if (($config['source'] ?? null) === 'database') {
-                    GoogleDriveConnection::current()?->markNeedsReauth($message);
-                }
-                throw new \RuntimeException('Google Drive authentication failed: '.$message);
-            }
-
             if (($config['source'] ?? null) === 'database') {
-                $connection = GoogleDriveConnection::current();
-                if ($connection) {
-                    $connection->access_token = $accessToken['access_token'] ?? null;
-                    $expiresIn = (int) ($accessToken['expires_in'] ?? 3600);
-                    $connection->expires_at = now()->addSeconds($expiresIn);
-                    $connection->markValid();
+                // Use cached access token when still valid; only hit Google when it is
+                // expired or within the 5-minute expiry buffer.
+                $tokenService = $app->make(GoogleDriveTokenService::class);
+                $rawToken = $tokenService->getValidAccessToken();
+                if ($rawToken === null) {
+                    throw new \RuntimeException('Google Drive authentication failed: could not obtain a valid access token.');
                 }
+                $client->setAccessToken(['access_token' => $rawToken, 'token_type' => 'Bearer', 'expires_in' => 3600]);
+            } else {
+                // Env-only config: no DB record to cache against, always exchange.
+                $accessToken = $client->fetchAccessTokenWithRefreshToken($config['refreshToken']);
+                if (isset($accessToken['error'])) {
+                    $message = $accessToken['error_description'] ?? $accessToken['error'];
+                    throw new \RuntimeException('Google Drive authentication failed: '.$message);
+                }
+                $client->setAccessToken($accessToken);
             }
-
-            $client->setAccessToken($accessToken);
 
             $service = new GoogleDrive($client);
             $rootFolder = trim((string) ($config['folder'] ?? '/'));

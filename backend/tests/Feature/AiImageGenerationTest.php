@@ -61,7 +61,30 @@ class AiImageGenerationTest extends TestCase
         $this->assertNotNull($asset);
         $this->assertSame('image', $asset->type);
         $this->assertSame('public', $asset->storage_disk);
-        Storage::disk('public')->assertExists($asset->storage_path);
+        Storage::disk($asset->storage_disk)->assertExists($asset->storage_path);
+    }
+
+    public function test_generate_image_uses_google_drive_when_configured(): void
+    {
+        config([
+            'filesystems.disks.googledrive.clientId' => 'client-id',
+            'filesystems.disks.googledrive.clientSecret' => 'client-secret',
+            'filesystems.disks.googledrive.refreshToken' => '1//refresh-token-value',
+        ]);
+
+        Storage::fake('googledrive');
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+        $package = $this->makePackage($user);
+
+        $this->postJson("/api/content-packages/{$package->id}/generate-image")
+            ->assertAccepted();
+
+        $asset = Asset::query()->where('user_id', $user->id)->latest('id')->first();
+        $this->assertNotNull($asset);
+        $this->assertSame('googledrive', $asset->storage_disk);
+        Storage::disk('googledrive')->assertExists($asset->storage_path);
     }
 
     public function test_generate_image_rejects_when_media_limit_reached(): void

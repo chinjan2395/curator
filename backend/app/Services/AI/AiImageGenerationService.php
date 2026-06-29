@@ -5,9 +5,9 @@ namespace App\Services\AI;
 use App\Models\Asset;
 use App\Models\ContentPackage;
 use App\Models\LearningSignal;
+use App\Services\Content\AssetStorageService;
 use App\Services\Content\AssetTaggingService;
 use App\Support\ContentPackageMediaResolver;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AiImageGenerationService
@@ -16,6 +16,7 @@ class AiImageGenerationService
         private readonly AiImageProviderInterface $provider,
         private readonly AssetTaggingService $tagging,
         private readonly ContentPackageMediaResolver $mediaResolver,
+        private readonly AssetStorageService $assetStorage,
     ) {}
 
     public function generateForPackage(ContentPackage $package, ?string $instruction = null): ContentPackage
@@ -28,8 +29,7 @@ class AiImageGenerationService
 
         $extension = $this->extensionForMime($generated['mime_type']);
         $path = 'assets/'.$package->user_id.'/generated/'.Str::uuid()->toString().'.'.$extension;
-
-        Storage::disk('public')->put($path, $generated['content']);
+        $stored = $this->assetStorage->storeBinary($generated['content'], $path);
 
         $fileName = 'ai-'.$package->platform.'-'.now()->format('Ymd-His').'.'.$extension;
 
@@ -40,8 +40,8 @@ class AiImageGenerationService
             'file_name' => $fileName,
             'file_size' => strlen($generated['content']),
             'mime_type' => $generated['mime_type'],
-            'storage_path' => $path,
-            'storage_disk' => 'public',
+            'storage_path' => $stored['path'],
+            'storage_disk' => $stored['disk'],
             'ai_tags' => ['ai-generated', $package->platform],
         ]);
 
