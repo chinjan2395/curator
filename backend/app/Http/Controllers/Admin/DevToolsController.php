@@ -24,6 +24,7 @@ class DevToolsController extends Controller
         'migrate'          => 'migrate',
         'migrate:status'   => 'migrate:status',
         'queue:restart'    => 'queue:restart',
+        'queue:drain'      => 'queue:work --stop-when-empty',
         'schedule:run'              => 'schedule:run',
         'social:publish-scheduled'  => 'social:publish-scheduled',
     ];
@@ -57,7 +58,12 @@ class DevToolsController extends Controller
                 $options = ['--force' => true];
             }
 
-            $exitCode = Artisan::call($artisanCommand, $options);
+            // queue:drain uses queue:work with --stop-when-empty so it exits when queue is empty
+            if ($commandKey === 'queue:drain') {
+                $exitCode = Artisan::call('queue:work', ['--stop-when-empty' => true]);
+            } else {
+                $exitCode = Artisan::call($artisanCommand, $options);
+            }
             $output   = Artisan::output();
 
             return ApiResponse::success([
