@@ -16,6 +16,7 @@ services:
       - DB_DATABASE=curator
       - DB_USERNAME=root
       - DB_PASSWORD=root
+      - REVERB_HOST=reverb
     depends_on:
       mysql:
         condition: service_healthy
@@ -52,6 +53,7 @@ services:
       - DB_DATABASE=curator
       - DB_USERNAME=root
       - DB_PASSWORD=root
+      - REVERB_HOST=reverb
     depends_on:
       mysql:
         condition: service_healthy
@@ -70,6 +72,7 @@ services:
       - DB_DATABASE=curator
       - DB_USERNAME=root
       - DB_PASSWORD=root
+      - REVERB_HOST=reverb
     depends_on:
       mysql:
         condition: service_healthy
