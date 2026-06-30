@@ -87,6 +87,21 @@ export function withDedupe(key, loader) {
   return promise;
 }
 
+export function clearAll() {
+  memoryCache.clear();
+  inflightCache.clear();
+
+  if (canUseSessionStorage()) {
+    try {
+      Object.keys(window.sessionStorage)
+        .filter((k) => k.startsWith(STORAGE_PREFIX))
+        .forEach((k) => window.sessionStorage.removeItem(k));
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+}
+
 export function updateCachedValue(key, updater, fallbackValue = null) {
   const current = hydrateFromSession(key);
   const nextValue = updater(current?.value ?? fallbackValue);
