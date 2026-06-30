@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
+import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
+
+const CREDENTIALS_TTL_MS = 15 * 60 * 1000;
+const CACHE_KEY = 'social-credentials';
 
 export const useCredentialsStore = defineStore('credentials', {
   state: () => ({
@@ -20,13 +24,36 @@ export const useCredentialsStore = defineStore('credentials', {
     },
   },
   actions: {
-    async fetchAll() {
+    async fetchAll({ force = false, background = true } = {}) {
+      const cached = hydrateFromSession(CACHE_KEY);
+
+      if (cached) {
+        this.list = cached.value;
+      }
+
+      if (!force && cached && isFresh(cached, CREDENTIALS_TTL_MS)) {
+        return cached.value;
+      }
+
+      if (!force && cached && background) {
+        this.revalidate().catch(() => {});
+        return cached.value;
+      }
+
+      return this.revalidate();
+    },
+    async revalidate() {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await axios.get('/api/social-credentials');
-        this.list = Array.isArray(data) ? data : data.data;
-        return this.list;
+        const rows = await withDedupe(CACHE_KEY, async () => {
+          const { data } = await axios.get('/api/social-credentials');
+          const next = Array.isArray(data) ? data : data.data;
+          persistToSession(CACHE_KEY, next);
+          return next;
+        });
+        this.list = rows;
+        return rows;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load credentials';
         useToastStore().error(this.error);
@@ -56,7 +83,7 @@ export const useCredentialsStore = defineStore('credentials', {
       try {
         const { data } = await axios.post('/api/social/disconnect', { id });
         useToastStore().success('Disconnected');
-        await this.fetchAll();
+        await this.fetchAll({ force: true });
         return data;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to disconnect';
@@ -74,6 +101,7 @@ export const useCredentialsStore = defineStore('credentials', {
         const idx = this.list.findIndex((c) => c.id === id);
         if (idx !== -1 && result.status) {
           this.list[idx] = { ...this.list[idx], status: result.status };
+          persistToSession(CACHE_KEY, [...this.list]);
         }
         return result;
       } catch (err) {
@@ -87,6 +115,7 @@ export const useCredentialsStore = defineStore('credentials', {
         const { data } = await axios.put(`/api/social-credentials/${id}/label`, { account_label: accountLabel });
         const idx = this.list.findIndex((c) => c.id === id);
         if (idx !== -1) this.list[idx] = data;
+        persistToSession(CACHE_KEY, [...this.list]);
         useToastStore().success('Label updated');
         return data;
       } catch (err) {
@@ -94,6 +123,9 @@ export const useCredentialsStore = defineStore('credentials', {
         useToastStore().error(msg);
         throw err;
       }
+    },
+    invalidateCache() {
+      invalidate(CACHE_KEY);
     },
   },
 });

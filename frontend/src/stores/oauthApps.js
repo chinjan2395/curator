@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
+import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
+
+const OAUTH_TTL_MS = 30 * 60 * 1000;
+const CACHE_KEY = 'oauth-app-configs';
 
 export const useOAuthAppsStore = defineStore('oauthApps', {
   state: () => ({
@@ -12,14 +16,38 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
     promoting: false,
   }),
   actions: {
-    async fetchAll() {
+    async fetchAll({ force = false, background = true } = {}) {
+      const cached = hydrateFromSession(CACHE_KEY);
+
+      if (cached) {
+        this.items = cached.value.items || [];
+        this.isAdmin = Boolean(cached.value.isAdmin);
+      }
+
+      if (!force && cached && isFresh(cached, OAUTH_TTL_MS)) {
+        return cached.value;
+      }
+
+      if (!force && cached && background) {
+        this.revalidate().catch(() => {});
+        return cached.value;
+      }
+
+      return this.revalidate();
+    },
+    async revalidate() {
       this.loading = true;
       this.error = null;
       try {
-        const { data } = await axios.get('/api/oauth-app-configs');
-        this.items = data.items || [];
-        this.isAdmin = Boolean(data.is_admin);
-        return data;
+        const result = await withDedupe(CACHE_KEY, async () => {
+          const { data } = await axios.get('/api/oauth-app-configs');
+          const next = { items: data.items || [], isAdmin: Boolean(data.is_admin) };
+          persistToSession(CACHE_KEY, next);
+          return next;
+        });
+        this.items = result.items;
+        this.isAdmin = result.isAdmin;
+        return result;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load OAuth app settings';
         useToastStore().error(this.error);
@@ -57,7 +85,7 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
           client_secret,
           redirect_uri,
         });
-        await this.fetchAll();
+        await this.fetchAll({ force: true });
         useToastStore().success('OAuth app settings saved');
         return data;
       } catch (err) {
@@ -71,7 +99,7 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
     async remove(provider, scope = 'user') {
       try {
         await axios.delete(`/api/oauth-app-configs/${provider}`, { params: { scope } });
-        await this.fetchAll();
+        await this.fetchAll({ force: true });
         useToastStore().success('OAuth app settings removed');
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to remove OAuth app settings';
@@ -84,7 +112,7 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
       this.error = null;
       try {
         const { data } = await axios.post('/api/oauth-app-configs/promote-my-user-configs-to-shared', { overwrite });
-        await this.fetchAll();
+        await this.fetchAll({ force: true });
         useToastStore().success(`Promoted configs (created: ${data.created}, updated: ${data.updated}, skipped: ${data.skipped})`);
         return data;
       } catch (err) {
@@ -94,6 +122,9 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
       } finally {
         this.promoting = false;
       }
+    },
+    invalidateCache() {
+      invalidate(CACHE_KEY);
     },
   },
 });

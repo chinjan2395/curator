@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
 import { useRealtimeStore } from './realtime';
+import { clearAll as clearCache } from '../utils/sessionCache';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -64,6 +65,7 @@ export const useAuthStore = defineStore('auth', {
       this.brokenCredentials = [];
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
+      clearCache();
       useRealtimeStore().disconnect();
 
       try {
