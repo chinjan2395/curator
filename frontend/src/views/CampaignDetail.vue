@@ -651,11 +651,7 @@
       size="xl"
       @close="closeVariantsModal"
     >
-      <div v-if="generatingVariants" class="flex flex-col items-center gap-3 py-8">
-        <AppLoader label="Generating variants with AI…" />
-      </div>
-
-      <template v-else-if="variantGroup.length">
+      <template v-if="variantGroup.length">
         <p class="text-xs text-slate-500 mb-4">
           Pick the best caption. The winner will be approved and the others rejected.
         </p>
@@ -811,7 +807,6 @@ const refineModalOpen = ref(false);
 // A/B variants state
 const abVariantsModalOpen = ref(false);
 const variantGroup = ref([]);
-const generatingVariants = ref(false);
 const generatingImageId = ref(null);
 const imageInstruction = reactive({});
 const pickingWinnerId = ref(null);
@@ -996,19 +991,17 @@ function handleAiGeneration(event) {
   if (event.job_type === 'variants') {
     const pkgId = Number(event.resource_id);
     if (event.status === 'started') {
-      generatingVariants.value = true;
-      abVariantsModalOpen.value = true;
-      variantGroup.value = [];
+      // job queued — nothing to show yet
       return;
     }
-    generatingVariants.value = false;
     if (event.status === 'completed') {
       variantGroup.value = event.data?.variants || [];
+      abVariantsModalOpen.value = true;
       toast.success(event.message || 'A/B variants generated');
       load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
     } else if (event.status === 'failed') {
       toast.error(event.message || 'Failed to generate variants');
-      abVariantsModalOpen.value = false;
+      // modal was never opened, nothing to close
     }
     return;
   }
@@ -1481,15 +1474,12 @@ async function openVariantsModal(pkg) {
 }
 
 async function generateVariantsForPackage(pkg) {
-  abVariantsModalOpen.value = true;
-  generatingVariants.value = true;
   variantGroup.value = [];
   try {
     await axios.post(`/api/content-packages/${pkg.id}/variants`);
-    toast.info('Variant generation started…');
+    toast.info('Generating variants — you\'ll be notified when ready.');
   } catch {
-    generatingVariants.value = false;
-    abVariantsModalOpen.value = false;
+    // nothing to close — modal was never opened
   }
 }
 
