@@ -275,9 +275,9 @@
               </button>
             </div>
 
-            <div class="space-y-2">
+            <div class="cd-drafts-grid">
               <AppCard
-                v-for="pkg in filteredPackages"
+                v-for="pkg in paginatedPackages"
                 :key="pkg.id"
                 padding="none"
                 class="campaign-draft-card"
@@ -524,6 +524,26 @@
                   </div>
                 </div>
               </AppCard>
+            </div>
+
+            <div v-if="draftsTotalPages > 1" class="cd-pagination">
+              <button
+                type="button"
+                class="cd-page-btn"
+                :disabled="draftsPage === 1"
+                @click="draftsPage--"
+              >
+                <AppIcon name="chevron-left" class="w-3.5 h-3.5" />
+              </button>
+              <span class="cd-page-info">Page {{ draftsPage }} of {{ draftsTotalPages }}</span>
+              <button
+                type="button"
+                class="cd-page-btn"
+                :disabled="draftsPage === draftsTotalPages"
+                @click="draftsPage++"
+              >
+                <AppIcon name="chevron-right" class="w-3.5 h-3.5" />
+              </button>
             </div>
           </template>
         </div>
@@ -804,6 +824,9 @@ const platformFilter = ref('all');
 const statusFilter = ref('all');
 const refineModalOpen = ref(false);
 
+const draftsPage = ref(1);
+const DRAFTS_PER_PAGE = 10;
+
 // A/B variants state
 const abVariantsModalOpen = ref(false);
 const variantGroup = ref([]);
@@ -891,6 +914,13 @@ const filteredPackages = computed(() => {
     if (scoreB !== scoreA) return scoreB - scoreA;
     return (b.id ?? 0) - (a.id ?? 0);
   });
+});
+
+const draftsTotal = computed(() => filteredPackages.value.length);
+const draftsTotalPages = computed(() => Math.max(1, Math.ceil(draftsTotal.value / DRAFTS_PER_PAGE)));
+const paginatedPackages = computed(() => {
+  const start = (draftsPage.value - 1) * DRAFTS_PER_PAGE;
+  return filteredPackages.value.slice(start, start + DRAFTS_PER_PAGE);
 });
 
 const campaignPayload = computed(() => ({
@@ -1031,6 +1061,10 @@ watch(
     }
   },
 );
+
+watch([platformFilter, statusFilter], () => {
+  draftsPage.value = 1;
+});
 
 function applyDefaultTab() {
   activeTab.value = packages.value.length > 0 ? 'drafts' : 'brief';
@@ -1764,6 +1798,28 @@ async function pickVariantWinner(pkg) {
   text-overflow: ellipsis;
 }
 
+/* ── Draft cards grid (2-col on wide screens) ─────────── */
+.cd-drafts-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1200px) {
+  .cd-drafts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .campaign-draft-card .campaign-draft-preview {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .campaign-draft-card .campaign-draft-row {
+    padding: 0.625rem 0.875rem;
+  }
+}
+
 .campaign-draft-row__side {
   display: flex;
   flex-direction: column;
@@ -2045,4 +2101,43 @@ async function pickVariantWinner(pkg) {
 
 .cd-accepts-chip--yes { background: #d1fae5; color: #065f46; }
 .cd-accepts-chip--no  { background: #f1f5f9; color: #94a3b8; text-decoration: line-through; }
+
+/* ── Drafts pagination ────────────────────────────────── */
+.cd-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+}
+
+.cd-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.cd-page-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.cd-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cd-page-info {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+}
 </style>

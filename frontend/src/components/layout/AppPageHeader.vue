@@ -20,7 +20,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="mb-6">
+  <div>
     <div class="flex items-start justify-between gap-4">
       <div class="flex-1">
         <div class="flex items-center gap-2">
