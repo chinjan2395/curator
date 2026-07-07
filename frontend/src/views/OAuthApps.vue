@@ -6,22 +6,6 @@
       icon="cog"
     />
 
-    <AppCard v-if="oauthApps.isAdmin" class="oauth-admin-toolbar p-4">
-      <div class="oauth-admin-toolbar__copy">
-        <p class="oauth-section-kicker">Admin tools</p>
-        <p class="text-sm-pro font-semibold text-slate-800">Promote existing admin configs</p>
-        <p class="text-2xs text-slate-500 mt-1">Copy all your user overrides into shared defaults in one click.</p>
-      </div>
-      <div class="oauth-admin-toolbar__actions">
-        <AppButton variant="secondary" size="sm" :disabled="oauthApps.promoting" @click="promoteToShared(false)">
-          {{ oauthApps.promoting ? 'Promoting…' : 'Promote (skip existing)' }}
-        </AppButton>
-        <AppButton variant="secondary" size="sm" :disabled="oauthApps.promoting" @click="promoteToShared(true)">
-          Promote (overwrite shared)
-        </AppButton>
-      </div>
-    </AppCard>
-
     <AppCard class="credentials-provider-panel p-4 md:p-5">
       <div class="oauth-section-intro">
         <div>
@@ -29,9 +13,14 @@
           <p class="text-sm-pro font-semibold text-slate-800">Choose the provider you want to configure</p>
           <p class="text-2xs text-slate-500 mt-1">Pick a social platform, then review its shared defaults or your personal override.</p>
         </div>
-        <div class="oauth-inline-stat">
-          <span class="oauth-inline-stat__value">{{ connectedCountFor(provider) }}</span>
-          <span class="oauth-inline-stat__label">{{ providerLabels[provider] || provider }} accounts connected</span>
+        <div class="oauth-inline-stat-group">
+          <div class="oauth-inline-stat">
+            <span class="oauth-inline-stat__value">{{ connectedCountFor(provider) }}</span>
+            <span class="oauth-inline-stat__label">{{ providerLabels[provider] || provider }} accounts connected</span>
+          </div>
+          <AppButton variant="secondary" size="sm" :disabled="creds.verifying" @click="recheckConnections">
+            {{ creds.verifying ? 'Checking…' : 'Re-check connections' }}
+          </AppButton>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -49,9 +38,12 @@
           </div>
           <span
             class="provider-connection-pill"
-            :class="connectedCountFor(item.type) > 0 ? 'provider-connection-pill--ok' : ''"
+            :class="{
+              'provider-connection-pill--ok': connectionStateFor(item.type).variant === 'ok',
+              'provider-connection-pill--warn': connectionStateFor(item.type).variant === 'warn',
+            }"
           >
-            {{ connectedCountFor(item.type) > 0 ? `${connectedCountFor(item.type)} connected` : 'Not connected' }}
+            {{ connectionStateFor(item.type).label }}
           </span>
         </AppButton>
       </div>
@@ -89,31 +81,6 @@
           <AppAlert v-if="supportsOAuthApp && !oauthApps.isAdmin" variant="info" title="Personal override is optional">
             Shared defaults are managed by admin. Save an override only when this provider needs different credentials for your account.
           </AppAlert>
-
-          <div v-if="supportsOAuthApp && oauthApps.isAdmin" class="oauth-scope-panel">
-            <div>
-              <p class="text-xs-pro font-medium text-slate-700">Editing scope</p>
-              <p class="text-2xs text-slate-500 mt-1">Switch between workspace-wide defaults and your own override.</p>
-            </div>
-            <div class="oauth-scope-toggle">
-              <AppButton
-                variant="secondary"
-                size="sm"
-                :class="oauthScope === 'shared' ? '!bg-blue-50 !border-blue-300 !text-blue-700' : ''"
-                @click="oauthScope = 'shared'"
-              >
-                Edit shared default
-              </AppButton>
-              <AppButton
-                variant="secondary"
-                size="sm"
-                :class="oauthScope === 'user' ? '!bg-blue-50 !border-blue-300 !text-blue-700' : ''"
-                @click="oauthScope = 'user'"
-              >
-                Edit my override
-              </AppButton>
-            </div>
-          </div>
 
           <div v-if="!supportsOAuthApp" class="oauth-empty">
             <p class="text-sm-pro font-medium text-slate-700">OAuth app settings are not required</p>
@@ -168,7 +135,7 @@
                   <AppInput
                     v-model="oauthForm.redirect_uri"
                     type="url"
-                    placeholder="https://your-backend-domain.com/api/social/callback/youtube"
+                    :placeholder="`https://your-backend-domain.com${selectedCallbackPath}`"
                   />
                 </AppFormField>
               </div>
@@ -335,7 +302,18 @@ const oauthProviderByProvider = {
 };
 const oauthProviderKey = computed(() => oauthProviderByProvider[provider.value] || provider.value);
 const supportsOAuthApp = computed(() => Boolean(oauthProviderByProvider[provider.value]));
-const selectedCallbackPath = computed(() => `/api/social/callback/${oauthProviderKey.value}`);
+
+// YouTube shares Google OAuth credentials but has its own /callback/youtube route.
+// Instagram shares Facebook's credentials AND Facebook's /callback/facebook route.
+// All other providers use their own route matching their provider key.
+const callbackProviderByProvider = {
+  youtube: 'youtube',
+  instagram: 'facebook',
+};
+const selectedCallbackPath = computed(() => {
+  const cb = callbackProviderByProvider[provider.value] ?? oauthProviderKey.value;
+  return `/api/social/callback/${cb}`;
+});
 const currentProviderMeta = computed(() => providerUi[provider.value] || providerUi.other);
 const oauthScope = ref('user');
 const oauthForm = reactive({ client_id: '', client_secret: '', redirect_uri: '' });
@@ -377,6 +355,8 @@ onMounted(async () => {
   oauthScope.value = oauthApps.isAdmin ? 'shared' : 'user';
   hydrateOauthForm();
   handleOAuthReturnQuery();
+  // Verify live so the connection pills reflect real token health, not just row existence.
+  creds.verifyAll().catch(() => {});
 });
 
 watch(provider, () => {
@@ -439,16 +419,25 @@ async function disconnectGoogleDrive() {
   }
 }
 
-async function promoteToShared(overwrite) {
-  const message = overwrite
-    ? 'Overwrite existing shared configs with your user configs?'
-    : 'Promote your user configs to shared defaults? Existing shared configs will be kept.';
-  if (!await confirm({ title: 'Promote configs?', message, confirmLabel: 'Continue' })) return;
-  await oauthApps.promoteMyUserConfigsToShared({ overwrite });
+function connectedCountFor(providerType) {
+  return creds.connectedByProvider?.[providerType]?.length || 0;
 }
 
-function connectedCountFor(providerType) {
-  return creds.byProvider?.[providerType]?.length || 0;
+function connectionStateFor(providerType) {
+  const total = creds.byProvider?.[providerType]?.length || 0;
+  const connected = connectedCountFor(providerType);
+  if (connected > 0) return { label: `${connected} connected`, variant: 'ok' };
+  if (total > 0) return { label: 'Reconnect needed', variant: 'warn' };
+  return { label: 'Not connected', variant: '' };
+}
+
+async function recheckConnections() {
+  try {
+    await creds.verifyAll();
+    toast.success('Connection status refreshed');
+  } catch {
+    toast.error('Could not verify connections');
+  }
 }
 </script>
 
@@ -458,26 +447,6 @@ function connectedCountFor(providerType) {
     radial-gradient(700px 200px at -8% -60%, rgba(30, 58, 138, 0.06), transparent 62%),
     radial-gradient(560px 200px at 120% -58%, rgba(30, 58, 138, 0.05), transparent 62%),
     linear-gradient(170deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-}
-.oauth-admin-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background:
-    radial-gradient(360px 140px at -8% -50%, rgba(30, 58, 138, 0.05), transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-}
-.oauth-admin-toolbar__copy {
-  min-width: 0;
-  flex: 1 1 18rem;
-}
-.oauth-admin-toolbar__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
 }
 .oauth-section-kicker {
   font-size: 0.68rem;
@@ -494,6 +463,12 @@ function connectedCountFor(providerType) {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+.oauth-inline-stat-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
 }
 .oauth-inline-stat {
   display: inline-flex;
@@ -551,6 +526,11 @@ function connectedCountFor(providerType) {
   border-color: rgba(16, 185, 129, 0.35);
   background: rgba(236, 253, 245, 0.92);
   color: rgb(6 95 70);
+}
+.provider-connection-pill--warn {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(255, 251, 235, 0.95);
+  color: rgb(146 64 14);
 }
 .credentials-provider-icon {
   width: 1.9rem;
@@ -687,19 +667,6 @@ function connectedCountFor(providerType) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-}
-.oauth-scope-panel {
-  border: 1px solid #e6ebf2;
-  border-radius: 1rem;
-  background: rgba(248, 250, 252, 0.96);
-  padding: 0.95rem;
-  display: grid;
-  gap: 0.85rem;
-}
-.oauth-scope-toggle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 .oauth-redirect-grid {
   display: grid;

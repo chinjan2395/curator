@@ -19,15 +19,21 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, computed } from 'vue';
 import axios from 'axios';
 import { useToastStore } from '../stores/toast';
 import { AppAlert, AppButton, AppCard, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 const toast = useToastStore();
-const events = ['post_published', 'post_failed', 'campaign_generated', 'sync_failed'];
-const prefsMap = reactive(Object.fromEntries(events.map((e) => [e, { event_type: e, in_app: true, email: false, push: false }])));
+const { isMenuEnabled } = useNavigationVisibility();
+const ALL_EVENTS = ['post_published', 'post_failed', 'campaign_generated', 'sync_failed'];
+const events = computed(() => ALL_EVENTS.filter((event) => {
+  if (event === 'campaign_generated') return isMenuEnabled('campaigns');
+  return true;
+}));
+const prefsMap = reactive(Object.fromEntries(ALL_EVENTS.map((e) => [e, { event_type: e, in_app: true, email: false, push: false }])));
 const saving = ref(false);
 const loading = ref(true);
 const error = ref(null);
@@ -55,7 +61,7 @@ async function save() {
   saving.value = true;
   try {
     await axios.put('/api/notifications/preferences', {
-      preferences: events.map((e) => prefsMap[e]),
+      preferences: events.value.map((e) => prefsMap[e]),
     });
     toast.success('Preferences saved');
   } finally {

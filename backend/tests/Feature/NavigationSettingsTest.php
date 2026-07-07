@@ -29,9 +29,9 @@ class NavigationSettingsTest extends TestCase
         $this->getJson('/api/navigation-settings')->assertUnauthorized();
     }
 
-    public function test_admin_can_update_navigation_settings(): void
+    public function test_superadmin_can_update_navigation_settings(): void
     {
-        Sanctum::actingAs(User::factory()->admin()->create());
+        Sanctum::actingAs(User::factory()->superadmin()->create());
 
         $response = $this->putJson('/api/admin/navigation-settings', [
             'menus' => [
@@ -64,9 +64,20 @@ class NavigationSettingsTest extends TestCase
         ])->assertForbidden();
     }
 
-    public function test_admin_update_ignores_unknown_keys(): void
+    public function test_admin_cannot_manage_navigation_settings(): void
     {
         Sanctum::actingAs(User::factory()->admin()->create());
+
+        $this->getJson('/api/admin/navigation-settings')->assertForbidden();
+
+        $this->putJson('/api/admin/navigation-settings', [
+            'menus' => ['campaigns' => false],
+        ])->assertForbidden();
+    }
+
+    public function test_admin_update_ignores_unknown_keys(): void
+    {
+        Sanctum::actingAs(User::factory()->superadmin()->create());
 
         $response = $this->putJson('/api/admin/navigation-settings', [
             'menus' => [
@@ -85,7 +96,7 @@ class NavigationSettingsTest extends TestCase
 
     public function test_admin_show_includes_registry_metadata(): void
     {
-        Sanctum::actingAs(User::factory()->admin()->create());
+        Sanctum::actingAs(User::factory()->superadmin()->create());
 
         $this->getJson('/api/admin/navigation-settings')
             ->assertOk()

@@ -33,9 +33,9 @@
           </span>
           <span
             class="inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium"
-            :class="users.currentUser.role === 'admin' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-50 text-slate-600 border border-slate-200'"
+            :class="roleBadgeClass(users.currentUser.role)"
           >
-            {{ users.currentUser.role === 'admin' ? 'Admin' : 'User' }}
+            {{ roleLabel(users.currentUser.role) }}
           </span>
         </div>
       </div>
@@ -54,10 +54,14 @@
           </div>
           <div>
             <label class="label-pro">Role</label>
-            <AppSelect v-model="form.role" :show-placeholder="false">
+            <AppSelect v-model="form.role" :show-placeholder="false" :disabled="roleSelectDisabled">
               <option value="user">User</option>
               <option value="admin">Admin</option>
+              <option v-if="showSuperAdminOption" value="superadmin">Super Admin</option>
             </AppSelect>
+            <p v-if="roleSelectDisabled" class="text-2xs text-slate-400 mt-1">
+              Only a super admin can change a super admin's role.
+            </p>
           </div>
           <div>
             <label class="label-pro">Member since</label>
@@ -209,9 +213,10 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, inject } from 'vue';
+import { ref, computed, watch, onMounted, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUsersStore } from '../../stores/users';
+import { useAuthStore } from '../../stores/auth';
 import SocialIcon from '../../components/SocialIcon.vue';
 import { AppButton, AppCard, AppIcon, AppInput, AppLoader, AppSelect } from '../../components/ui';
 import { AppPageHeader } from '../../components/layout/index.js';
@@ -242,7 +247,16 @@ const providerLabels = {
 const route = useRoute();
 const router = useRouter();
 const users = useUsersStore();
+const auth = useAuthStore();
 const { confirm } = inject('confirm');
+
+const actorIsSuperAdmin = computed(() => auth.user?.role === 'superadmin');
+const targetIsSuperAdmin = computed(() => users.currentUser?.role === 'superadmin');
+// Show the option to super admins (so they can assign it) and whenever the
+// viewed user already holds the role (so the select renders it correctly).
+const showSuperAdminOption = computed(() => actorIsSuperAdmin.value || targetIsSuperAdmin.value);
+// A non-super-admin cannot change a super admin's role.
+const roleSelectDisabled = computed(() => targetIsSuperAdmin.value && !actorIsSuperAdmin.value);
 
 const saving = ref(false);
 const actionLoading = ref(false);
@@ -266,6 +280,18 @@ function resetForm() {
     email: users.currentUser.email,
     role: users.currentUser.role,
   };
+}
+
+function roleLabel(role) {
+  if (role === 'superadmin') return 'Super Admin';
+  if (role === 'admin') return 'Admin';
+  return 'User';
+}
+
+function roleBadgeClass(role) {
+  if (role === 'superadmin') return 'bg-violet-50 text-violet-700 border border-violet-200';
+  if (role === 'admin') return 'bg-blue-50 text-blue-700 border border-blue-200';
+  return 'bg-slate-50 text-slate-600 border border-slate-200';
 }
 
 function initials(name) {

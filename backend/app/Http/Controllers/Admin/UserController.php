@@ -51,11 +51,25 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $actorIsSuperAdmin = $request->user()?->isSuperAdmin() ?? false;
+
+        // Only a super admin can assign the super admin role. Regular admins are
+        // limited to the admin/user roles.
+        $assignableRoles = $actorIsSuperAdmin
+            ? [User::ROLE_SUPERADMIN, User::ROLE_ADMIN, User::ROLE_USER]
+            : [User::ROLE_ADMIN, User::ROLE_USER];
+
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role' => ['sometimes', 'string', Rule::in([User::ROLE_ADMIN, User::ROLE_USER])],
+            'role' => ['sometimes', 'string', Rule::in($assignableRoles)],
         ]);
+
+        // A super admin account may only be modified by another super admin —
+        // this stops a regular admin from demoting or renaming a super admin.
+        if ($user->isSuperAdmin() && ! $actorIsSuperAdmin) {
+            return response()->json(['message' => 'Only a super admin can modify a super admin account.'], 403);
+        }
 
         $user->update($validated);
 

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { useWorkspacesStore } from '../stores/workspaces'
 import { useAsync } from './useAsync'
+import { useNavigationSettingsStore } from '../stores/navigationSettings'
 import axios from 'axios'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
@@ -43,6 +44,7 @@ function createMonthBuckets(windowSize = MONTH_WINDOW) {
 
 export function useDashboardAnalytics() {
   const workspaces = useWorkspacesStore()
+  const navigation = useNavigationSettingsStore()
   const allFeeds = ref([])
   const feedCountsByWorkspace = ref({})
   const userSyncSummary = ref({
@@ -54,6 +56,10 @@ export function useDashboardAnalytics() {
   const socialOverview = ref(null)
 
   const { loading: analyticsLoading, execute: loadAnalytics } = useAsync(async () => {
+    const fetchAnalytics = navigation.isMenuEnabled('analytics')
+      ? axios.get('/api/analytics/overview').catch(() => ({ data: { data: null } }))
+      : Promise.resolve({ data: { data: null } })
+
     const [, summaryResponse, analyticsResponse] = await Promise.all([
       workspaces.fetchAll(),
       axios.get('/api/user/sync-summary').catch(() => ({
@@ -64,7 +70,7 @@ export function useDashboardAnalytics() {
           broken_credentials: [],
         },
       })),
-      axios.get('/api/analytics/overview').catch(() => ({ data: { data: null } })),
+      fetchAnalytics,
     ])
     socialOverview.value = analyticsResponse?.data?.data || analyticsResponse?.data || null
     userSyncSummary.value = summaryResponse?.data || {
@@ -311,7 +317,7 @@ export function useDashboardAnalytics() {
         value: `${newPostCount.value} posts since login`,
       },
     ]
-    if (socialOverview.value) {
+    if (socialOverview.value && navigation.isMenuEnabled('analytics')) {
       stats.push({
         label: 'Social engagement',
         value: `${socialOverview.value.engagement_rate || 0}% · ${socialOverview.value.total_likes || 0} likes`,

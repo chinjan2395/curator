@@ -204,7 +204,7 @@
                 <span v-if="!sidebarCollapsed">Dev Tools</span>
               </router-link>
             </li>
-            <li>
+            <li v-if="auth.user?.role === 'superadmin'">
               <router-link
                 to="/admin/navigation"
                 class="sidebar-nav-item"
@@ -308,6 +308,7 @@
 
           <!-- Notification bell -->
           <button
+            v-if="showNotifications"
             type="button"
             class="relative p-2 rounded-lg transition-colors"
             :class="syncUnreadCount > 0 ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'"
@@ -450,11 +451,15 @@ import { useNotificationsStore } from '../stores/notifications';
 import { useRealtimeStore } from '../stores/realtime';
 
 import { useNavigationSettingsStore } from '../stores/navigationSettings';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 function isSidebarItemHidden(id) {
   const navigation = useNavigationSettingsStore();
   return !navigation.isMenuEnabled(id);
 }
+
+const { isMenuEnabled } = useNavigationVisibility();
+const showNotifications = computed(() => isMenuEnabled('notifications'));
 
 const auth = useAuthStore();
 const toast = useToastStore();
@@ -470,7 +475,11 @@ const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const headerBreadcrumbs = ref([]);
 const syncUnreadCount = computed(() => Number(auth.syncSummary?.scheduler_unread_count || 0));
-const headerUnreadCount = computed(() => syncUnreadCount.value + Number(notifications.unreadCount || 0));
+const headerUnreadCount = computed(() => {
+  const sync = syncUnreadCount.value;
+  if (!showNotifications.value) return sync;
+  return sync + Number(notifications.unreadCount || 0);
+});
 let unsubscribeHandlers = [];
 provide('setHeaderBreadcrumbs', (crumbs) => { headerBreadcrumbs.value = crumbs; });
 
@@ -584,6 +593,7 @@ const MAIN_NAV_SECTIONS = [
       { id: 'campaigns', to: '/campaigns', label: 'Campaigns', icon: 'megaphone', match: 'campaigns' },
       { id: 'schedule', to: '/calendar', label: 'Schedule', icon: 'calendar', match: 'schedule' },
       { id: 'content-library', to: '/content-library', label: 'Content Library', icon: 'library', match: 'content' },
+      { id: 'brand-kit', to: '/brand-kit', label: 'Brand Kit', icon: 'sparkles', match: 'brand-kit' },
     ],
   },
   {
@@ -623,6 +633,8 @@ function isMainNavActive(item) {
       return path.startsWith('/calendar') || path.startsWith('/publisher');
     case 'content':
       return path.startsWith('/content-library') || path === '/content';
+    case 'brand-kit':
+      return path.startsWith('/brand-kit');
     case 'analytics':
       return path.startsWith('/analytics');
     case 'inbox':
@@ -641,13 +653,15 @@ onMounted(async () => {
     auth.fetchSyncSummary(),
     navigation.fetch(),
   ]);
-  notifications.fetchAll();
-  unsubscribeHandlers.push(realtime.on('notification', ({ notification, unread_count: unreadCount }) => {
-    notifications.pushNotification(notification, unreadCount);
-    if (notification?.title) {
-      toast.info(notification.title);
-    }
-  }));
+  if (isMenuEnabled('notifications')) {
+    notifications.fetchAll();
+    unsubscribeHandlers.push(realtime.on('notification', ({ notification, unread_count: unreadCount }) => {
+      notifications.pushNotification(notification, unreadCount);
+      if (notification?.title) {
+        toast.info(notification.title);
+      }
+    }));
+  }
   unsubscribeHandlers.push(realtime.on('feedSync', (payload) => {
     if (payload.triggered_by === 'scheduler' && payload.status === 'success' && payload.posts_synced > 0) {
       auth.syncSummary.scheduler_unread_count = Number(auth.syncSummary.scheduler_unread_count || 0) + payload.posts_synced;
@@ -701,7 +715,7 @@ async function openNotifications() {
     toast.info(`${syncUnread} new post${syncUnread !== 1 ? 's' : ''} synced by scheduler/job.`);
     await auth.acknowledgeSyncNotifications();
   }
-  if (appUnread > 0) {
+  if (appUnread > 0 && showNotifications.value) {
     router.push('/notifications');
     return;
   }

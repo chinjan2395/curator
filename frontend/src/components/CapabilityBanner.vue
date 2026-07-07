@@ -15,6 +15,7 @@
 import { computed, onMounted } from 'vue';
 import { AppAlert } from './ui';
 import { useCapabilities } from '../composables/useCapabilities';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 const props = defineProps({
   context: {
@@ -25,6 +26,7 @@ const props = defineProps({
 });
 
 const { capabilities, fetchCapabilities } = useCapabilities();
+const { isMenuEnabled } = useNavigationVisibility();
 
 onMounted(() => fetchCapabilities());
 
@@ -57,6 +59,10 @@ const message = computed(() => {
   return `Native publish is available for X, Facebook, Instagram, TikTok, Threads, and LinkedIn. Other platforms: ${disabled}. Reconnect integrations after scope changes.`;
 });
 
-const linkTo = computed(() => (props.context === 'ai' ? null : '/credentials'));
+const linkTo = computed(() => {
+  if (props.context === 'ai') return null;
+  if (!isMenuEnabled('integrations')) return null;
+  return '/credentials';
+});
 const linkLabel = computed(() => 'Open integrations');
 </script>

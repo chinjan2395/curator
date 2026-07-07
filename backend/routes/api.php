@@ -116,9 +116,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('workspaces/{workspace}/duplicate-groups/{group}/keep/{post}', [DuplicateGroupController::class, 'keep']);
     Route::post('workspaces/{workspace}/duplicate-groups/{group}/dismiss', [DuplicateGroupController::class, 'dismiss']);
 
+    Route::post('social-credentials/verify', [SocialCredentialController::class, 'verifyAll']);
     Route::apiResource('social-credentials', SocialCredentialController::class);
     Route::put('social-credentials/{socialCredential}/label', [SocialCredentialController::class, 'label']);
     Route::post('social-credentials/{socialCredential}/sync', [SocialCredentialController::class, 'sync']);
+    Route::post('social-credentials/{socialCredential}/verify', [SocialCredentialController::class, 'verify']);
     Route::post('social/connect', [SocialConnectController::class, 'connect']);
     Route::post('social/disconnect', [SocialConnectController::class, 'disconnect']);
 
@@ -257,6 +259,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('dev-tools/commands', [DevToolsController::class, 'index']);
     Route::post('dev-tools/run', [DevToolsController::class, 'run']);
 
-    Route::get('navigation-settings', [AdminNavigationSettingsController::class, 'show']);
-    Route::put('navigation-settings', [AdminNavigationSettingsController::class, 'update']);
+    Route::middleware('superadmin')->group(function () {
+        Route::get('navigation-settings', [AdminNavigationSettingsController::class, 'show']);
+        Route::put('navigation-settings', [AdminNavigationSettingsController::class, 'update']);
+    });
 });

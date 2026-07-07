@@ -20,6 +20,7 @@ import CampaignsList from '../views/CampaignsList.vue';
 import CampaignForm from '../views/CampaignForm.vue';
 import CampaignDetail from '../views/CampaignDetail.vue';
 import ContentLibrary from '../views/ContentLibrary.vue';
+import BrandKit from '../views/BrandKit.vue';
 import Calendar from '../views/Calendar.vue';
 import PublisherQueue from '../views/PublisherQueue.vue';
 import Analytics from '../views/Analytics.vue';
@@ -55,8 +56,8 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'dashboard', component: Dashboard },
-      { path: 'workspaces/:workspaceId/curate', name: 'curate', component: Curate, meta: { menuId: 'curator' } },
-      { path: 'workspaces/:workspaceId/feeds/:feedId/curate', name: 'feed-curate', component: Curate, meta: { menuId: 'curator' } },
+      { path: 'workspaces/:workspaceId/curate', name: 'curate', component: Curate },
+      { path: 'workspaces/:workspaceId/feeds/:feedId/curate', name: 'feed-curate', component: Curate },
       { path: 'workspaces', name: 'workspaces', component: WorkspacesList },
       { path: 'workspaces/new', name: 'workspace-new', component: WorkspaceForm },
       { path: 'workspaces/:id/edit', name: 'workspace-edit', component: WorkspaceForm },
@@ -66,7 +67,7 @@ const routes = [
       { path: 'workspaces/:workspaceId/publish', name: 'workspace-publish', component: Publish },
       { path: 'credentials', name: 'credentials', component: Credentials, meta: { menuId: 'integrations' } },
       { path: 'integrations', redirect: '/credentials' },
-      { path: 'oauth-apps', name: 'oauth-apps', component: OAuthApps, meta: { menuId: 'oauth-apps' } },
+      { path: 'oauth-apps', name: 'oauth-apps', component: OAuthApps, meta: { requiresAdmin: true, menuId: 'oauth-apps' } },
       { path: 'publish', name: 'publish', component: Publish },
       { path: 'curator', name: 'curator', component: CuratorFeed, meta: { menuId: 'curator' } },
       { path: 'curator/embed-builder', name: 'embed-builder', component: Publish, meta: { menuId: 'curator' } },
@@ -75,6 +76,7 @@ const routes = [
       { path: 'campaigns/new', name: 'campaign-new', component: CampaignForm, meta: { menuId: 'campaigns' } },
       { path: 'campaigns/:id', name: 'campaign-detail', component: CampaignDetail, meta: { menuId: 'campaigns' } },
       { path: 'content-library', name: 'content-library', component: ContentLibrary, meta: { menuId: 'content-library' } },
+      { path: 'brand-kit', name: 'brand-kit', component: BrandKit, meta: { menuId: 'brand-kit' } },
       { path: 'content', redirect: { name: 'content-library' } },
       { path: 'calendar', name: 'calendar', component: Calendar, meta: { menuId: 'schedule' } },
       { path: 'publisher', name: 'publisher', component: PublisherQueue, meta: { menuId: 'schedule' } },
@@ -91,7 +93,7 @@ const routes = [
       { path: 'admin/trends', name: 'admin-trends', component: AdminTrends, meta: { requiresAdmin: true, menuId: 'admin-trends' } },
       { path: 'admin/moderation', name: 'admin-moderation', component: AdminModeration, meta: { requiresAdmin: true, menuId: 'admin-moderation' } },
       { path: 'admin/dev-tools', name: 'admin-dev-tools', component: DevTools, meta: { requiresAdmin: true, menuId: 'admin-dev-tools' } },
-      { path: 'admin/navigation', name: 'admin-navigation', component: AdminNavigation, meta: { requiresAdmin: true } },
+      { path: 'admin/navigation', name: 'admin-navigation', component: AdminNavigation, meta: { requiresAdmin: true, requiresSuperadmin: true } },
     ],
   },
 ];
@@ -111,6 +113,10 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
   if (to.meta.requiresAdmin && !auth.user?.role?.match(/admin|superadmin/)) {
+    next('/');
+    return;
+  }
+  if (to.meta.requiresSuperadmin && auth.user?.role !== 'superadmin') {
     next('/');
     return;
   }

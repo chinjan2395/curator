@@ -25,7 +25,7 @@
         icon="inbox"
       >
         <div class="flex gap-3 justify-center">
-          <router-link to="/credentials" class="text-sm text-blue-600 hover:underline">Integrations</router-link>
+          <router-link v-if="showIntegrationsLink" to="/credentials" class="text-sm text-blue-600 hover:underline">Integrations</router-link>
           <AppButton size="sm" :disabled="syncing" @click="syncNow">Sync now</AppButton>
         </div>
       </AppEmptyState>
@@ -43,9 +43,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import axios from 'axios';
 import { useToastStore } from '../stores/toast';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 import { AppAlert, AppButton, AppCard, AppEmptyState, AppSkeleton } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
@@ -57,6 +58,8 @@ const loading = ref(true);
 const error = ref(null);
 const syncing = ref(false);
 const toast = useToastStore();
+const { isMenuEnabled } = useNavigationVisibility();
+const showIntegrationsLink = computed(() => isMenuEnabled('integrations'));
 
 async function loadMessages() {
   const { data } = await axios.get('/api/inbox', { skipErrorToast: true });

@@ -29,6 +29,7 @@
         <option value="">All roles</option>
         <option value="user">User</option>
         <option value="admin">Admin</option>
+        <option v-if="actorIsSuperAdmin" value="superadmin">Super Admin</option>
       </AppSelect>
       <AppSelect v-model="filters.status" wrapper-class="!w-auto shrink-0" select-class="!w-auto" :show-placeholder="false" @update:modelValue="onFilterChange">
         <option value="">All statuses</option>
@@ -68,10 +69,11 @@
             select-class="text-2xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-700 focus:ring-1 focus:ring-blue-400 focus:outline-none cursor-pointer"
             :show-placeholder="false"
             @update:modelValue="(role) => changeRole(user, role)"
-            :disabled="actionLoading[user.id]"
+            :disabled="actionLoading[user.id] || (user.role === 'superadmin' && !actorIsSuperAdmin)"
           >
             <option value="user">User</option>
             <option value="admin">Admin</option>
+            <option v-if="actorIsSuperAdmin || user.role === 'superadmin'" value="superadmin">Super Admin</option>
           </AppSelect>
         </template>
         <template #cell-connected="{ row: user }">
@@ -199,8 +201,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from 'vue';
+import { ref, computed, onMounted, inject } from 'vue';
 import { useUsersStore } from '../../stores/users';
+import { useAuthStore } from '../../stores/auth';
 import SocialIcon from '../../components/SocialIcon.vue';
 import { AppButton, AppCard, AppDropdown, AppIcon, AppInput, AppLoader, AppSelect, AppTable } from '../../components/ui';
 import { AppPageHeader } from '../../components/layout/index.js';
@@ -229,7 +232,9 @@ const providerLabels = {
 };
 
 const users = useUsersStore();
+const auth = useAuthStore();
 const { confirm } = inject('confirm');
+const actorIsSuperAdmin = computed(() => auth.user?.role === 'superadmin');
 const filters = ref({ search: '', role: '', status: '' });
 const currentPage = ref(1);
 const actionLoading = ref({});

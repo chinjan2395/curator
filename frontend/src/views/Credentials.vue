@@ -39,8 +39,13 @@
     </div>
     <div v-else-if="pageError" class="text-sm-pro text-red-600">{{ pageError }}</div>
     <AppCard v-else-if="!providerCards.length" class="p-6 text-center text-sm-pro text-slate-500">
-      No providers are ready yet. Configure shared defaults or your override in
-      <router-link to="/oauth-apps" class="text-blue-600 font-medium hover:underline">OAuth apps</router-link>.
+      <template v-if="isAdmin">
+        No providers are ready yet. Configure shared defaults in
+        <router-link to="/oauth-apps" class="text-blue-600 font-medium hover:underline">OAuth apps</router-link>.
+      </template>
+      <template v-else>
+        No providers are ready yet. Please contact your administrator to configure OAuth apps.
+      </template>
     </AppCard>
     <div v-else class="connected-accounts-shell compact-accounts-shell space-y-2.5 sm:p-3 rounded-xl">
       <div class="flex flex-wrap items-center justify-between gap-2 px-1">
@@ -217,6 +222,7 @@ const { confirm } = inject('confirm');
 const oauthApps = useOAuthAppsStore();
 const toast = useToastStore();
 const auth = useAuthStore();
+const isAdmin = computed(() => ['admin', 'superadmin'].includes(auth.user?.role));
 const provider = ref('youtube');
 
 const socialProviders = [
@@ -291,7 +297,9 @@ onMounted(async () => {
     if (connected && implementedProviders.includes(connected)) {
       const label = getPlatformLabel(connected);
       toast.success(`${label} connected successfully`);
-      await creds.fetchAll();
+      // Force-refresh: the freshly connected account won't appear if we return the
+      // stale (pre-connect) cached list that is still within its TTL window.
+      await creds.fetchAll({ force: true });
       if (window.history.replaceState) {
         window.history.replaceState({}, '', '/credentials');
       }

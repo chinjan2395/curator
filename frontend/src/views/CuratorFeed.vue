@@ -22,8 +22,10 @@
     >
       <div class="flex gap-2 justify-center">
         <router-link to="/workspaces" class="text-sm text-blue-600 hover:underline">Workspaces</router-link>
-        <span class="text-slate-300">·</span>
-        <router-link to="/credentials" class="text-sm text-blue-600 hover:underline">Integrations</router-link>
+        <template v-if="showIntegrationsLink">
+          <span class="text-slate-300">·</span>
+          <router-link to="/credentials" class="text-sm text-blue-600 hover:underline">Integrations</router-link>
+        </template>
       </div>
     </AppEmptyState>
 
@@ -38,11 +40,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import axios from 'axios';
 import { AppAlert, AppCard, AppEmptyState, AppSelect, AppSkeleton } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import { getPlatformLabel } from '../constants/socialPlatforms';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 const posts = ref([]);
 const loading = ref(true);
@@ -59,6 +62,8 @@ const platformOptions = [
   { value: '', label: 'All platforms' },
   ...platformTypes.map((type) => ({ value: type, label: getPlatformLabel(type) })),
 ];
+const { isMenuEnabled } = useNavigationVisibility();
+const showIntegrationsLink = computed(() => isMenuEnabled('integrations'));
 
 async function load() {
   loading.value = true;

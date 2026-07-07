@@ -50,4 +50,11 @@ class UserFactory extends Factory
             'role' => User::ROLE_ADMIN,
         ]);
     }
+
+    public function superadmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_SUPERADMIN,
+        ]);
+    }
 }

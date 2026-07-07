@@ -78,8 +78,8 @@
                   <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Session</span>
                   <AppIcon name="shield" class="h-4 w-4 text-slate-500" />
                 </div>
-                <div class="mt-3 text-lg font-semibold text-slate-950">Admin-only</div>
-                <div class="mt-1 text-xs text-slate-500">This page always stays available</div>
+                <div class="mt-3 text-lg font-semibold text-slate-950">Super admin</div>
+                <div class="mt-1 text-xs text-slate-500">Hidden from regular admin clients</div>
               </div>
             </div>
           </div>
@@ -182,7 +182,7 @@
           </AppCard>
 
           <AppAlert variant="info">
-            Disabled menus are hidden from the sidebar and blocked via direct URL. The Navigation settings page itself always remains available to admins.
+            Disabled menus are hidden from the sidebar and blocked via direct URL. This Navigation settings page is restricted to super admins, so it stays out of reach for regular admin clients.
           </AppAlert>
         </div>
       </div>

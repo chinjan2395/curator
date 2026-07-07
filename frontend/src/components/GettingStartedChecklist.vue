@@ -48,6 +48,7 @@
 import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 import { AppAlert, AppCard, AppIcon, AppLoader } from './ui';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 const DISMISS_KEY = 'curator_getting_started_dismissed';
 
@@ -55,18 +56,27 @@ const status = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const dismissed = ref(localStorage.getItem(DISMISS_KEY) === '1');
+const { isMenuEnabled } = useNavigationVisibility();
+
+const ALL_STEPS = [
+  { id: 'onboard', num: 1, label: 'Complete your profile', to: '/onboarding', doneKey: 'is_onboarded' },
+  { id: 'credentials', num: 2, label: 'Connect a social account', to: '/credentials', doneKey: 'has_social_credentials', menuId: 'integrations' },
+  { id: 'workspace', num: 3, label: 'Create a workspace and feed', to: '/workspaces', doneKey: 'has_feeds' },
+  { id: 'sync', num: 4, label: 'Sync posts from your feeds', to: '/workspaces', doneKey: 'has_synced_posts' },
+  { id: 'campaign', num: 5, label: 'Create a campaign and generate content', to: '/campaigns/new', doneKey: 'has_campaigns', menuId: 'campaigns' },
+  { id: 'approve', num: 6, label: 'Approve a content package', to: '/campaigns', doneKey: 'has_approved_packages', menuId: 'campaigns' },
+  { id: 'schedule', num: 7, label: 'Schedule a native post', to: '/calendar', doneKey: 'has_scheduled_posts', menuId: 'schedule' },
+];
 
 const steps = computed(() => {
   const s = status.value || {};
-  return [
-    { id: 'onboard', num: 1, label: 'Complete your profile', to: '/onboarding', done: s.is_onboarded },
-    { id: 'credentials', num: 2, label: 'Connect a social account', to: '/credentials', done: s.has_social_credentials },
-    { id: 'workspace', num: 3, label: 'Create a workspace and feed', to: '/workspaces', done: s.has_feeds },
-    { id: 'sync', num: 4, label: 'Sync posts from your feeds', to: '/workspaces', done: s.has_synced_posts },
-    { id: 'campaign', num: 5, label: 'Create a campaign and generate content', to: '/campaigns/new', done: s.has_campaigns },
-    { id: 'approve', num: 6, label: 'Approve a content package', to: '/campaigns', done: s.has_approved_packages },
-    { id: 'schedule', num: 7, label: 'Schedule a native post', to: '/calendar', done: s.has_scheduled_posts },
-  ];
+  return ALL_STEPS
+    .filter((step) => !step.menuId || isMenuEnabled(step.menuId))
+    .map((step, index) => ({
+      ...step,
+      num: index + 1,
+      done: Boolean(s[step.doneKey]),
+    }));
 });
 
 const allComplete = computed(() => steps.value.length > 0 && steps.value.every((st) => st.done));

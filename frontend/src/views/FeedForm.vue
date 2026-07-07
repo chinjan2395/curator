@@ -104,9 +104,14 @@
         </div>
 
         <AppAlert v-if="requiresCredential && !selectedCredentialCount" variant="warning" title="Credential required">
-          Connect {{ selectedTypeMeta.label }} in
-          <router-link to="/credentials" class="font-medium underline underline-offset-2">Credentials</router-link>
-          before completing this feed setup.
+          <template v-if="showIntegrationsLink">
+            Connect {{ selectedTypeMeta.label }} in
+            <router-link to="/credentials" class="font-medium underline underline-offset-2">Credentials</router-link>
+            before completing this feed setup.
+          </template>
+          <template v-else>
+            Connect {{ selectedTypeMeta.label }} before completing this feed setup.
+          </template>
         </AppAlert>
 
         <AppAlert v-else-if="!requiresCredential" variant="info" title="Direct source setup">
@@ -734,6 +739,7 @@ import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { AppAlert, AppButton, AppCard, AppCheckbox, AppFormField, AppInput, AppSelect, AppSkeleton } from '../components/ui/index.js';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
@@ -759,6 +765,8 @@ const feeds = useFeedsStore();
 const workspaces = useWorkspacesStore();
 const credentials = useCredentialsStore();
 const toast = useToastStore();
+const { isMenuEnabled } = useNavigationVisibility();
+const showIntegrationsLink = computed(() => isMenuEnabled('integrations'));
 
 const workspaceId = computed(() => route.params.workspaceId);
 const feedId = computed(() => route.params.feedId);

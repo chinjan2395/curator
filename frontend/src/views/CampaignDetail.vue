@@ -354,7 +354,7 @@
                         </template>
                         <template #default="{ close }">
                           <button
-                            v-if="pkg.status === 'approved'"
+                            v-if="pkg.status === 'approved' && showScheduleAction"
                             class="cd-dropdown-item"
                             :disabled="draftHasPublishIssue(pkg)"
                             :title="draftHasPublishIssue(pkg) ? draftIssueSummary(pkg) : 'Schedule native publish'"
@@ -480,9 +480,14 @@
                         v-if="!assetsForPlatform(pkg.platform).length"
                         class="w-full text-2xs text-amber-700"
                       >
-                        No matching assets for this platform.
-                        <router-link to="/content-library" class="underline font-medium">Upload in Content library</router-link>
-                        or use the URL tab.
+                        <template v-if="showContentLibraryLink">
+                          No matching assets for this platform.
+                          <router-link to="/content-library" class="underline font-medium">Upload in Content library</router-link>
+                          or use the URL tab.
+                        </template>
+                        <template v-else>
+                          No matching assets for this platform. Use the URL tab instead.
+                        </template>
                       </p>
                     </div>
 
@@ -788,6 +793,7 @@ import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import ScheduleValidationPanel from '../components/ScheduleValidationPanel.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { usePlatformPublishSpecs } from '../composables/usePlatformPublishSpecs';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 import { CONTENT_TYPE_ICONS } from '../constants/platformPublishSpecs';
 import {
   draftHasPublishIssue,
@@ -800,6 +806,9 @@ const route = useRoute();
 const router = useRouter();
 const store = useCampaignsStore();
 const toast = useToastStore();
+const { isMenuEnabled } = useNavigationVisibility();
+const showScheduleAction = computed(() => isMenuEnabled('schedule'));
+const showContentLibraryLink = computed(() => isMenuEnabled('content-library'));
 const realtime = useRealtimeStore();
 let unsubscribeAi = null;
 

@@ -150,7 +150,7 @@
       </div>
 
       <div class="grid gap-4 lg:grid-cols-2">
-        <AppCard v-if="overview?.campaigns?.length" class="p-5">
+        <AppCard v-if="showCampaignPerformance && overview?.campaigns?.length" class="p-5">
           <div class="analytics-section-head">
             <div class="analytics-section-icon analytics-section-icon--amber">
               <AppIcon name="megaphone" class="w-4 h-4" />
@@ -179,7 +179,7 @@
           </div>
         </AppCard>
 
-        <AppCard class="p-5" :class="{ 'lg:col-span-2': !overview?.campaigns?.length }">
+        <AppCard class="p-5" :class="{ 'lg:col-span-2': !showCampaignPerformance || !overview?.campaigns?.length }">
           <div class="analytics-section-head">
             <div class="analytics-section-icon analytics-section-icon--emerald">
               <AppIcon name="sparkles" class="w-4 h-4" />
@@ -232,6 +232,7 @@ import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { getPlatformMeta } from '../constants/socialPlatforms';
 import { useRealtimeStore } from '../stores/realtime';
 import { useToastStore } from '../stores/toast';
+import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 const overview = ref(null);
 const insights = ref([]);
@@ -240,6 +241,8 @@ const insightsLoading = ref(false);
 const error = ref(null);
 const realtime = useRealtimeStore();
 const toast = useToastStore();
+const { isMenuEnabled } = useNavigationVisibility();
+const showCampaignPerformance = computed(() => isMenuEnabled('campaigns'));
 let unsubscribeInsights = null;
 
 const metricCards = computed(() => [

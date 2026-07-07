@@ -42,6 +42,12 @@ class NavigationMenuRegistry
                 'section' => 'content',
                 'route_prefixes' => ['/content-library', '/content'],
             ],
+            'brand-kit' => [
+                'id' => 'brand-kit',
+                'label' => 'Brand Kit',
+                'section' => 'content',
+                'route_prefixes' => ['/brand-kit'],
+            ],
             'analytics' => [
                 'id' => 'analytics',
                 'label' => 'Analytics',
