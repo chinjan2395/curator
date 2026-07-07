@@ -103,6 +103,17 @@ class FeedSyncService
         return $result;
     }
 
+    /**
+     * Most recent error/disconnected message logged for this feed, used to surface
+     * a useful reason to the caller when syncFeed() returns null.
+     */
+    public function lastErrorMessage(Feed $feed): ?string
+    {
+        return SyncLog::where('feed_id', $feed->id)
+            ->recent()
+            ->value('error_message');
+    }
+
     private function writeLog(
         Feed $feed,
         ?int $userId,

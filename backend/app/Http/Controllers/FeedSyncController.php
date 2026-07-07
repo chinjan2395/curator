@@ -8,7 +8,6 @@ use App\Http\Requests\Sync\TestInstagramRequest;
 use App\Http\Requests\Sync\TestRssRequest;
 use App\Http\Requests\Sync\TestYouTubeRequest;
 use App\Http\Resources\ApiResponse;
-use App\Jobs\SyncFeedJob;
 use App\Models\Feed;
 use App\Models\SocialCredential;
 use App\Models\Workspace;
@@ -224,13 +223,18 @@ class FeedSyncController extends Controller
         $feed->load('socialCredential');
 
         if (in_array($feed->type, ['youtube', 'rss', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads'], true)) {
-            SyncFeedJob::dispatch($feed->id, 'user');
+            $result = $this->syncService->syncFeed($feed, 'user');
 
-            return ApiResponse::success(
-                ['feed_id' => $feed->id, 'queued' => true],
-                'Feed sync started.',
-                202,
-            );
+            if ($result === null) {
+                return ApiResponse::error(
+                    $this->syncService->lastErrorMessage($feed)
+                        ?? 'Feed sync failed. The connected account may need to be reconnected.',
+                    null,
+                    422,
+                );
+            }
+
+            return $result;
         }
 
         return $this->syncStub($request, $feed);
