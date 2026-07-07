@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -41,9 +42,18 @@ class RealtimeBroadcastTest extends TestCase
         ]);
     }
 
-    public function test_feed_sync_dispatches_job(): void
+    public function test_feed_sync_runs_synchronously_and_broadcasts_completion(): void
     {
         Event::fake([FeedSyncUpdated::class]);
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response(
+                '<?xml version="1.0"?><rss><channel><title>Feed</title>'
+                .'<item><guid>item-1</guid><title>Hello</title><description>World</description>'
+                .'<pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate></item>'
+                .'</channel></rss>',
+                200,
+            ),
+        ]);
 
         $user = User::factory()->create();
         Sanctum::actingAs($user);
@@ -54,6 +64,7 @@ class RealtimeBroadcastTest extends TestCase
         $credential = SocialCredential::query()->create([
             'user_id' => $user->id,
             'provider' => 'rss',
+            'access_token' => 'unused',
             'status' => 'active',
         ]);
         $feed = Feed::query()->create([
@@ -64,9 +75,13 @@ class RealtimeBroadcastTest extends TestCase
             'source_url' => 'https://example.com/feed.xml',
         ]);
 
+        // Direct API call: response is synchronous (200, not 202/queued) and posts already exist.
         $this->postJson("/api/workspaces/{$workspace->id}/feeds/{$feed->id}/sync")
-            ->assertAccepted()
-            ->assertJsonPath('data.queued', true);
+            ->assertOk()
+            ->assertJsonPath('created', 1);
+
+        $this->assertDatabaseHas('posts', ['feed_id' => $feed->id, 'external_id' => 'item-1']);
+        Event::assertDispatched(FeedSyncUpdated::class);
     }
 
     public function test_publisher_emits_status_event_on_publish(): void

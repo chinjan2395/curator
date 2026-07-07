@@ -140,8 +140,8 @@ class TikTokIntegrationTest extends TestCase
         ]);
 
         $this->actingAs($user)->postJson("/api/workspaces/{$workspace->id}/feeds/{$feed->id}/sync")
-            ->assertAccepted()
-            ->assertJsonPath('data.queued', true);
+            ->assertOk()
+            ->assertJsonPath('created', 1);
 
         $post = Post::query()->where('feed_id', $feed->id)->where('external_id', 'video-1')->first();
         $this->assertNotNull($post);
