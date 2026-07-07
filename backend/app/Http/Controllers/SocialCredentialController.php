@@ -12,6 +12,7 @@ use App\Models\Feed;
 use App\Models\SocialCredential;
 use App\Repositories\Contracts\SocialCredentialRepositoryInterface;
 use App\Services\FeedSyncService;
+use App\Services\SocialCredentialHealthService;
 use App\Support\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class SocialCredentialController extends Controller
     public function __construct(
         private readonly SocialCredentialRepositoryInterface $credentialRepository,
         private readonly FeedSyncService $syncService,
+        private readonly SocialCredentialHealthService $healthService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -28,6 +30,30 @@ class SocialCredentialController extends Controller
         return ApiResponse::success(
             SocialCredentialResource::collection($this->credentialRepository->allForUser($request->user()))
         );
+    }
+
+    /**
+     * Live-verify every credential for the user (refreshing tokens where possible)
+     * and return the refreshed list so the UI can show the real connection state.
+     */
+    public function verifyAll(Request $request): JsonResponse
+    {
+        $credentials = $this->credentialRepository->allForUser($request->user());
+        $this->healthService->verifyMany(collect($credentials->all()));
+
+        return ApiResponse::success(SocialCredentialResource::collection($credentials));
+    }
+
+    /**
+     * Live-verify a single credential and return its refreshed state.
+     */
+    public function verify(Request $request, SocialCredential $socialCredential): JsonResponse
+    {
+        $this->authorizeOwner($request, $socialCredential);
+
+        $this->healthService->verify($socialCredential);
+
+        return ApiResponse::success(new SocialCredentialResource($socialCredential));
     }
 
     public function store(StoreSocialCredentialRequest $request): JsonResponse
@@ -73,7 +99,7 @@ class SocialCredentialController extends Controller
         if ($feeds->isEmpty()) {
             return ApiResponse::success([
                 'synced' => 0,
-                'total'  => 0,
+                'total' => 0,
                 'status' => $socialCredential->status,
             ], 'No feeds linked to this account.');
         }
@@ -96,7 +122,7 @@ class SocialCredentialController extends Controller
 
         return ApiResponse::success([
             'synced' => $synced,
-            'total'  => $feeds->count(),
+            'total' => $feeds->count(),
             'status' => $socialCredential->status,
             'queued' => true,
         ], $synced > 0 ? "Sync started for {$synced} feed(s)." : 'Sync complete.');
@@ -106,7 +132,7 @@ class SocialCredentialController extends Controller
     {
         $this->authorizeOwner($request, $socialCredential);
 
-        $label    = $socialCredential->account_label ?? $socialCredential->provider;
+        $label = $socialCredential->account_label ?? $socialCredential->provider;
         $provider = $socialCredential->provider;
 
         $this->credentialRepository->delete($socialCredential);

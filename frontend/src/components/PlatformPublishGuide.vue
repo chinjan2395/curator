@@ -31,90 +31,114 @@
         </div>
       </div>
 
-      <!-- Spotlight: richer, more visual detail per platform -->
+      <!-- Spotlight: minimal header per platform, expands to full detail -->
       <div v-else-if="variant === 'spotlight'" class="ppg-spotlight-list">
         <article
           v-for="{ platform, spec } in entries"
           :key="platform"
           class="ppg-spotlight-card"
-          :class="spec.native_publish ? 'ppg-card--native' : 'ppg-card--embed'"
+          :class="[
+            spec.native_publish ? 'ppg-card--native' : 'ppg-card--embed',
+            { 'ppg-spotlight-card--open': isExpanded(platform) },
+          ]"
         >
-          <div class="ppg-spotlight-card__top">
+          <button
+            type="button"
+            class="ppg-spotlight-card__header"
+            :aria-expanded="isExpanded(platform)"
+            @click="toggle(platform)"
+          >
             <div class="ppg-spotlight-card__identity">
               <SocialPlatformLabel :type="platform" variant="pill" size="sm" :show-label="true" />
               <p class="ppg-spotlight-card__eyebrow">{{ spec.native_publish ? 'Direct publishing lane' : 'Sync / embed lane' }}</p>
             </div>
-            <AppBadge :variant="spec.native_publish ? 'success' : 'secondary'">
-              {{ spec.native_publish ? 'Native publish' : 'Embed / sync' }}
-            </AppBadge>
-          </div>
-
-          <p class="ppg-spotlight-card__summary">{{ spec.summary }}</p>
-
-          <div class="ppg-spotlight-card__stats">
-            <div class="ppg-mini-stat">
-              <span class="ppg-mini-stat__value">{{ spec.native_publish ? 'Yes' : 'No' }}</span>
-              <span class="ppg-mini-stat__label">Native publish</span>
-            </div>
-            <div class="ppg-mini-stat">
-              <span class="ppg-mini-stat__value">{{ spec.content_types?.filter((type) => type.supported).length || 0 }}</span>
-              <span class="ppg-mini-stat__label">Supported types</span>
-            </div>
-            <div class="ppg-mini-stat">
-              <span class="ppg-mini-stat__value">{{ spec.requirements?.length || 0 }}</span>
-              <span class="ppg-mini-stat__label">Requirements</span>
-            </div>
-          </div>
-
-          <div class="ppg-spotlight-card__section">
-            <div class="ppg-section-heading">
-              <p class="ppg-card__section-label">Content types</p>
-              <span class="ppg-section-heading__hint">Hover any chip for the exact limits and notes.</span>
-            </div>
-            <div class="ppg-type-matrix">
-              <div
-                v-for="type in spec.content_types"
-                :key="type.id"
-                class="ppg-type-tile"
-                :class="type.supported ? 'ppg-type-tile--yes' : 'ppg-type-tile--no'"
-                :title="typeChipTitle(type)"
+            <div class="ppg-spotlight-card__header-meta">
+              <AppBadge :variant="spec.native_publish ? 'success' : 'secondary'">
+                {{ spec.native_publish ? 'Native publish' : 'Embed / sync' }}
+              </AppBadge>
+              <span class="ppg-spotlight-card__count">
+                {{ spec.content_types?.filter((type) => type.supported).length || 0 }} supported types
+              </span>
+              <svg
+                class="ppg-spotlight-card__chevron"
+                :class="{ 'ppg-spotlight-card__chevron--open': isExpanded(platform) }"
+                viewBox="0 0 20 20"
+                fill="none"
+                aria-hidden="true"
               >
-                <span class="ppg-type-tile__mark">{{ type.supported ? '✓' : '—' }}</span>
-                <div class="ppg-type-tile__body">
-                  <span class="ppg-type-tile__label">{{ type.label }}</span>
-                  <span v-if="type.limits" class="ppg-type-tile__meta">{{ type.limits }}</span>
-                  <span v-if="type.note" class="ppg-type-tile__note">{{ type.note }}</span>
+                <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+          </button>
+
+          <div v-show="isExpanded(platform)" class="ppg-spotlight-card__detail">
+            <p class="ppg-spotlight-card__summary">{{ spec.summary }}</p>
+
+            <div class="ppg-spotlight-card__stats">
+              <div class="ppg-mini-stat">
+                <span class="ppg-mini-stat__value">{{ spec.native_publish ? 'Yes' : 'No' }}</span>
+                <span class="ppg-mini-stat__label">Native publish</span>
+              </div>
+              <div class="ppg-mini-stat">
+                <span class="ppg-mini-stat__value">{{ spec.content_types?.filter((type) => type.supported).length || 0 }}</span>
+                <span class="ppg-mini-stat__label">Supported types</span>
+              </div>
+              <div class="ppg-mini-stat">
+                <span class="ppg-mini-stat__value">{{ spec.requirements?.length || 0 }}</span>
+                <span class="ppg-mini-stat__label">Requirements</span>
+              </div>
+            </div>
+
+            <div class="ppg-spotlight-card__section">
+              <div class="ppg-section-heading">
+                <p class="ppg-card__section-label">Content types</p>
+                <span class="ppg-section-heading__hint">Hover any chip for the exact limits and notes.</span>
+              </div>
+              <div class="ppg-type-matrix">
+                <div
+                  v-for="type in spec.content_types"
+                  :key="type.id"
+                  class="ppg-type-tile"
+                  :class="type.supported ? 'ppg-type-tile--yes' : 'ppg-type-tile--no'"
+                  :title="typeChipTitle(type)"
+                >
+                  <span class="ppg-type-tile__mark">{{ type.supported ? '✓' : '—' }}</span>
+                  <div class="ppg-type-tile__body">
+                    <span class="ppg-type-tile__label">{{ type.label }}</span>
+                    <span v-if="type.limits" class="ppg-type-tile__meta">{{ type.limits }}</span>
+                    <span v-if="type.note" class="ppg-type-tile__note">{{ type.note }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="ppg-spotlight-card__grid">
-            <div v-if="spec.requirements?.length" class="ppg-spotlight-card__section">
-              <p class="ppg-card__section-label">Requirements</p>
-              <ul class="ppg-bullet-list ppg-bullet-list--compact">
-                <li v-for="(item, i) in spec.requirements" :key="i">{{ item }}</li>
-              </ul>
+            <div class="ppg-spotlight-card__grid">
+              <div v-if="spec.requirements?.length" class="ppg-spotlight-card__section">
+                <p class="ppg-card__section-label">Requirements</p>
+                <ul class="ppg-bullet-list ppg-bullet-list--compact">
+                  <li v-for="(item, i) in spec.requirements" :key="i">{{ item }}</li>
+                </ul>
+              </div>
+
+              <div v-if="spec.media_rules?.length" class="ppg-spotlight-card__section">
+                <p class="ppg-card__section-label">Media rules</p>
+                <ul class="ppg-bullet-list ppg-bullet-list--compact">
+                  <li v-for="(item, i) in spec.media_rules" :key="i">{{ item }}</li>
+                </ul>
+              </div>
             </div>
 
-            <div v-if="spec.media_rules?.length" class="ppg-spotlight-card__section">
-              <p class="ppg-card__section-label">Media rules</p>
-              <ul class="ppg-bullet-list ppg-bullet-list--compact">
-                <li v-for="(item, i) in spec.media_rules" :key="i">{{ item }}</li>
-              </ul>
-            </div>
+            <a
+              v-if="spec.docs_url"
+              :href="spec.docs_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ppg-docs-link"
+            >
+              {{ spec.docs_label || 'Official API docs' }}
+              <span aria-hidden="true">↗</span>
+            </a>
           </div>
-
-          <a
-            v-if="spec.docs_url"
-            :href="spec.docs_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="ppg-docs-link"
-          >
-            {{ spec.docs_label || 'Official API docs' }}
-            <span aria-hidden="true">↗</span>
-          </a>
         </article>
       </div>
 
@@ -187,7 +211,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { AppBadge, AppLoader } from './ui';
 import SocialPlatformLabel from './SocialPlatformLabel.vue';
 import { usePlatformPublishSpecs } from '../composables/usePlatformPublishSpecs';
@@ -220,6 +244,22 @@ const props = defineProps({
 const { getSpecsForPlatforms, loading } = usePlatformPublishSpecs();
 
 const entries = computed(() => getSpecsForPlatforms(props.platforms));
+
+const expandedPlatforms = ref(new Set());
+
+function isExpanded(platform) {
+  return expandedPlatforms.value.has(platform);
+}
+
+function toggle(platform) {
+  const next = new Set(expandedPlatforms.value);
+  if (next.has(platform)) {
+    next.delete(platform);
+  } else {
+    next.add(platform);
+  }
+  expandedPlatforms.value = next;
+}
 
 function typeShortLabel(type) {
   const icon = CONTENT_TYPE_ICONS[type.id] || type.label.slice(0, 3).toUpperCase();
@@ -459,11 +499,62 @@ function typeChipTitle(type) {
   overflow: hidden;
   border: 1px solid #dbe5f0;
   border-radius: 1rem;
-  padding: 1rem;
   background:
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 36%),
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.ppg-spotlight-card__header {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ppg-spotlight-card__header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.ppg-spotlight-card__count {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.ppg-spotlight-card__chevron {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.ppg-spotlight-card__chevron--open {
+  transform: rotate(180deg);
+}
+
+.ppg-spotlight-card__detail {
+  position: relative;
+  z-index: 1;
+  padding: 0 1rem 1rem;
+}
+
+@media (max-width: 520px) {
+  .ppg-spotlight-card__count {
+    display: none;
+  }
 }
 
 .ppg-spotlight-card::before {

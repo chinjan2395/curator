@@ -6,17 +6,37 @@ import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe }
 const CREDENTIALS_TTL_MS = 15 * 60 * 1000;
 const CACHE_KEY = 'social-credentials';
 
+const BROKEN_HEALTH = ['needs_reauth', 'expired', 'disconnected', 'error'];
+
+/**
+ * A credential is only really "connected" when it is active AND its last verified
+ * token health is not in a broken state. Row existence alone is not enough.
+ */
+export function isCredentialConnected(cred) {
+  return Boolean(cred) && cred.status === 'active' && !BROKEN_HEALTH.includes(cred.token_health);
+}
+
 export const useCredentialsStore = defineStore('credentials', {
   state: () => ({
     list: [],
     loading: false,
     error: null,
     connecting: false,
+    verifying: false,
   }),
   getters: {
     byProvider: (state) => {
       const grouped = {};
       for (const cred of state.list) {
+        if (!grouped[cred.provider]) grouped[cred.provider] = [];
+        grouped[cred.provider].push(cred);
+      }
+      return grouped;
+    },
+    connectedByProvider: (state) => {
+      const grouped = {};
+      for (const cred of state.list) {
+        if (!isCredentialConnected(cred)) continue;
         if (!grouped[cred.provider]) grouped[cred.provider] = [];
         grouped[cred.provider].push(cred);
       }
@@ -60,6 +80,23 @@ export const useCredentialsStore = defineStore('credentials', {
         throw err;
       } finally {
         this.loading = false;
+      }
+    },
+    async verifyAll() {
+      this.verifying = true;
+      try {
+        const { data } = await axios.post('/api/social-credentials/verify');
+        const rows = Array.isArray(data) ? data : data.data;
+        if (Array.isArray(rows)) {
+          this.list = rows;
+          persistToSession(CACHE_KEY, rows);
+        }
+        return rows;
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Failed to verify connections';
+        throw err;
+      } finally {
+        this.verifying = false;
       }
     },
     async connect(provider) {

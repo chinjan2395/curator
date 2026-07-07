@@ -7,6 +7,8 @@ use App\Models\SocialCredential;
 use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Support\OAuthAppConfigResolver;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
@@ -57,14 +59,21 @@ class SocialConnectController extends Controller
     private const X_OAUTH_AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
 
     private const X_OAUTH_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
+
     private const TIKTOK_OAUTH_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/';
+
     private const TIKTOK_OAUTH_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
+
     private const TIKTOK_SCOPES = ['user.info.basic', 'video.list', 'video.publish'];
 
     private const THREADS_OAUTH_AUTHORIZE_URL = 'https://threads.net/oauth/authorize';
+
     private const THREADS_OAUTH_TOKEN_URL = 'https://graph.threads.net/oauth/access_token';
+
     private const THREADS_LONG_LIVED_TOKEN_URL = 'https://graph.threads.net/access_token';
+
     private const THREADS_API_BASE = 'https://graph.threads.net/v1.0';
+
     private const THREADS_SCOPES = ['threads_basic', 'threads_content_publish'];
 
     private const LINKEDIN_OAUTH_AUTHORIZE_URL = 'https://www.linkedin.com/oauth/v2/authorization';
@@ -96,7 +105,6 @@ class SocialConnectController extends Controller
         return $base.$path;
     }
 
-
     /**
      * Start OAuth flow. Returns auth_url for redirect.
      */
@@ -125,7 +133,7 @@ class SocialConnectController extends Controller
         };
     }
 
-    private function connectYouTube(Request $request): \Illuminate\Http\JsonResponse
+    private function connectYouTube(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
         if (! $oauth) {
@@ -158,7 +166,7 @@ class SocialConnectController extends Controller
         return response()->json(['provider' => 'youtube', 'auth_url' => $authUrl]);
     }
 
-    private function connectGoogle(Request $request): \Illuminate\Http\JsonResponse
+    private function connectGoogle(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'google');
         if (! $oauth) {
@@ -190,7 +198,7 @@ class SocialConnectController extends Controller
         return response()->json(['provider' => 'google', 'auth_url' => $authUrl]);
     }
 
-    private function connectFacebook(Request $request): \Illuminate\Http\JsonResponse
+    private function connectFacebook(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
         if (! $oauth) {
@@ -219,7 +227,7 @@ class SocialConnectController extends Controller
         return response()->json(['provider' => 'facebook', 'auth_url' => $authUrl]);
     }
 
-    private function connectInstagram(Request $request): \Illuminate\Http\JsonResponse
+    private function connectInstagram(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'facebook');
         if (! $oauth) {
@@ -248,7 +256,7 @@ class SocialConnectController extends Controller
         return response()->json(['provider' => 'instagram', 'auth_url' => $authUrl]);
     }
 
-    private function connectTwitter(Request $request): \Illuminate\Http\JsonResponse
+    private function connectTwitter(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'twitter');
         if (! $oauth) {
@@ -285,7 +293,7 @@ class SocialConnectController extends Controller
         return response()->json(['provider' => 'twitter', 'auth_url' => $authUrl]);
     }
 
-    private function connectTikTok(Request $request): \Illuminate\Http\JsonResponse
+    private function connectTikTok(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'tiktok');
         if (! $oauth) {
@@ -311,7 +319,7 @@ class SocialConnectController extends Controller
         ]);
     }
 
-    private function connectThreads(Request $request): \Illuminate\Http\JsonResponse
+    private function connectThreads(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'threads');
         if (! $oauth) {
@@ -337,7 +345,7 @@ class SocialConnectController extends Controller
         ]);
     }
 
-    private function connectLinkedIn(Request $request): \Illuminate\Http\JsonResponse
+    private function connectLinkedIn(Request $request): JsonResponse
     {
         $oauth = $this->oauthConfigForUser((int) $request->user()->id, 'linkedin');
         if (! $oauth) {
@@ -376,14 +384,14 @@ class SocialConnectController extends Controller
         );
     }
 
-    private function redirectSuccess(string $provider): \Illuminate\Http\RedirectResponse
+    private function redirectSuccess(string $provider): RedirectResponse
     {
-        return redirect($this->frontendUrl() . '/credentials?connected=' . $provider);
+        return redirect($this->frontendUrl().'/credentials?connected='.$provider);
     }
 
-    private function redirectError(string $message = 'oauth_failed'): \Illuminate\Http\RedirectResponse
+    private function redirectError(string $message = 'oauth_failed'): RedirectResponse
     {
-        return redirect($this->frontendUrl() . '/credentials?error=oauth_failed&message=' . urlencode($message));
+        return redirect($this->frontendUrl().'/credentials?error=oauth_failed&message='.urlencode($message));
     }
 
     private function decodeState(Request $request): ?array
@@ -397,9 +405,11 @@ class SocialConnectController extends Controller
             if (! isset($payload['user_id'], $payload['provider'])) {
                 return null;
             }
+
             return $payload;
         } catch (\Throwable $e) {
             Log::warning('OAuth state decrypt failed', ['message' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -414,14 +424,19 @@ class SocialConnectController extends Controller
                 'access_token' => $token,
                 'expires_at' => $expiresAt,
                 'account_label' => $accountLabel,
+                'status' => 'active',
             ]
         );
 
         // Google may omit refresh_token on subsequent grants; don't overwrite a good one.
         if ($refreshToken) {
             $cred->refresh_token = $refreshToken;
-            $cred->save();
         }
+
+        // Token was just issued, so it is valid right now. Recording real health here
+        // (instead of leaving the "unknown" default) keeps connection state accurate.
+        $cred->token_health = 'valid';
+        $cred->save();
 
         return $cred;
     }
@@ -474,9 +489,11 @@ class SocialConnectController extends Controller
             return $this->redirectSuccess('youtube');
         } catch (InvalidStateException $e) {
             Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+
             return $this->redirectError('state_mismatch');
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return $this->redirectError($e->getMessage());
         }
     }
@@ -526,9 +543,11 @@ class SocialConnectController extends Controller
             return $this->redirectSuccess('google');
         } catch (InvalidStateException $e) {
             Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+
             return $this->redirectError('state_mismatch');
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return $this->redirectError($e->getMessage());
         }
     }
@@ -582,9 +601,11 @@ class SocialConnectController extends Controller
             return $this->redirectSuccess($provider);
         } catch (InvalidStateException $e) {
             Log::warning('OAuth state mismatch', ['message' => $e->getMessage()]);
+
             return $this->redirectError('state_mismatch');
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return $this->redirectError($e->getMessage());
         }
     }
@@ -653,7 +674,7 @@ class SocialConnectController extends Controller
                 $twitterAccountId = $meResp->json('data.id');
                 $handle = $meResp->json('data.username');
                 $name = $meResp->json('data.name');
-                $twitterLabel = $handle ? "@{$handle}" . ($name ? " ({$name})" : '') : null;
+                $twitterLabel = $handle ? "@{$handle}".($name ? " ({$name})" : '') : null;
             }
 
             $credential = $this->saveCredential(
@@ -742,7 +763,7 @@ class SocialConnectController extends Controller
                 $tiktokAccountId = $userResp->json('data.user.open_id');
                 $username = $userResp->json('data.user.username');
                 $displayName = $userResp->json('data.user.display_name');
-                $tiktokLabel = $username ? "@{$username}" . ($displayName ? " ({$displayName})" : '') : $displayName;
+                $tiktokLabel = $username ? "@{$username}".($displayName ? " ({$displayName})" : '') : $displayName;
             }
 
             $credential = $this->saveCredential(
@@ -846,7 +867,7 @@ class SocialConnectController extends Controller
                 $threadsAccountId = $meResp->json('id');
                 $username = $meResp->json('username');
                 $name = $meResp->json('name');
-                $threadsLabel = $username ? "@{$username}" . ($name ? " ({$name})" : '') : ($name ?: null);
+                $threadsLabel = $username ? "@{$username}".($name ? " ({$name})" : '') : ($name ?: null);
             }
 
             $credential = $this->saveCredential(
@@ -1033,5 +1054,4 @@ class SocialConnectController extends Controller
             'expires_in' => (int) $expiresIn,
         ];
     }
-
 }
