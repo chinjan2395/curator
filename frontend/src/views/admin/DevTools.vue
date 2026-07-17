@@ -12,72 +12,141 @@
       <AppIcon name="warning" class="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" />
       <span>
         These commands run directly on the production server. Use with care — particularly
-        <strong>migrate</strong> which applies pending database migrations.
+        <strong>migrate</strong> which applies pending database migrations, and
+        <strong>migrate:fresh</strong> which is destructive and drops all tables and data.
       </span>
     </div>
 
     <AppLoader v-if="loadingCommands" />
     <AppAlert v-else-if="loadError" variant="danger">{{ loadError }}</AppAlert>
 
-    <div v-else class="grid gap-4 sm:grid-cols-2">
-      <AppCard
-        v-for="cmd in commands"
-        :key="cmd.id"
-        class="p-4 flex flex-col gap-3"
-      >
-        <!-- Command header -->
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <div class="text-sm font-semibold text-slate-800">{{ cmd.id }}</div>
-            <code class="text-xs text-slate-400">{{ cmd.command }}</code>
-          </div>
-          <span
-            v-if="results[cmd.id]"
-            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-            :class="results[cmd.id].exit_code === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
-          >
-            <AppIcon
-              :name="results[cmd.id].exit_code === 0 ? 'check' : 'close'"
-              class="w-3 h-3"
-            />
-            {{ results[cmd.id].exit_code === 0 ? 'Success' : 'Failed' }}
-          </span>
-        </div>
-
-        <!-- Output block (shown after run) -->
-        <pre
-          v-if="results[cmd.id]"
-          class="text-xs bg-slate-900 text-emerald-400 rounded-md p-3 overflow-auto max-h-40 whitespace-pre-wrap"
-        >{{ results[cmd.id].output }}</pre>
-
-        <!-- Run button -->
-        <button
-          type="button"
-          class="mt-auto self-start inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          :disabled="running[cmd.id]"
-          @click="runCommand(cmd.id)"
+    <template v-else>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <AppCard
+          v-for="cmd in safeCommands"
+          :key="cmd.id"
+          class="p-4 flex flex-col gap-3"
         >
-          <span
-            v-if="running[cmd.id]"
-            class="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"
-          />
-          <AppIcon v-else name="sync" class="w-3.5 h-3.5" />
-          {{ running[cmd.id] ? 'Running…' : 'Run' }}
-        </button>
-      </AppCard>
-    </div>
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-slate-800">{{ cmd.id }}</div>
+              <code class="text-xs text-slate-400 break-all">{{ cmd.command }}</code>
+            </div>
+            <span
+              v-if="results[cmd.id]"
+              class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+              :class="results[cmd.id].exit_code === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
+            >
+              <AppIcon
+                :name="results[cmd.id].exit_code === 0 ? 'check' : 'close'"
+                class="w-3 h-3"
+              />
+              {{ results[cmd.id].exit_code === 0 ? 'Success' : 'Failed' }}
+            </span>
+          </div>
+
+          <pre
+            v-if="results[cmd.id]"
+            class="text-xs bg-slate-900 text-emerald-400 rounded-md p-3 overflow-auto max-h-40 whitespace-pre-wrap"
+          >{{ results[cmd.id].output }}</pre>
+
+          <button
+            type="button"
+            class="mt-auto self-start inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            :disabled="running[cmd.id]"
+            @click="runCommand(cmd)"
+          >
+            <span
+              v-if="running[cmd.id]"
+              class="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"
+            />
+            <AppIcon v-else name="sync" class="w-3.5 h-3.5" />
+            {{ running[cmd.id] ? 'Running…' : 'Run' }}
+          </button>
+        </AppCard>
+      </div>
+
+      <section v-if="dangerCommands.length" class="pt-2 space-y-4">
+        <div class="border-t border-rose-200 pt-6">
+          <div class="mb-4 flex flex-wrap items-center gap-2">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-rose-800">
+              Destructive commands
+            </h2>
+            <AppBadge variant="danger">Use with extreme care</AppBadge>
+          </div>
+
+          <div class="space-y-4">
+            <AppCard
+              v-for="cmd in dangerCommands"
+              :key="cmd.id"
+              padding="none"
+              class="overflow-hidden border-rose-300 bg-rose-50/70 ring-1 ring-rose-200"
+            >
+              <div class="flex flex-col gap-4 p-5 sm:p-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="min-w-0 space-y-1.5">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <div class="text-base font-semibold text-rose-950">{{ cmd.id }}</div>
+                      <AppBadge variant="danger">Destructive</AppBadge>
+                    </div>
+                    <code class="block text-xs text-rose-600/90 break-all">{{ cmd.command }}</code>
+                  </div>
+                  <span
+                    v-if="results[cmd.id]"
+                    class="inline-flex shrink-0 self-start items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                    :class="results[cmd.id].exit_code === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-100 text-rose-800'"
+                  >
+                    <AppIcon
+                      :name="results[cmd.id].exit_code === 0 ? 'check' : 'close'"
+                      class="w-3 h-3"
+                    />
+                    {{ results[cmd.id].exit_code === 0 ? 'Success' : 'Failed' }}
+                  </span>
+                </div>
+
+                <AppAlert v-if="cmd.warning" variant="danger" title="Warning">
+                  {{ cmd.warning }}
+                </AppAlert>
+
+                <pre
+                  v-if="results[cmd.id]"
+                  class="text-xs bg-slate-900 text-emerald-400 rounded-md p-3 overflow-auto max-h-40 whitespace-pre-wrap"
+                >{{ results[cmd.id].output }}</pre>
+
+                <div class="flex flex-wrap items-center gap-3 pt-1">
+                  <AppButton
+                    variant="danger"
+                    size="sm"
+                    :loading="running[cmd.id]"
+                    :disabled="running[cmd.id]"
+                    @click="runCommand(cmd)"
+                  >
+                    <AppIcon v-if="!running[cmd.id]" name="sync" class="w-3.5 h-3.5" />
+                    {{ running[cmd.id] ? 'Running…' : 'Run destructive command' }}
+                  </AppButton>
+                  <span class="text-xs text-rose-700/80">
+                    Requires confirmation before running.
+                  </span>
+                </div>
+              </div>
+            </AppCard>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted, inject } from 'vue';
 import axios from 'axios';
-import { AppAlert, AppCard, AppLoader } from '../../components/ui';
+import { AppAlert, AppBadge, AppButton, AppCard, AppLoader } from '../../components/ui';
 import { AppPageHeader } from '../../components/layout';
 import { AppIcon } from '../../components/ui';
 import { useToastStore } from '../../stores/toast';
 
 const toast = useToastStore();
+const { confirm } = inject('confirm');
 
 const commands = ref([]);
 const loadingCommands = ref(true);
@@ -85,6 +154,9 @@ const loadError = ref(null);
 
 const running = ref({});
 const results = ref({});
+
+const safeCommands = computed(() => commands.value.filter((cmd) => !cmd.danger));
+const dangerCommands = computed(() => commands.value.filter((cmd) => cmd.danger));
 
 onMounted(async () => {
   try {
@@ -97,7 +169,19 @@ onMounted(async () => {
   }
 });
 
-async function runCommand(id) {
+async function runCommand(cmd) {
+  if (cmd.danger) {
+    const warning = cmd.warning || 'This command is destructive and cannot be undone.';
+    const ok = await confirm({
+      title: `Run ${cmd.id}?`,
+      message: `${warning} All data will be permanently wiped. This cannot be undone.`,
+      confirmLabel: 'Wipe database',
+      variant: 'danger',
+    });
+    if (!ok) return;
+  }
+
+  const { id } = cmd;
   running.value = { ...running.value, [id]: true };
   results.value = { ...results.value, [id]: null };
 
