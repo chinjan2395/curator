@@ -5,51 +5,57 @@ namespace Tests\Unit;
 use App\DTOs\AuthData;
 use App\Models\User;
 use App\Services\AuthService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class AuthServiceTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function tearDown(): void
     {
         Mockery::close();
+        parent::tearDown();
     }
 
     public function test_attempt_login_returns_null_when_credentials_invalid(): void
     {
-        Mockery::mock('alias:Illuminate\Support\Facades\Auth')
-            ->shouldReceive('attempt')
-            ->once()
-            ->andReturn(false);
-
         $service = new AuthService();
         $this->assertNull($service->attemptLogin('bad@example.com', 'wrong'));
     }
 
     public function test_register_user_creates_user_and_token(): void
     {
-        $tokenObject = new class
-        {
-            public string $plainTextToken = 'plain_token';
-        };
-
-        $user = Mockery::mock(User::class)->makePartial();
-        $user->shouldReceive('createToken')->once()->with('auth')->andReturn($tokenObject);
-
-        Mockery::mock('alias:App\Models\User')
-            ->shouldReceive('create')
-            ->once()
-            ->andReturn($user);
-
         $service = new AuthService();
         $dto = AuthData::fromArray([
             'name' => 'Jane',
             'email' => 'jane@example.com',
-            'password' => 'secret',
+            'password' => 'secret123',
         ]);
 
         $result = $service->registerUser($dto);
-        $this->assertSame('plain_token', $result['token']);
-        $this->assertSame($user, $result['user']);
+
+        $this->assertNotEmpty($result['token']);
+        $this->assertInstanceOf(User::class, $result['user']);
+        $this->assertSame('jane@example.com', $result['user']->email);
+        $this->assertTrue($result['user']->isSuperAdmin());
+    }
+
+    public function test_register_second_user_gets_user_role(): void
+    {
+        User::factory()->superadmin()->create();
+
+        $service = new AuthService();
+        $dto = AuthData::fromArray([
+            'name' => 'Bob',
+            'email' => 'bob@example.com',
+            'password' => 'secret123',
+        ]);
+
+        $result = $service->registerUser($dto);
+
+        $this->assertSame(User::ROLE_USER, $result['user']->role);
+        $this->assertFalse($result['user']->isSuperAdmin());
     }
 }

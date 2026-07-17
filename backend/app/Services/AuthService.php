@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\ActivityLogger;
 use App\Support\EmailVerification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AuthService
 {
@@ -36,12 +37,16 @@ class AuthService
 
     public function registerUser(AuthData $dto): array
     {
-        $user = User::create([
-            'name' => $dto->name,
-            'email' => $dto->email,
-            'password' => $dto->password,
-            'is_onboarded' => false,
-        ]);
+        $user = DB::transaction(function () use ($dto) {
+            return User::create([
+                'name' => $dto->name,
+                'email' => $dto->email,
+                'password' => $dto->password,
+                'is_onboarded' => false,
+                'role' => User::roleForNewRegistration(),
+            ]);
+        });
+
         if (EmailVerification::required()) {
             $user->sendEmailVerificationNotification();
         } else {

@@ -79,6 +79,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPERADMIN], true);
     }
 
+    /**
+     * First account in an empty install becomes superadmin; everyone after is a regular user.
+     */
+    public static function roleForNewRegistration(): string
+    {
+        return static::query()->exists()
+            ? self::ROLE_USER
+            : self::ROLE_SUPERADMIN;
+    }
+
     public function needsOnboarding(): bool
     {
         return ! $this->is_onboarded;

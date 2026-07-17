@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -380,13 +381,18 @@ class SocialAuthController extends Controller
             return EmailVerification::ensureVerified($user);
         }
 
-        return EmailVerification::ensureVerified(User::create([
-            'name' => $name,
-            'email' => $email,
-            'password' => null,
-            'social_provider' => $provider,
-            'social_provider_id' => $providerId,
-        ]));
+        $user = DB::transaction(function () use ($name, $email, $provider, $providerId) {
+            return User::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => null,
+                'social_provider' => $provider,
+                'social_provider_id' => $providerId,
+                'role' => User::roleForNewRegistration(),
+            ]);
+        });
+
+        return EmailVerification::ensureVerified($user);
     }
 
     private function callbackUrl(string $provider): string
