@@ -19,8 +19,9 @@ class NavigationSettingsTest extends TestCase
         $response = $this->getJson('/api/navigation-settings');
 
         $response->assertOk()
-            ->assertJsonPath('data.menus.curator', true)
-            ->assertJsonPath('data.menus.campaigns', true)
+            ->assertJsonPath('data.menus.curator', false)
+            ->assertJsonPath('data.menus.campaigns', false)
+            ->assertJsonPath('data.menus.integrations', true)
             ->assertJsonPath('data.features.publish_brand_kit', true);
     }
 
@@ -47,7 +48,7 @@ class NavigationSettingsTest extends TestCase
             ->assertJsonPath('data.menus.campaigns', false)
             ->assertJsonPath('data.menus.inbox', false)
             ->assertJsonPath('data.features.publish_brand_kit', false)
-            ->assertJsonPath('data.menus.curator', true);
+            ->assertJsonPath('data.menus.integrations', true);
 
         $this->getJson('/api/navigation-settings')
             ->assertOk()

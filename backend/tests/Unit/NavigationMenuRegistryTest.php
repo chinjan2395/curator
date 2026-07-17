@@ -7,12 +7,14 @@ use Tests\TestCase;
 
 class NavigationMenuRegistryTest extends TestCase
 {
-    public function test_default_settings_enable_all_menus_and_features(): void
+    public function test_default_settings_hide_selected_menus_and_enable_features(): void
     {
         $defaults = NavigationMenuRegistry::defaultSettings();
+        $hidden = NavigationMenuRegistry::defaultHiddenMenuIds();
 
         foreach (NavigationMenuRegistry::menuIds() as $id) {
-            $this->assertTrue($defaults['menus'][$id]);
+            $expected = ! in_array($id, $hidden, true);
+            $this->assertSame($expected, $defaults['menus'][$id], "menu {$id}");
         }
 
         foreach (NavigationMenuRegistry::featureIds() as $id) {

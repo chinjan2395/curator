@@ -148,13 +148,32 @@ class NavigationMenuRegistry
     }
 
     /**
+     * Menus hidden by default (still toggleable via Admin → Navigation).
+     *
+     * @return list<string>
+     */
+    public static function defaultHiddenMenuIds(): array
+    {
+        return [
+            'curator',
+            'campaigns',
+            'schedule',
+            'content-library',
+            'inbox',
+            'admin-trends',
+            'admin-moderation',
+        ];
+    }
+
+    /**
      * @return array{menus: array<string, bool>, features: array<string, bool>}
      */
     public static function defaultSettings(): array
     {
+        $hidden = array_flip(self::defaultHiddenMenuIds());
         $menus = [];
         foreach (self::menuIds() as $id) {
-            $menus[$id] = true;
+            $menus[$id] = ! array_key_exists($id, $hidden);
         }
 
         $features = [];
