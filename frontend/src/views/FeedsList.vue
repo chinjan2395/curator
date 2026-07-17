@@ -92,7 +92,7 @@
 
 <script setup>
 import { computed, inject, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useFeedsStore } from '../stores/feeds';
 import { useWorkspacesStore } from '../stores/workspaces';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
@@ -101,6 +101,7 @@ import WizardPageLayout from '../components/WizardPageLayout.vue';
 import { AppButton, AppCard, AppEmptyState, AppIcon, AppSkeleton, AppTable } from '../components/ui';
 
 const route = useRoute();
+const router = useRouter();
 const feeds = useFeedsStore();
 const { confirm } = inject('confirm');
 const workspaces = useWorkspacesStore();
@@ -156,7 +157,7 @@ function feedTypeLabel(type) {
 function handleEditClick(f) {
   // Let backend enforce the accepted-post rule; just navigate.
   // If the backend rejects, FeedForm will show the error toast + message.
-  window.location.href = `/workspaces/${workspaceId.value}/feeds/${f.id}/edit`;
+  router.push(`/workspaces/${workspaceId.value}/feeds/${f.id}/edit`);
 }
 
 async function handleDeleteClick(f) {
