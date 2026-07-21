@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\FeedAccountDisplay;
+use App\Support\PublicFeedCache;
 use App\Support\PublishSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,7 +14,7 @@ class PublicFeedController extends Controller
 {
     public function posts(Request $request, string $publicKey)
     {
-        $cacheKey = 'public_feed:'.$publicKey.':'.md5($request->getQueryString() ?? '');
+        $cacheKey = PublicFeedCache::cacheKey($publicKey, $request->getQueryString());
 
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($request, $publicKey) {
             return $this->buildPostsResponse($request, $publicKey);

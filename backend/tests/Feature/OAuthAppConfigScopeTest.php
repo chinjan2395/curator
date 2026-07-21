@@ -77,6 +77,55 @@ class OAuthAppConfigScopeTest extends TestCase
         ]);
     }
 
+    public function test_regular_user_sees_youtube_connectable_from_shared_google_config(): void
+    {
+        $member = User::factory()->create();
+
+        OAuthAppConfig::query()->create([
+            'scope' => OAuthAppConfig::SCOPE_SHARED,
+            'user_id' => null,
+            'provider' => 'google',
+            'client_id' => 'shared-google-id',
+            'client_secret' => 'shared-google-secret',
+            'redirect_uri' => 'https://example.com/callback/youtube',
+        ]);
+
+        $response = $this->actingAs($member)->getJson('/api/oauth-app-configs');
+
+        $response->assertOk()
+            ->assertJsonPath('connectable_social_providers', function ($providers) {
+                return in_array('youtube', $providers, true) && in_array('google', $providers, true);
+            })
+            ->assertJsonPath('items', function ($items) {
+                $google = collect($items)->firstWhere('provider', 'google');
+
+                return is_array($google)
+                    && ($google['effective_scope'] ?? null) === OAuthAppConfig::SCOPE_SHARED;
+            });
+    }
+
+    public function test_shared_legacy_youtube_provider_key_still_enables_youtube_connect(): void
+    {
+        $member = User::factory()->create();
+
+        OAuthAppConfig::query()->create([
+            'scope' => OAuthAppConfig::SCOPE_SHARED,
+            'user_id' => null,
+            'provider' => 'youtube',
+            'client_id' => 'legacy-youtube-id',
+            'client_secret' => 'legacy-youtube-secret',
+            'redirect_uri' => 'https://example.com/callback/youtube',
+        ]);
+
+        $response = $this->actingAs($member)->getJson('/api/oauth-app-configs');
+
+        $response->assertOk()
+            ->assertJsonFragment(['provider' => 'google'])
+            ->assertJsonPath('connectable_social_providers', function ($providers) {
+                return in_array('youtube', $providers, true);
+            });
+    }
+
     public function test_social_credential_refresh_uses_shared_fallback(): void
     {
         $user = User::factory()->create();

@@ -11,6 +11,7 @@ use App\Models\Feed;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Services\PostService;
+use App\Support\PublicFeedCache;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -94,6 +95,8 @@ class PostController extends Controller
         Post::query()
             ->whereIn('id', $postIds)
             ->update(['status' => $validated['status']]);
+
+        PublicFeedCache::bump($workspace);
 
         $updatedPosts = Post::query()
             ->whereIn('id', $postIds)

@@ -7,6 +7,7 @@ use App\Models\Feed;
 use App\Models\Post;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\PublicFeedCache;
 
 class PostService
 {
@@ -18,6 +19,13 @@ class PostService
         ], fn ($v) => $v !== null);
 
         $post->update($updatePayload);
+
+        if ($dto->status !== null || $dto->pinned !== null) {
+            $feed->loadMissing('workspace');
+            if ($feed->workspace) {
+                PublicFeedCache::bump($feed->workspace);
+            }
+        }
 
         if ($dto->status !== null) {
             $action = match ($dto->status) {
@@ -39,6 +47,10 @@ class PostService
     public function deletePost(Post $post, Feed $feed, User $user): void
     {
         ActivityLogger::log($user, 'post.deleted', "Deleted post from \"{$feed->name}\"", 'post', $post->id, $feed->name);
+        $feed->loadMissing('workspace');
+        if ($feed->workspace) {
+            PublicFeedCache::bump($feed->workspace);
+        }
         $post->delete();
     }
 }

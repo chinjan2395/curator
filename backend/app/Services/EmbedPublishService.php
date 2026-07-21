@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EmbedPostEvent;
 use App\Models\Workspace;
 use App\Repositories\Contracts\PostRepositoryInterface;
+use App\Support\PublicFeedCache;
 use App\Support\PublishSettings;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,8 @@ class EmbedPublishService
 
         $workspace->last_published_at = $now;
         $workspace->save();
+
+        PublicFeedCache::bump($workspace);
 
         return [
             'message' => 'Embed publish complete',
@@ -70,6 +73,8 @@ class EmbedPublishService
 
         $workspace->publish_settings = $normalized;
         $workspace->save();
+
+        PublicFeedCache::bump($workspace);
 
         return $normalized;
     }

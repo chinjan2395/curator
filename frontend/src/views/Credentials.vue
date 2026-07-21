@@ -280,6 +280,7 @@ const providerCards = computed(() => connectableProviders.value.map((item) => {
 function isProviderConnectable(providerType) {
   if (!implementedProviders.includes(providerType)) return false;
   if (creds.byProvider?.[providerType]?.length) return true;
+  if (oauthApps.isSocialProviderConnectable(providerType)) return true;
   const oauthProvider = oauthProviderByProvider[providerType];
   if (!oauthProvider) return false;
   return Boolean(oauthApps.effectiveConfigFor(oauthProvider));
@@ -287,7 +288,10 @@ function isProviderConnectable(providerType) {
 
 onMounted(async () => {
   try {
-    await Promise.all([creds.fetchAll(), oauthApps.fetchAll()]);
+    await Promise.all([
+      creds.fetchAll(),
+      oauthApps.fetchAll({ force: true, background: false }),
+    ]);
     if (!isProviderConnectable(provider.value) && connectableProviders.value.length) {
       provider.value = connectableProviders.value[0].type;
     }

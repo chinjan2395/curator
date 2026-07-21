@@ -6,6 +6,7 @@ use App\Http\Requests\UpsertOAuthAppConfigRequest;
 use App\Models\OAuthAppConfig;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\OAuthProviderAliases;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,15 +17,11 @@ class OAuthAppConfigController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $providers = OAuthAppConfig::query()
-            ->select('provider')
-            ->distinct()
-            ->orderBy('provider')
-            ->pluck('provider');
+        $providers = collect(OAuthProviderAliases::canonicalOauthProviders());
 
         $items = $providers->map(function (string $provider) use ($user) {
-            $shared   = $this->findConfig(OAuthAppConfig::SCOPE_SHARED, null, $provider);
-            $override = $this->findConfig(OAuthAppConfig::SCOPE_USER, $user->id, $provider);
+            $shared = $this->findSharedConfig($provider);
+            $override = $this->findUserConfig($user->id, $provider);
             $effective = $override ?: $shared;
 
             return [
@@ -39,6 +36,7 @@ class OAuthAppConfigController extends Controller
         return response()->json([
             'is_admin' => $user->isAdmin(),
             'items'    => $items,
+            'connectable_social_providers' => OAuthProviderAliases::connectableSocialProviders($user->id),
         ]);
     }
 
@@ -157,6 +155,30 @@ class OAuthAppConfigController extends Controller
             'skipped'      => $skipped,
             'total_source' => $sourceConfigs->count(),
         ]);
+    }
+
+    private function findUserConfig(int $userId, string $provider): ?OAuthAppConfig
+    {
+        foreach (OAuthProviderAliases::lookupKeys($provider) as $lookupProvider) {
+            $override = $this->findConfig(OAuthAppConfig::SCOPE_USER, $userId, $lookupProvider);
+            if ($override) {
+                return $override;
+            }
+        }
+
+        return null;
+    }
+
+    private function findSharedConfig(string $provider): ?OAuthAppConfig
+    {
+        foreach (OAuthProviderAliases::lookupKeys($provider) as $lookupProvider) {
+            $shared = $this->findConfig(OAuthAppConfig::SCOPE_SHARED, null, $lookupProvider);
+            if ($shared) {
+                return $shared;
+            }
+        }
+
+        return null;
     }
 
     private function findConfig(string $scope, ?int $userId, string $provider): ?OAuthAppConfig

@@ -1,14 +1,19 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
+import { useAuthStore } from './auth';
 import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
 
 const OAUTH_TTL_MS = 30 * 60 * 1000;
-const CACHE_KEY = 'oauth-app-configs';
+
+function cacheKeyForUser(userId) {
+  return userId ? `oauth-app-configs:${userId}` : 'oauth-app-configs:guest';
+}
 
 export const useOAuthAppsStore = defineStore('oauthApps', {
   state: () => ({
     items: [],
+    connectableSocialProviders: [],
     isAdmin: false,
     loading: false,
     error: null,
@@ -16,11 +21,17 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
     promoting: false,
   }),
   actions: {
+    resolveCacheKey() {
+      const userId = useAuthStore().user?.id;
+      return cacheKeyForUser(userId);
+    },
     async fetchAll({ force = false, background = true } = {}) {
-      const cached = hydrateFromSession(CACHE_KEY);
+      const cacheKey = this.resolveCacheKey();
+      const cached = hydrateFromSession(cacheKey);
 
       if (cached) {
         this.items = cached.value.items || [];
+        this.connectableSocialProviders = cached.value.connectableSocialProviders || [];
         this.isAdmin = Boolean(cached.value.isAdmin);
       }
 
@@ -36,16 +47,22 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
       return this.revalidate();
     },
     async revalidate() {
+      const cacheKey = this.resolveCacheKey();
       this.loading = true;
       this.error = null;
       try {
-        const result = await withDedupe(CACHE_KEY, async () => {
+        const result = await withDedupe(cacheKey, async () => {
           const { data } = await axios.get('/api/oauth-app-configs');
-          const next = { items: data.items || [], isAdmin: Boolean(data.is_admin) };
-          persistToSession(CACHE_KEY, next);
+          const next = {
+            items: data.items || [],
+            connectableSocialProviders: data.connectable_social_providers || [],
+            isAdmin: Boolean(data.is_admin),
+          };
+          persistToSession(cacheKey, next);
           return next;
         });
         this.items = result.items;
+        this.connectableSocialProviders = result.connectableSocialProviders;
         this.isAdmin = result.isAdmin;
         return result;
       } catch (err) {
@@ -73,6 +90,9 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
     },
     effectiveScopeFor(provider) {
       return this.entryFor(provider)?.effective_scope || null;
+    },
+    isSocialProviderConnectable(socialProvider) {
+      return this.connectableSocialProviders.includes(socialProvider);
     },
     async save({ provider, scope, client_id, client_secret, redirect_uri }) {
       this.saving = true;
@@ -124,7 +144,9 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
       }
     },
     invalidateCache() {
-      invalidate(CACHE_KEY);
+      invalidate(this.resolveCacheKey());
+      invalidate('oauth-app-configs');
+      invalidate('oauth-app-configs:guest');
     },
   },
 });

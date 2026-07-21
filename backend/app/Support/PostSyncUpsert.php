@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Services\PublishService;
+use App\Support\PublicFeedCache;
 
 class PostSyncUpsert
 {
@@ -45,6 +46,10 @@ class PostSyncUpsert
         }
 
         $post->save();
+
+        if ($isNew && $feed->auto_publish_new_posts && $feed->workspace) {
+            PublicFeedCache::bump($feed->workspace);
+        }
 
         return $post;
     }
