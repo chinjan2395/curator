@@ -591,15 +591,24 @@ async function refresh({ incremental = false, force = false } = {}) {
     clearSelection();
   }
 
-  const fetched = await posts.fetchWorkspace(workspaceId.value, {
-    feedId: feedId.value ? Number(feedId.value) : null,
+  // Capture the workspace/feed this refresh is for so we can detect — once the request
+  // resolves — whether the user has since navigated elsewhere and this response is now stale.
+  const requestedWorkspaceId = workspaceId.value;
+  const requestedFeedId = feedId.value ? Number(feedId.value) : null;
+
+  const fetched = await posts.fetchWorkspace(requestedWorkspaceId, {
+    feedId: requestedFeedId,
     since: incremental ? getLatestUpdatedAt() : null,
     silent: incremental || posts.list.length > 0,
     force,
   });
 
+  const isStale = String(workspaceId.value ?? '') !== String(requestedWorkspaceId ?? '')
+    || (feedId.value ? Number(feedId.value) : null) !== requestedFeedId;
+  if (isStale) return;
+
   if (incremental) {
-    posts.mergePosts(fetched, workspaceId.value, feedId.value ? Number(feedId.value) : null);
+    posts.mergePosts(fetched, requestedWorkspaceId, requestedFeedId);
     return;
   }
 
@@ -673,6 +682,32 @@ onMounted(async () => {
   if (!feeds.list.length && workspaceId.value) await feeds.fetchAll(workspaceId.value);
   await refresh();
   await duplicateGroups.fetch(workspaceId.value);
+});
+
+// This component is reused by Vue Router across `/workspaces/:workspaceId/curate` and
+// `/workspaces/:workspaceId/feeds/:feedId/curate` — navigating between workspaces or feeds
+// does NOT remount the component, so `onMounted` above will not re-fire. Without this watcher,
+// the previously loaded workspace's feeds/posts stay on screen under the new URL (the
+// "wrong workspace feed" bug). Always re-sync state whenever the route's workspace or feed changes.
+watch([workspaceId, feedId], async ([newWorkspaceId, newFeedId], [oldWorkspaceId, oldFeedId]) => {
+  const workspaceChanged = String(newWorkspaceId ?? '') !== String(oldWorkspaceId ?? '');
+  const feedChanged = String(newFeedId ?? '') !== String(oldFeedId ?? '');
+  if (!workspaceChanged && !feedChanged) return;
+
+  clearSelection();
+  previewPostId.value = null;
+  posts.clearList();
+
+  if (workspaceChanged) {
+    feeds.clearList();
+    duplicateGroups.list = [];
+    if (!workspaces.list.length) await workspaces.fetchAll();
+    if (newWorkspaceId) await feeds.fetchAll(newWorkspaceId, { force: true, background: false });
+  }
+
+  if (!newWorkspaceId) return;
+  await refresh({ force: true });
+  await duplicateGroups.fetch(newWorkspaceId, { force: true, background: false });
 });
 
 watch([filterStatus, filterPlatform], () => {

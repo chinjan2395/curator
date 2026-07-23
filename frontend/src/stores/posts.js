@@ -40,8 +40,15 @@ export const usePostsStore = defineStore('posts', {
     list: [],
     loading: false,
     error: null,
+    // Tracks the workspace whose posts the UI currently wants displayed. Guards against a slow
+    // in-flight request for a workspace the user has since navigated away from clobbering `list`
+    // with stale data once it resolves (see fetchWorkspace()/applyVisiblePosts()).
+    activeWorkspaceId: null,
   }),
   actions: {
+    isActiveWorkspace(workspaceId) {
+      return this.activeWorkspaceId == null || String(this.activeWorkspaceId) === String(workspaceId);
+    },
     async fetchAll(workspaceId, feedId, { status = null } = {}) {
       this.loading = true;
       this.error = null;
@@ -79,10 +86,15 @@ export const usePostsStore = defineStore('posts', {
       this.replaceWorkspaceCache(workspaceId, next);
     },
     applyVisiblePosts(workspaceId, feedId = null) {
-      this.list = this.filterForFeed(this.getWorkspaceCachedPosts(workspaceId), feedId);
-      return this.list;
+      const visible = this.filterForFeed(this.getWorkspaceCachedPosts(workspaceId), feedId);
+      // Don't overwrite the visible list if the user has since navigated to another workspace.
+      if (this.isActiveWorkspace(workspaceId)) {
+        this.list = visible;
+      }
+      return visible;
     },
     async fetchWorkspace(workspaceId, { feedId = null, since = null, silent = false, force = false, background = true } = {}) {
+      this.activeWorkspaceId = workspaceId;
       const cacheKey = postsCacheKey(workspaceId);
       const shouldUseCache = !since;
       const cached = shouldUseCache ? hydrateFromSession(cacheKey) : null;

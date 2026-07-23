@@ -16,9 +16,17 @@ export const useFeedsStore = defineStore('feeds', {
     error: null,
     syncing: false,
     lastActionError: null,
+    // Tracks the workspace whose feeds the UI currently wants displayed. Used to guard against
+    // a slow in-flight request for a workspace the user has since navigated away from clobbering
+    // `list` with stale data once it resolves (see revalidate()).
+    activeWorkspaceId: null,
   }),
   actions: {
+    isActiveWorkspace(workspaceId) {
+      return this.activeWorkspaceId == null || String(this.activeWorkspaceId) === String(workspaceId);
+    },
     async fetchAll(workspaceId, { force = false, background = true } = {}) {
+      this.activeWorkspaceId = workspaceId;
       const cacheKey = feedsCacheKey(workspaceId);
       const cached = hydrateFromSession(cacheKey);
 
@@ -38,6 +46,7 @@ export const useFeedsStore = defineStore('feeds', {
       return this.revalidate(workspaceId);
     },
     async revalidate(workspaceId) {
+      this.activeWorkspaceId = workspaceId;
       const cacheKey = feedsCacheKey(workspaceId);
       this.loading = true;
       this.error = null;
@@ -48,8 +57,12 @@ export const useFeedsStore = defineStore('feeds', {
           persistToSession(cacheKey, next);
           return next;
         });
-        this.list = rows;
-        return this.list;
+        // Only apply to the visible list if the user hasn't switched to another
+        // workspace while this request was in flight.
+        if (this.isActiveWorkspace(workspaceId)) {
+          this.list = rows;
+        }
+        return rows;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to load feeds';
         useToastStore().error(this.error);
