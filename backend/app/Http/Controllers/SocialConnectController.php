@@ -157,7 +157,12 @@ class SocialConnectController extends Controller
                 'state' => $state,
                 // Ensure we get a refresh_token so we can refresh access tokens.
                 'access_type' => 'offline',
-                'prompt' => 'consent',
+                // `select_account` forces the Google account chooser, which then surfaces
+                // YouTube's Brand Account / channel picker when the Google login has multiple
+                // channels. `consent` alone often skips that step and binds the personal
+                // channel only — then channels.list?mine=true cannot see the Brand channel
+                // the business actually wants to sync.
+                'prompt' => 'consent select_account',
                 'include_granted_scopes' => 'true',
             ])
             ->redirect()

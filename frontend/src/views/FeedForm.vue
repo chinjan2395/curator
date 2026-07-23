@@ -180,7 +180,10 @@
               </div>
 
               <div class="feed-field-card">
-                <AppFormField label="Channel" hint="Only channels managed by this Google account are listed from channels.list?mine=true.">
+                <AppFormField
+                  label="Channel"
+                  hint="Google only returns the channel that was selected during YouTube connect. If your Brand Account is missing, reconnect YouTube and pick that channel in Google's picker."
+                >
                   <div class="feed-inline-select">
                     <AppSelect
                       v-model="selectedYoutubeChannelId"
@@ -193,7 +196,9 @@
                             ? 'Select credential first'
                             : loadingYoutubeChannels
                               ? 'Loading channels…'
-                              : 'Select channel'
+                              : youtubeChannels.length
+                                ? 'Select channel'
+                                : 'No channel linked — reconnect YouTube'
                         }}
                       </option>
                       <option v-for="ch in youtubeChannels" :key="ch.id" :value="ch.id">
@@ -212,6 +217,9 @@
                   <div v-if="loadingYoutubeChannels" class="mt-2">
                     <AppSkeleton variant="line" :lines="2" />
                   </div>
+                  <p v-if="youtubeChannelMismatch" class="feed-error-text mt-2">
+                    Saved channel is not linked to this Google login. Pick a channel from the list, or reconnect YouTube and choose the Brand Account you want to sync.
+                  </p>
                 </AppFormField>
               </div>
 
@@ -812,6 +820,8 @@ const skipNextInstagramCredReset = ref(false);
 const loadingYoutubeChannels = ref(false);
 const youtubeChannels = ref([]);
 const selectedYoutubeChannelId = ref('');
+/** True when the feed's saved channel ID is not in mine=true for the current credential. */
+const youtubeChannelMismatch = ref(false);
 /** When true, YouTube credential watch only loads channels; does not clear selection (edit hydrate). */
 const skipNextYoutubeCredReset = ref(false);
 const loadingTwitterAccount = ref(false);
@@ -1052,14 +1062,29 @@ async function loadYoutubeChannels(force = false) {
   if (form.type !== 'youtube' || !form.social_credential_id) return;
   if (!youtubeCredentialIds.value.has(String(form.social_credential_id))) return;
   loadingYoutubeChannels.value = true;
+  youtubeChannelMismatch.value = false;
   try {
     const data = await fetchYoutubeChannels(workspaceId.value, Number(form.social_credential_id), { force });
     youtubeChannels.value = data.channels || [];
-    if (form.youtube_channel_id && !selectedYoutubeChannelId.value) {
-      selectedYoutubeChannelId.value = String(form.youtube_channel_id);
+
+    const savedId = form.youtube_channel_id ? String(form.youtube_channel_id) : '';
+    const savedStillOwned = savedId
+      && youtubeChannels.value.some((ch) => String(ch.id) === savedId);
+
+    if (savedId && !savedStillOwned) {
+      // Keep the mismatch visible so the user knows why Test/Sync failed, but do not leave a
+      // channel ID selected that Google's mine=true list no longer returns for this token
+      // (classic Brand Account / reconnect-with-personal-channel case).
+      youtubeChannelMismatch.value = true;
+      selectedYoutubeChannelId.value = '';
+      form.youtube_channel_id = '';
+    } else if (savedStillOwned && !selectedYoutubeChannelId.value) {
+      selectedYoutubeChannelId.value = savedId;
     }
+
     if (!selectedYoutubeChannelId.value && youtubeChannels.value.length === 1) {
       selectedYoutubeChannelId.value = String(youtubeChannels.value[0].id);
+      youtubeChannelMismatch.value = false;
     }
   } catch (err) {
     const msg = err.response?.data?.message || 'Failed to load YouTube channels';
@@ -1192,6 +1217,7 @@ watch(
     selectedYoutubeChannelId.value = '';
     form.youtube_channel_id = '';
     youtubeChannels.value = [];
+    youtubeChannelMismatch.value = false;
     if (cred) await loadYoutubeChannels();
   },
 );
@@ -1248,6 +1274,7 @@ watch(
   (v) => {
     if (form.type !== 'youtube') return;
     form.youtube_channel_id = v ? String(v) : '';
+    if (v) youtubeChannelMismatch.value = false;
   },
 );
 

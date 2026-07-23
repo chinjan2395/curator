@@ -72,16 +72,27 @@ class YouTubeSyncer
             return $resolved;
         }
 
-        $deny = $this->ensureChannelOwnedByToken($token, $resolved['channel_id']);
-        if ($deny instanceof JsonResponse) {
-            return $deny;
-        }
+        // Ownership (channels.list?mine=true) was already verified once, either when this feed
+        // was created/tested or on a prior successful sync — evidenced by the resolved channel +
+        // uploads playlist already matching what's stored on the feed. Google's API only ever
+        // returns the single channel that was "active" in the browser at OAuth-consent time for
+        // `mine=true` (this is documented/confirmed Google behavior, not a bug on our side — see
+        // https://issuetracker.google.com/issues/35175143), and that can drift for Brand Account
+        // / multi-channel-manager setups independent of any real access change (e.g. after a
+        // token refresh, or if the account's "active" channel selection changes on Google's
+        // side). Re-running the live ownership check on every sync would spuriously break
+        // already-verified feeds in that case, so only enforce it the first time a given
+        // channel/playlist combination is resolved for this feed.
+        $alreadyVerified = (bool) $feed->youtube_uploads_playlist_id
+            && (string) $feed->youtube_uploads_playlist_id === $resolved['uploads_playlist_id']
+            && (string) $feed->youtube_channel_id === $resolved['channel_id'];
 
-        if (
-            ! $feed->youtube_uploads_playlist_id
-            || (string) $feed->youtube_uploads_playlist_id !== $resolved['uploads_playlist_id']
-            || (string) $feed->youtube_channel_id !== $resolved['channel_id']
-        ) {
+        if (! $alreadyVerified) {
+            $deny = $this->ensureChannelOwnedByToken($token, $resolved['channel_id']);
+            if ($deny instanceof JsonResponse) {
+                return $deny;
+            }
+
             $feed->youtube_uploads_playlist_id = $resolved['uploads_playlist_id'];
             $feed->youtube_channel_id = $resolved['channel_id'];
             $feed->save();
@@ -237,7 +248,21 @@ class YouTubeSyncer
             return null;
         }
 
-        return response()->json(['message' => 'This YouTube channel is not owned by the connected Google account. Only channels you manage can be synced.'], 422);
+        // Google's YouTube API only returns the single channel that was active during OAuth
+        // for mine=true (Brand Accounts are separate identities). Reconnect YouTube and pick
+        // the Brand Account / business channel in Google's picker when prompted.
+        $mineTitles = array_values(array_filter(array_map(
+            static fn (array $ch): string => trim((string) ($ch['title'] ?? '')),
+            $listed,
+        )));
+        $hint = $mineTitles === []
+            ? 'Reconnect YouTube in Credentials and, when Google asks, choose the Brand Account or business channel you want to sync — not only your personal Google login.'
+            : 'This Google login is currently linked to: '.implode(', ', $mineTitles)
+                .'. Reconnect YouTube in Credentials and select the correct Brand Account / channel in Google\'s picker.';
+
+        return response()->json([
+            'message' => 'This YouTube channel is not owned by the connected Google account. Only channels you manage can be synced. '.$hint,
+        ], 422);
     }
 
     private function refreshFeedAccountLabel(Feed $feed, string $token, string $channelId): void
