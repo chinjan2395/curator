@@ -2,11 +2,13 @@
 
 namespace App\Sync;
 
+use App\Jobs\CacheFeedAvatarJob;
 use App\Models\Feed;
-use App\Support\FeedItemMetricsMapper;
-use App\Support\PostSyncUpsert;
 use App\Models\SocialCredential;
+use App\Support\EphemeralMediaUrl;
+use App\Support\FeedItemMetricsMapper;
 use App\Support\OAuthAppConfigResolver;
+use App\Support\PostSyncUpsert;
 use App\Sync\Concerns\ResolvesFacebookPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -129,6 +131,12 @@ class FacebookSyncer
             }
             if ($feed->isDirty()) {
                 $feed->save();
+            }
+            if (
+                EphemeralMediaUrl::needsProxy($feed->account_avatar_url)
+                && ! filled($feed->cached_avatar_path)
+            ) {
+                CacheFeedAvatarJob::dispatch($feed->id);
             }
         }
 

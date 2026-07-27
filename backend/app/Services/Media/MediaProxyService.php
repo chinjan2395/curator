@@ -17,7 +17,7 @@ class MediaProxyService
     private const MAX_BYTES = 15_000_000;
 
     public function __construct(
-        private readonly InstagramMediaUrlRefresher $instagramRefresher,
+        private readonly GraphMediaUrlRefresher $graphRefresher,
     ) {}
 
     public function streamPostThumbnail(Post $post): StreamedResponse
@@ -62,7 +62,7 @@ class MediaProxyService
         }
 
         if (EphemeralMediaUrl::isExpiredOrExpiringSoon($source)) {
-            if ($this->instagramRefresher->refresh($post)) {
+            if ($this->graphRefresher->refresh($post)) {
                 $post->refresh();
                 $source = trim((string) $post->thumbnail_url);
             }
@@ -73,7 +73,7 @@ class MediaProxyService
         }
 
         // Last resort: refresh Graph URL then retry download.
-        if ($this->instagramRefresher->refresh($post)) {
+        if ($this->graphRefresher->refresh($post)) {
             $post->refresh();
             $fresh = trim((string) $post->thumbnail_url);
             if ($fresh !== '' && $this->downloadPostThumbnail($post, $fresh)) {
