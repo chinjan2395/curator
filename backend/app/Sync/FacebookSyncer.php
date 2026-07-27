@@ -136,7 +136,7 @@ class FacebookSyncer
                 EphemeralMediaUrl::needsProxy($feed->account_avatar_url)
                 && ! filled($feed->cached_avatar_path)
             ) {
-                CacheFeedAvatarJob::dispatch($feed->id);
+                CacheFeedAvatarJob::dispatchSync($feed->id);
             }
         }
 

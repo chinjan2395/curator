@@ -58,6 +58,8 @@ class MediaProxyService
 
         $source = trim((string) $post->thumbnail_url);
         if ($source === '') {
+            Log::warning('Media proxy: post has no thumbnail_url to cache.', ['post_id' => $post->id]);
+
             return false;
         }
 
@@ -65,6 +67,11 @@ class MediaProxyService
             if ($this->graphRefresher->refresh($post)) {
                 $post->refresh();
                 $source = trim((string) $post->thumbnail_url);
+            } else {
+                Log::info('Media proxy: source URL expired and Graph refresh failed.', [
+                    'post_id' => $post->id,
+                    'feed_id' => $post->feed_id,
+                ]);
             }
         }
 
@@ -81,6 +88,13 @@ class MediaProxyService
             }
         }
 
+        if (! $this->postCacheExists($post)) {
+            Log::warning('Media proxy: unable to cache post thumbnail after refresh + download attempts.', [
+                'post_id' => $post->id,
+                'feed_id' => $post->feed_id,
+            ]);
+        }
+
         return $this->postCacheExists($post);
     }
 
@@ -95,7 +109,12 @@ class MediaProxyService
             return false;
         }
 
-        return $this->downloadFeedAvatar($feed, $source);
+        $cached = $this->downloadFeedAvatar($feed, $source);
+        if (! $cached) {
+            Log::warning('Media proxy: unable to cache feed avatar.', ['feed_id' => $feed->id]);
+        }
+
+        return $cached;
     }
 
     public function clearPostThumbnailCache(Post $post): void
@@ -178,11 +197,21 @@ class MediaProxyService
         }
 
         if (! $response->successful()) {
+            Log::info('Media proxy fetch returned non-success status.', [
+                'url_host' => parse_url($url, PHP_URL_HOST),
+                'status' => $response->status(),
+            ]);
+
             return null;
         }
 
         $body = $response->body();
         if ($body === '' || strlen($body) > self::MAX_BYTES) {
+            Log::info('Media proxy fetch returned empty or oversized body.', [
+                'url_host' => parse_url($url, PHP_URL_HOST),
+                'size' => strlen($body),
+            ]);
+
             return null;
         }
 
