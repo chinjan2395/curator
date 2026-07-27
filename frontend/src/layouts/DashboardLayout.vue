@@ -204,7 +204,20 @@
                 <span v-if="!sidebarCollapsed">Dev Tools</span>
               </router-link>
             </li>
-            <!-- Navigation settings: hidden from sidebar; superadmins can still open /admin/navigation -->
+            <li v-if="auth.user?.role === 'superadmin'">
+              <router-link
+                to="/admin/navigation"
+                class="sidebar-nav-item"
+                :class="[
+                  { 'sidebar-nav-item-active': $route.path.startsWith('/admin/navigation') },
+                  sidebarCollapsed ? 'justify-center px-2' : ''
+                ]"
+                :title="sidebarCollapsed ? 'Navigation' : ''"
+              >
+                <AppIcon name="menu" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="!sidebarCollapsed">Navigation</span>
+              </router-link>
+            </li>
           </ul>
         </div>
 
