@@ -2,10 +2,10 @@
 
 namespace App\Support;
 
+use App\Jobs\CachePostThumbnailJob;
 use App\Models\Feed;
 use App\Models\Post;
 use App\Services\PublishService;
-use App\Support\PublicFeedCache;
 
 class PostSyncUpsert
 {
@@ -26,6 +26,7 @@ class PostSyncUpsert
         ]);
 
         $isNew = ! $post->exists;
+        $hadCachedThumb = filled($post->cached_thumbnail_path);
 
         $post->fill($contentAttributes);
 
@@ -49,6 +50,14 @@ class PostSyncUpsert
 
         if ($isNew && $feed->auto_publish_new_posts && $feed->workspace) {
             PublicFeedCache::bump($feed->workspace);
+        }
+
+        // Cache ephemeral CDN thumbs once (or backfill). Keep existing bytes when only the signed URL changes.
+        if (
+            EphemeralMediaUrl::needsProxy($post->thumbnail_url)
+            && (! $hadCachedThumb || ! filled($post->cached_thumbnail_path))
+        ) {
+            CachePostThumbnailJob::dispatch($post->id);
         }
 
         return $post;

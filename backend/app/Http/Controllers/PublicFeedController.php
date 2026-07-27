@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\FeedAccountDisplay;
+use App\Support\ProxiedMediaUrl;
 use App\Support\PublicFeedCache;
 use App\Support\PublishSettings;
 use Illuminate\Http\Request;
@@ -68,7 +69,7 @@ class PublicFeedController extends Controller
                 'id' => $post->id,
                 'title' => $post->title,
                 'content' => $post->content,
-                'thumbnail_url' => $post->thumbnail_url,
+                'thumbnail_url' => ProxiedMediaUrl::forPost($post),
                 'video_url' => $post->video_url,
                 'post_url' => $post->post_url ?? $post->video_url,
                 'content_type' => $post->content_type,
@@ -82,9 +83,7 @@ class PublicFeedController extends Controller
                 'provider' => $feed?->type,
                 'feed_name' => $feed?->name,
                 'account_label' => FeedAccountDisplay::resolve($feed),
-                'account_avatar_url' => $feed?->account_avatar_url
-                    ? (string) $feed->account_avatar_url
-                    : null,
+                'account_avatar_url' => ProxiedMediaUrl::forFeedAvatar($feed),
             ];
         });
 

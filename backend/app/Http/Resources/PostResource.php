@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\ProxiedMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,7 +16,7 @@ class PostResource extends JsonResource
             'external_id'   => $this->external_id,
             'title'         => $this->title,
             'content'       => $this->content,
-            'thumbnail_url' => $this->thumbnail_url,
+            'thumbnail_url' => ProxiedMediaUrl::forPost($this->resource),
             'video_url'     => $this->video_url,
             'status'        => $this->status,
             'pinned'        => $this->pinned,

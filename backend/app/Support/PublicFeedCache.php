@@ -9,6 +9,9 @@ class PublicFeedCache
 {
     private const VERSION_TTL_SECONDS = 31_536_000; // ~1 year
 
+    /** Bump when public feed JSON shape changes (e.g. proxied media URLs). */
+    private const SCHEMA = 2;
+
     public static function version(string $publicKey): int
     {
         return (int) Cache::get(self::versionKey($publicKey), 1);
@@ -16,7 +19,7 @@ class PublicFeedCache
 
     public static function cacheKey(string $publicKey, ?string $queryString): string
     {
-        return 'public_feed:'.$publicKey.':'.self::version($publicKey).':'.md5($queryString ?? '');
+        return 'public_feed:'.$publicKey.':s'.self::SCHEMA.':'.self::version($publicKey).':'.md5($queryString ?? '');
     }
 
     public static function bump(Workspace $workspace): void
