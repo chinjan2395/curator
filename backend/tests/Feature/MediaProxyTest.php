@@ -121,6 +121,75 @@ class MediaProxyTest extends TestCase
     }
 
     #[Test]
+    public function proxy_refreshes_expired_facebook_url_via_graph_then_caches(): void
+    {
+        Storage::fake('local');
+
+        $expired = 'https://scontent.xx.fbcdn.net/v/t39/old.jpg?oe='.dechex(time() - 7200);
+        $fresh = 'https://scontent.xx.fbcdn.net/v/t39/new.jpg?oe='.dechex(time() + 7200);
+
+        $user = User::factory()->create();
+        $workspace = Workspace::query()->create([
+            'name' => 'Main',
+            'owner_id' => $user->id,
+            'public_key' => 'fb-public-key-'.bin2hex(random_bytes(8)),
+        ]);
+        $credentialId = SocialCredential::query()->create([
+            'user_id' => $user->id,
+            'provider' => 'facebook',
+            'account_id' => 'fb-user-1',
+            'access_token' => 'user-token',
+            'status' => 'active',
+        ])->id;
+        $feed = Feed::query()->create([
+            'workspace_id' => $workspace->id,
+            'name' => 'FB',
+            'type' => 'facebook',
+            'source_url' => 'https://facebook.com/x',
+            'social_credential_id' => $credentialId,
+            'facebook_page_id' => 'page-456',
+        ]);
+        $post = Post::query()->create([
+            'feed_id' => $feed->id,
+            'title' => 'FB post',
+            'content' => 'Caption',
+            'thumbnail_url' => $expired,
+            'video_url' => 'https://www.facebook.com/x/posts/1',
+            'posted_at' => now(),
+            'external_id' => '1234567890_1',
+            'status' => 'approved',
+            'pinned' => false,
+            'published_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://graph.facebook.com/*' => function ($request) use ($fresh) {
+                $url = $request->url();
+                if (str_contains($url, '/me/accounts')) {
+                    return Http::response([
+                        'data' => [[
+                            'id' => 'page-456',
+                            'access_token' => 'page-token',
+                        ]],
+                    ]);
+                }
+
+                return Http::response(['full_picture' => $fresh]);
+            },
+            $fresh => Http::response('refreshed-image', 200, ['Content-Type' => 'image/jpeg']),
+            $expired => Http::response('gone', 403),
+        ]);
+
+        $response = $this->get('/api/media/posts/'.$post->id.'/thumbnail');
+        $response->assertOk();
+        $this->assertSame('refreshed-image', $response->streamedContent());
+
+        $post->refresh();
+        $this->assertSame($fresh, $post->thumbnail_url);
+        $this->assertNotNull($post->cached_thumbnail_path);
+    }
+
+    #[Test]
     public function youtube_thumbnails_are_not_rewritten(): void
     {
         $user = User::factory()->create();

@@ -9,17 +9,23 @@ use App\Sync\Concerns\ResolvesFacebookPage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class InstagramMediaUrlRefresher
+/**
+ * Re-fetches a fresh media URL from the Facebook Graph API when a cached
+ * thumbnail is missing and the stored signed CDN URL has already expired.
+ * Supports both Instagram (media_url/thumbnail_url) and Facebook Page
+ * (full_picture/attachments) post shapes.
+ */
+class GraphMediaUrlRefresher
 {
     use ResolvesFacebookPage;
 
-    /**
-     * Re-fetch a fresh media_url / thumbnail_url from Graph and update the post.
-     */
+    /** @var list<string> */
+    private const SUPPORTED_PROVIDERS = ['instagram', 'facebook'];
+
     public function refresh(Post $post): bool
     {
         $feed = $post->feed;
-        if (! $feed || $feed->type !== 'instagram') {
+        if (! $feed || ! in_array($feed->type, self::SUPPORTED_PROVIDERS, true)) {
             return false;
         }
 
@@ -29,7 +35,7 @@ class InstagramMediaUrlRefresher
         }
 
         $credential = $feed->socialCredential;
-        if (! $credential instanceof SocialCredential || $credential->provider !== 'instagram') {
+        if (! $credential instanceof SocialCredential || $credential->provider !== $feed->type) {
             return false;
         }
 
@@ -43,17 +49,22 @@ class InstagramMediaUrlRefresher
             return false;
         }
 
+        $fields = $feed->type === 'instagram'
+            ? 'media_type,media_url,thumbnail_url'
+            : 'full_picture,attachments{media,subattachments}';
+
         $response = Http::timeout(20)->get(
             'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$externalId,
             [
-                'fields' => 'media_type,media_url,thumbnail_url',
+                'fields' => $fields,
                 'access_token' => $pageToken,
             ]
         );
 
         if (! $response->ok()) {
-            Log::warning('Instagram media URL refresh failed.', [
+            Log::warning('Media URL refresh failed.', [
                 'post_id' => $post->id,
+                'provider' => $feed->type,
                 'external_id' => $externalId,
                 'status' => $response->status(),
             ]);
@@ -66,7 +77,10 @@ class InstagramMediaUrlRefresher
             return false;
         }
 
-        $thumb = $this->thumbnailFromItem($item);
+        $thumb = $feed->type === 'instagram'
+            ? $this->thumbnailFromInstagramItem($item)
+            : $this->thumbnailFromFacebookPost($item);
+
         if ($thumb === null) {
             return false;
         }
@@ -81,7 +95,7 @@ class InstagramMediaUrlRefresher
     }
 
     /** @param  array<string, mixed>  $item */
-    private function thumbnailFromItem(array $item): ?string
+    private function thumbnailFromInstagramItem(array $item): ?string
     {
         if (! empty($item['thumbnail_url']) && is_string($item['thumbnail_url'])) {
             return $item['thumbnail_url'];
@@ -93,6 +107,29 @@ class InstagramMediaUrlRefresher
 
         if (! empty($item['media_url']) && is_string($item['media_url']) && ! EphemeralMediaUrl::isExpiredOrExpiringSoon($item['media_url'])) {
             return $item['media_url'];
+        }
+
+        return null;
+    }
+
+    /** @param  array<string, mixed>  $post */
+    private function thumbnailFromFacebookPost(array $post): ?string
+    {
+        if (! empty($post['full_picture']) && is_string($post['full_picture'])) {
+            return $post['full_picture'];
+        }
+
+        foreach ($post['attachments']['data'] ?? [] as $att) {
+            $src = $att['media']['image']['src'] ?? null;
+            if (is_string($src) && $src !== '') {
+                return $src;
+            }
+            foreach ($att['subattachments']['data'] ?? [] as $sub) {
+                $subSrc = $sub['media']['image']['src'] ?? null;
+                if (is_string($subSrc) && $subSrc !== '') {
+                    return $subSrc;
+                }
+            }
         }
 
         return null;
