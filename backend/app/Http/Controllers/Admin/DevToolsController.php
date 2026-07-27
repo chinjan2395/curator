@@ -32,6 +32,7 @@ class DevToolsController extends Controller
         'queue:drain'                => ['command' => 'queue:work --stop-when-empty'],
         'schedule:run'               => ['command' => 'schedule:run'],
         'social:publish-scheduled'   => ['command' => 'social:publish-scheduled'],
+        'media:backfill-cache'       => ['command' => 'media:backfill-cache'],
     ];
 
     /** Return the list of allowed commands so the UI can render them. */
@@ -71,6 +72,10 @@ class DevToolsController extends Controller
             // migrate commands run non-interactively in production
             if (in_array($commandKey, ['migrate', 'migrate:fresh'], true)) {
                 $options = ['--force' => true];
+            }
+
+            if ($commandKey === 'media:backfill-cache') {
+                $options = ['--limit' => 300];
             }
 
             // queue:drain uses queue:work with --stop-when-empty so it exits when queue is empty

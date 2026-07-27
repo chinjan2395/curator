@@ -52,12 +52,14 @@ class PostSyncUpsert
             PublicFeedCache::bump($feed->workspace);
         }
 
-        // Cache ephemeral CDN thumbs once (or backfill). Keep existing bytes when only the signed URL changes.
+        // Cache ephemeral CDN thumbs once (or backfill), synchronously — the signed
+        // CDN URL is guaranteed freshest right now, and production may not always
+        // have a queue worker running to pick up a dispatched job in time.
         if (
             EphemeralMediaUrl::needsProxy($post->thumbnail_url)
             && (! $hadCachedThumb || ! filled($post->cached_thumbnail_path))
         ) {
-            CachePostThumbnailJob::dispatch($post->id);
+            CachePostThumbnailJob::dispatchSync($post->id);
         }
 
         return $post;
