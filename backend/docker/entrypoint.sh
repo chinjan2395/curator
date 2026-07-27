@@ -30,12 +30,16 @@ while IFS='=' read -r name value; do
             continue
         fi
 
-        escaped_value=$(printf '%s' "$value" | sed -e 's/[\/&]/\\&/g')
-
         if grep -q "^${name}=" .env; then
-            sed -i "s/^${name}=.*/${name}=${escaped_value}/" .env
+            # Use awk instead of sed to avoid fragile escaping of
+            # special regex characters in arbitrary env var values.
+            awk -v name="$name" -v val="$value" '
+                BEGIN { FS=OFS="=" }
+                $1==name { print name "=" val; next }
+                { print }
+            ' .env > .env.tmp && mv .env.tmp .env
         else
-            echo "${name}=${escaped_value}" >>.env
+            printf '%s=%s\n' "$name" "$value" >> .env
         fi
     fi
 done < <(env)
