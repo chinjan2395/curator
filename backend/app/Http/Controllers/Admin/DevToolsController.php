@@ -32,6 +32,7 @@ class DevToolsController extends Controller
         'queue:drain'                => ['command' => 'queue:work --stop-when-empty'],
         'schedule:run'               => ['command' => 'schedule:run'],
         'social:publish-scheduled'   => ['command' => 'social:publish-scheduled'],
+        'social:refresh-tokens'      => ['command' => 'social:refresh-tokens'],
         'media:backfill-cache'       => ['command' => 'media:backfill-cache'],
     ];
 
