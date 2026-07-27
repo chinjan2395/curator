@@ -5,5 +5,6 @@ COPY package.json .
 # COPY package-lock.json .
 RUN npm install --force
 COPY . .
-EXPOSE 5173
-CMD ["sh", "-c", "npm install && npm run dev"]
+RUN npm run build
+EXPOSE 8080
+CMD ["npm", "run", "start"]
