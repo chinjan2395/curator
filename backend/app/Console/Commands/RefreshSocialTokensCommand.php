@@ -15,7 +15,7 @@ class RefreshSocialTokensCommand extends Command
     {
         $credentials = SocialCredential::query()
             ->where('status', 'active')
-            ->whereIn('provider', ['youtube', 'twitter', 'tiktok', 'threads', 'linkedin'])
+            ->whereIn('provider', ['youtube', 'twitter', 'tiktok', 'threads', 'linkedin', 'facebook', 'instagram'])
             ->get();
 
         $refreshed = 0;

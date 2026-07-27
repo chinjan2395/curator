@@ -12,6 +12,9 @@ class SocialCredential extends Model
     /** Consider token expired this many seconds before expires_at. */
     private const EXPIRY_BUFFER_SECONDS = 300;
 
+    /** Silently re-exchange Facebook/Instagram long-lived tokens this many days before they actually expire. */
+    private const FACEBOOK_RENEW_BUFFER_DAYS = 7;
+
     protected $fillable = [
         'user_id',
         'provider',
@@ -141,8 +144,63 @@ class SocialCredential extends Model
             'tiktok' => $this->getValidTikTokAccessToken(),
             'threads' => $this->getValidThreadsAccessToken(),
             'linkedin' => $this->getValidLinkedInAccessToken(),
+            'facebook', 'instagram' => $this->getValidFacebookAccessToken(),
             default => $this->access_token,
         };
+    }
+
+    /**
+     * Facebook/Instagram (same underlying Facebook Login) long-lived user tokens last
+     * ~60 days and have no OAuth refresh_token — but Facebook allows silently exchanging
+     * a still-valid long-lived token for a fresh 60-day one via fb_exchange_token, with
+     * no user interaction. Re-exchange well before expiry (7-day buffer) so a periodic
+     * background job can keep connections alive indefinitely without ever prompting a
+     * reconnect, as long as the user hasn't revoked access. Once a token has actually
+     * expired, Facebook rejects the exchange and only a fresh login can recover it.
+     */
+    private function getValidFacebookAccessToken(): ?string
+    {
+        $expiresAt = $this->expires_at;
+        $now = now();
+        $nearingExpiry = ! $expiresAt || $expiresAt->copy()->subDays(self::FACEBOOK_RENEW_BUFFER_DAYS)->isPast();
+
+        if (! $nearingExpiry) {
+            return $this->access_token;
+        }
+
+        if (empty($this->access_token)) {
+            return null;
+        }
+
+        $oauth = OAuthAppConfigResolver::resolveForUser((int) $this->user_id, 'facebook');
+        if (! $oauth?->client_id || ! $oauth?->client_secret) {
+            // Can't silently renew without app credentials; current token may still work until it truly expires.
+            return $expiresAt && $expiresAt->isPast() ? null : $this->access_token;
+        }
+
+        $response = Http::timeout(20)->get('https://graph.facebook.com/v23.0/oauth/access_token', [
+            'grant_type' => 'fb_exchange_token',
+            'client_id' => $oauth->client_id,
+            'client_secret' => $oauth->client_secret,
+            'fb_exchange_token' => $this->access_token,
+        ]);
+
+        if (! $response->ok()) {
+            // Exchange failed (token already fully expired/revoked) — fall back to current token if still unexpired.
+            return $expiresAt && $expiresAt->isPast() ? null : $this->access_token;
+        }
+
+        $accessToken = $response->json('access_token');
+        $expiresIn = (int) $response->json('expires_in', 5184000);
+        if (! is_string($accessToken) || $accessToken === '') {
+            return $expiresAt && $expiresAt->isPast() ? null : $this->access_token;
+        }
+
+        $this->access_token = $accessToken;
+        $this->expires_at = $now->copy()->addSeconds($expiresIn);
+        $this->save();
+
+        return $this->access_token;
     }
 
     private function getValidYouTubeAccessToken(): ?string
