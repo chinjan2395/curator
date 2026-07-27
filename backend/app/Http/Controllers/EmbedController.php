@@ -27,8 +27,8 @@ class EmbedController extends Controller
   box-shadow:0 1px 3px rgba(0,0,0,.06);
   box-sizing:border-box;
 }
-.crt-media{aspect-ratio:16/9;background:#f1f5f9;display:block;position:relative;overflow:hidden;}
-.crt-media img{width:100%;height:100%;object-fit:cover;display:block;}
+.crt-media{background:#f1f5f9;display:block;position:relative;overflow:hidden;max-height:420px;}
+.crt-media img{width:100%;height:auto;max-height:420px;object-fit:contain;display:block;margin:0 auto;}
 .crt-yt{width:100%;aspect-ratio:16/9;border:0;display:block;}
 .crt-media-ph{display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--crt-date,#64748b);}
 .crt-body{padding:10px 12px;}
@@ -137,7 +137,8 @@ class EmbedController extends Controller
   align-items:stretch;
   max-width:100%;
 }
-.crt-inner.crt-layout--list .crt-media{flex:0 0 200px;max-width:42%;aspect-ratio:16/9;}
+.crt-inner.crt-layout--list .crt-media{flex:0 0 200px;max-width:42%;max-height:200px;}
+.crt-inner.crt-layout--list .crt-media img{max-height:200px;}
 .crt-inner.crt-layout--list .crt-body{flex:1;}
 
 .crt-inner.crt-layout--carousel{
