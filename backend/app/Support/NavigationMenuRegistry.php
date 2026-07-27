@@ -150,19 +150,13 @@ class NavigationMenuRegistry
     /**
      * Menus hidden by default (still toggleable via Admin → Navigation).
      *
+     * All modules are enabled by default on this branch.
+     *
      * @return list<string>
      */
     public static function defaultHiddenMenuIds(): array
     {
-        return [
-            'curator',
-            'campaigns',
-            'schedule',
-            'content-library',
-            'inbox',
-            'admin-trends',
-            'admin-moderation',
-        ];
+        return [];
     }
 
     /**
