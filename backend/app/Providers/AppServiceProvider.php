@@ -21,7 +21,6 @@ use App\Services\AI\AiImageProviderInterface;
 use App\Services\AI\AiImageGenerationService;
 use App\Services\AI\OpenAiImageProvider;
 use App\Services\AI\StubAiImageProvider;
-use App\Models\GoogleDriveConnection;
 use App\Services\Storage\GoogleDriveTokenService;
 use App\Support\ContentPackageMediaResolver;
 use App\Support\GoogleDriveConfig;
@@ -86,6 +85,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('embed-analytics', function (Request $request) {
             return Limit::perMinute(120)->by($request->ip());
+        });
+
+        RateLimiter::for('media-proxy', function (Request $request) {
+            return Limit::perMinute(300)->by($request->ip());
         });
 
         VerifyEmail::createUrlUsing(function ($user) {

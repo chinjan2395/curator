@@ -10,6 +10,7 @@ use App\Models\ScheduledPost;
 use App\Models\SocialCredential;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\ProxiedMediaUrl;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
@@ -35,7 +36,17 @@ class AnalyticsService
                 ->where('status', 'scheduled')
                 ->where('scheduled_at', '>', now())
                 ->count(),
-            'best_post' => (clone $posts)->orderByDesc('likes')->first(['id', 'title', 'likes', 'thumbnail_url']),
+            'best_post' => tap(
+                (clone $posts)->orderByDesc('likes')->first(['id', 'title', 'likes', 'thumbnail_url']),
+                static function ($post) {
+                    if ($post) {
+                        $post->setAttribute(
+                            'thumbnail_url',
+                            ProxiedMediaUrl::forPostId((int) $post->id, $post->thumbnail_url)
+                        );
+                    }
+                }
+            ),
             'top_embed_clicked_posts' => $this->topEmbedClickedPosts($workspaceIds),
             'embed_clicks_by_platform' => $this->embedClicksByPlatform($user),
         ];
@@ -188,7 +199,7 @@ class AnalyticsService
             ->map(static fn ($row) => [
                 'id' => (int) $row->id,
                 'title' => $row->title,
-                'thumbnail_url' => $row->thumbnail_url,
+                'thumbnail_url' => ProxiedMediaUrl::forPostId((int) $row->id, $row->thumbnail_url),
                 'platform' => (string) $row->platform,
                 'clicks' => (int) $row->clicks,
             ])
