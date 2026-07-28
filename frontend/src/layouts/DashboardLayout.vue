@@ -71,9 +71,11 @@
                     :to="`/workspaces/${w.id}/feeds`"
                     class="sidebar-nav-item pl-9 text-xs"
                     :class="{ 'sidebar-nav-item-active': Number($route.params.workspaceId) === w.id }"
+                    :title="w.is_owner === false ? `${w.name} — owned by ${w.owner_name || w.owner_email || 'another user'}` : w.name"
                   >
                     <AppIcon name="feeds" class="w-3.5 h-3.5 flex-shrink-0" />
                     <span class="truncate">{{ w.name }}</span>
+                    <AppIcon v-if="w.is_owner === false" name="shield" class="w-3 h-3 flex-shrink-0 text-violet-300" />
                   </router-link>
                 </li>
                 <li v-if="!workspaces.list.length">
@@ -327,6 +329,16 @@
           <span>Please verify your email to unlock all features.</span>
           <button type="button" class="text-amber-800 underline font-medium" @click="resendVerification">Resend verification email</button>
         </div>
+        <div
+          v-if="viewingWorkspaceOnBehalf"
+          class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900"
+        >
+          <AppIcon name="shield" class="w-4 h-4 shrink-0" />
+          <span>
+            Super admin access — managing workspace <strong>"{{ viewingWorkspaceOnBehalf.name }}"</strong>
+            on behalf of {{ viewingWorkspaceOnBehalf.owner_name || viewingWorkspaceOnBehalf.owner_email || 'another user' }}.
+          </span>
+        </div>
         <router-view />
       </main>
     </div>
@@ -462,6 +474,17 @@ const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const headerBreadcrumbs = ref([]);
 const syncUnreadCount = computed(() => Number(auth.syncSummary?.scheduler_unread_count || 0));
+
+// Surfaces a clear "acting on behalf of" cue whenever a super admin is inside
+// a workspace route for a workspace they don't personally own.
+const viewingWorkspaceOnBehalf = computed(() => {
+  if (auth.user?.role !== 'superadmin') return null;
+  const workspaceId = Number(route.params.workspaceId);
+  if (!workspaceId) return null;
+  const workspace = workspaces.list.find((w) => w.id === workspaceId);
+  if (!workspace || workspace.is_owner !== false) return null;
+  return workspace;
+});
 const headerUnreadCount = computed(() => {
   const sync = syncUnreadCount.value;
   if (!showNotifications.value) return sync;

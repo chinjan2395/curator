@@ -133,6 +133,15 @@ class SocialCredential extends Model
     }
 
     /**
+     * A super admin can access every credential so they can perform actions on
+     * behalf of a user who can't (or doesn't know how to) do it themselves.
+     */
+    public function isAccessibleBy(User $user): bool
+    {
+        return $user->isSuperAdmin() || (int) $this->user_id === (int) $user->id;
+    }
+
+    /**
      * Return a valid access token for API calls, refreshing when supported if expired.
      * Returns null if the credential cannot provide a valid token (e.g. no refresh_token).
      */

@@ -43,7 +43,7 @@ class ScheduleController extends Controller
         ]);
 
         $credential = SocialCredential::findOrFail($validated['social_credential_id']);
-        abort_if($credential->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $credential->user_id !== $request->user()->id, 403);
 
         if (! in_array($credential->provider, SocialPublisherService::NATIVE_PUBLISH_PROVIDERS, true)) {
             throw ValidationException::withMessages([
@@ -54,7 +54,7 @@ class ScheduleController extends Controller
         }
 
         $package = ContentPackage::findOrFail($validated['content_package_id']);
-        abort_if($package->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $package->user_id !== $request->user()->id, 403);
 
         $validation = ScheduleContentValidator::validate($package, $credential->provider);
         if (! $validation['valid']) {
@@ -85,7 +85,7 @@ class ScheduleController extends Controller
 
     public function cancel(Request $request, ScheduledPost $scheduledPost): JsonResponse
     {
-        abort_if($scheduledPost->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $scheduledPost->user_id !== $request->user()->id, 403);
         $scheduledPost->update(['status' => 'cancelled']);
 
         event(ScheduledPostStatusChanged::fromModel($scheduledPost->fresh()));
@@ -107,7 +107,7 @@ class ScheduleController extends Controller
 
     public function retry(Request $request, ScheduledPost $scheduledPost): JsonResponse
     {
-        abort_if($scheduledPost->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $scheduledPost->user_id !== $request->user()->id, 403);
         abort_if($scheduledPost->status !== 'failed', 422, 'Only failed posts can be retried.');
 
         $scheduledPost->update([
