@@ -120,7 +120,7 @@ class PostController extends Controller
 
     private function authorizeOwner(Request $request, Workspace $workspace): void
     {
-        if ($workspace->owner_id !== $request->user()->id) {
+        if (! $workspace->isAccessibleBy($request->user())) {
             abort(403, 'Unauthorized');
         }
     }

@@ -48,7 +48,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'youtube');
+        $credential = $this->credentialForProvider($request, $workspace, 'youtube');
         if (! $credential) {
             return ApiResponse::error('YouTube credential not found for this user.', null, 404);
         }
@@ -60,7 +60,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'twitter');
+        $credential = $this->credentialForProvider($request, $workspace, 'twitter');
         if (! $credential) {
             return ApiResponse::error('Twitter / X credential not found for this user.', null, 404);
         }
@@ -72,7 +72,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'tiktok');
+        $credential = $this->credentialForProvider($request, $workspace, 'tiktok');
         if (! $credential) {
             return ApiResponse::error('TikTok credential not found for this user.', null, 404);
         }
@@ -84,7 +84,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'facebook');
+        $credential = $this->credentialForProvider($request, $workspace, 'facebook');
         if (! $credential) {
             return ApiResponse::error('Facebook credential not found for this user.', null, 404);
         }
@@ -96,7 +96,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'threads');
+        $credential = $this->credentialForProvider($request, $workspace, 'threads');
         if (! $credential) {
             return ApiResponse::error('Threads credential not found for this user.', null, 404);
         }
@@ -108,7 +108,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'instagram');
+        $credential = $this->credentialForProvider($request, $workspace, 'instagram');
         if (! $credential) {
             return ApiResponse::error('Instagram credential not found for this user.', null, 404);
         }
@@ -124,7 +124,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialById($request, (int) $request->validated('social_credential_id'));
+        $credential = $this->credentialById($workspace, (int) $request->validated('social_credential_id'));
         if (! $credential) {
             return ApiResponse::error('Credential not found for this user.', null, 404);
         }
@@ -143,7 +143,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'facebook');
+        $credential = $this->credentialForProvider($request, $workspace, 'facebook');
         if (! $credential) {
             return ApiResponse::error('Facebook credential not found for this user.', null, 404);
         }
@@ -157,7 +157,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'instagram');
+        $credential = $this->credentialForProvider($request, $workspace, 'instagram');
         if (! $credential) {
             return ApiResponse::error('Instagram credential not found for this user.', null, 404);
         }
@@ -174,7 +174,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'twitter');
+        $credential = $this->credentialForProvider($request, $workspace, 'twitter');
         if (! $credential) {
             return ApiResponse::error('Twitter / X credential not found for this user.', null, 404);
         }
@@ -186,7 +186,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'threads');
+        $credential = $this->credentialForProvider($request, $workspace, 'threads');
         if (! $credential) {
             return ApiResponse::error('Threads credential not found for this user.', null, 404);
         }
@@ -198,7 +198,7 @@ class FeedSyncController extends Controller
     {
         $this->authorizeOwner($request, $workspace);
 
-        $credential = $this->credentialForProvider($request, 'tiktok');
+        $credential = $this->credentialForProvider($request, $workspace, 'tiktok');
         if (! $credential) {
             return ApiResponse::error('TikTok credential not found for this user.', null, 404);
         }
@@ -246,7 +246,7 @@ class FeedSyncController extends Controller
 
     private function authorizeOwner(Request $request, Workspace $workspace): void
     {
-        if ($workspace->owner_id !== $request->user()->id) {
+        if (! $workspace->isAccessibleBy($request->user())) {
             abort(403, 'Unauthorized');
         }
     }
@@ -273,20 +273,25 @@ class FeedSyncController extends Controller
         return null;
     }
 
-    private function credentialForProvider(Request $request, string $provider): ?SocialCredential
+    /**
+     * Credentials are always resolved against the workspace owner rather than the
+     * acting request user, so a super admin managing another user's workspace on
+     * their behalf discovers/tests using that user's connected accounts.
+     */
+    private function credentialForProvider(Request $request, Workspace $workspace, string $provider): ?SocialCredential
     {
         $id = (int) $request->input('social_credential_id');
 
         return SocialCredential::where('id', $id)
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $workspace->owner_id)
             ->where('provider', $provider)
             ->first();
     }
 
-    private function credentialById(Request $request, int $id): ?SocialCredential
+    private function credentialById(Workspace $workspace, int $id): ?SocialCredential
     {
         return SocialCredential::where('id', $id)
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $workspace->owner_id)
             ->first();
     }
 

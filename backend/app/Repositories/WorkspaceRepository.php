@@ -11,6 +11,12 @@ class WorkspaceRepository implements WorkspaceRepositoryInterface
 {
     public function allForUser(User $user): Collection
     {
+        // Super admins can see and manage every workspace, not just their own,
+        // so they can act on behalf of a user who is stuck on an operation.
+        if ($user->isSuperAdmin()) {
+            return Workspace::with('owner:id,name,email')->orderBy('name')->get();
+        }
+
         return $user->workspaces()->orderBy('name')->get();
     }
 

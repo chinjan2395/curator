@@ -82,6 +82,27 @@ export const useCredentialsStore = defineStore('credentials', {
         this.loading = false;
       }
     },
+    /**
+     * Credentials for a specific workspace's owner (not necessarily the acting user) —
+     * used when setting up feeds so a super admin managing another user's workspace on
+     * their behalf sees that user's connected accounts, not their own.
+     */
+    async fetchForWorkspace(workspaceId) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const { data } = await axios.get(`/api/workspaces/${workspaceId}/credentials`);
+        const rows = Array.isArray(data) ? data : data.data;
+        this.list = rows;
+        return rows;
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Failed to load credentials';
+        useToastStore().error(this.error);
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
     async verifyAll() {
       this.verifying = true;
       try {

@@ -65,7 +65,7 @@ class AssetController extends Controller
 
     public function destroy(Request $request, Asset $asset): JsonResponse
     {
-        abort_if($asset->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $asset->user_id !== $request->user()->id, 403);
 
         if ($asset->storage_path) {
             $this->assetStorage->delete($asset);

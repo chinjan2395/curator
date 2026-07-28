@@ -127,6 +127,52 @@
                   <AppInput v-model.number="appearance.feed.post_min_width" type="number" min="120" max="600" input-class="w-full py-2" />
                 </div>
               </div>
+
+              <div class="pt-2 space-y-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Thumbnail sizing</label>
+                  <AppSelect v-model="appearance.feed.media_size_mode" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="auto">Automatic (original size)</option>
+                    <option value="aspect">Fixed aspect ratio</option>
+                    <option value="fixed">Fixed height</option>
+                  </AppSelect>
+                  <p class="text-xs text-slate-500 mt-1">
+                    Controls the width/height of post thumbnails in the embedded feed.
+                  </p>
+                </div>
+                <div v-if="showMediaAspectRatio" class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Aspect ratio</label>
+                    <AppSelect v-model="appearance.feed.media_aspect_ratio" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="1:1">Square (1:1)</option>
+                      <option value="4:3">Classic (4:3)</option>
+                      <option value="16:9">Landscape (16:9)</option>
+                      <option value="3:4">Portrait (3:4)</option>
+                      <option value="9:16">Story (9:16)</option>
+                    </AppSelect>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Image fit</label>
+                    <AppSelect v-model="appearance.feed.media_fit" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="cover">Fill (crop)</option>
+                      <option value="contain">Fit (no crop)</option>
+                    </AppSelect>
+                  </div>
+                </div>
+                <div v-if="showMediaFixedHeight" class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Height (px)</label>
+                    <AppInput v-model.number="appearance.feed.media_height" type="number" min="80" max="800" input-class="w-full py-2" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Image fit</label>
+                    <AppSelect v-model="appearance.feed.media_fit" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="cover">Fill (crop)</option>
+                      <option value="contain">Fit (no crop)</option>
+                    </AppSelect>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Post Display Section -->
@@ -144,6 +190,30 @@
                   <AppCheckbox v-model="appearance.post.show_platform_icon" />
                   <div class="font-medium text-slate-900">Show platform icon</div>
                 </label>
+                <div class="grid grid-cols-2 gap-3 p-2 -mx-2">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Platform icon color</label>
+                    <AppSelect v-model="appearance.post.platform_icon_color_mode" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="brand">Native platform colors</option>
+                      <option value="custom">Custom color</option>
+                    </AppSelect>
+                  </div>
+                  <div v-if="appearance.post.platform_icon_color_mode === 'custom'">
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Custom icon color</label>
+                    <div class="flex items-center gap-2">
+                      <AppInput
+                        v-model="appearance.post.platform_icon_color"
+                        type="color"
+                        input-class="h-10 w-12 rounded border border-slate-300 cursor-pointer bg-white p-0"
+                      />
+                      <AppInput
+                        v-model="appearance.post.platform_icon_color"
+                        type="text"
+                        input-class="!py-2 !text-xs font-mono flex-1 min-w-0"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <label
                   v-if="!previewIsShowcase"
                   class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded -mx-2"
@@ -308,6 +378,17 @@
                 <div class="flex items-center gap-3 p-2 rounded hover:bg-slate-50">
                   <AppCheckbox v-model="appearance.colors.post_border.enabled" />
                   <span class="text-xs font-semibold text-slate-700 flex-1">Post border</span>
+                  <div class="flex items-center gap-1" :title="'Border thickness'">
+                    <AppInput
+                      v-model.number="appearance.colors.post_border.width"
+                      type="number"
+                      min="0"
+                      max="8"
+                      input-class="h-8 w-14 py-1 text-xs"
+                      :disabled="!appearance.colors.post_border.enabled"
+                    />
+                    <span class="text-2xs text-slate-500">px</span>
+                  </div>
                   <AppInput
                     v-model="appearance.colors.post_border.color"
                     type="color"
@@ -692,6 +773,7 @@
                             'crt-showcase-provider-icon flex items-center justify-center',
                             previewSocialIconClass(row.p.provider),
                           ]"
+                          :style="previewPlatformIconStyle(row.p.provider)"
                         >
                           <SocialIcon
                             :type="previewProviderIconType(row.p.provider)"
@@ -715,6 +797,7 @@
                               'crt-showcase-source-icon flex items-center justify-center',
                               previewSocialIconClass(row.p.provider),
                             ]"
+                            :style="previewPlatformIconStyle(row.p.provider)"
                           >
                             <img
                               v-if="previewSourceIconUsesCustom"
@@ -737,6 +820,7 @@
                               'crt-showcase-source-icon flex items-center justify-center',
                               previewSocialIconClass(row.p.provider),
                             ]"
+                            :style="previewPlatformIconStyle(row.p.provider)"
                           >
                             <img
                               v-if="previewSourceIconUsesCustom"
@@ -1032,6 +1116,7 @@
                       <span
                         v-if="appearance.post.show_platform_icon !== false && p.provider"
                         :class="['crt-platform-badge crt-platform-badge--inline', previewSocialIconClass(p.provider)]"
+                        :style="previewPlatformIconStyle(p.provider)"
                       >
                         <SocialIcon :type="previewProviderIconType(p.provider)" class="w-[22px] h-[22px]" />
                       </span>
@@ -1271,6 +1356,8 @@ const POST_DEFAULTS = {
   showcase_share_icon: 'upload_share',
   showcase_share_icon_color_mode: 'post_icon',
   showcase_share_icon_color: '#e2e8f0',
+  platform_icon_color_mode: 'brand',
+  platform_icon_color: '#64748b',
 };
 
 const WIDGET_DEFAULTS = {
@@ -1573,6 +1660,10 @@ const showFeedOptionsSection = computed(() => !previewIsShowcase.value);
 
 const showPostMinWidth = computed(() => FEED_STYLES_WITH_MIN_WIDTH.has(activeFeedStyle.value));
 
+const showMediaAspectRatio = computed(() => appearance.value?.feed?.media_size_mode === 'aspect');
+
+const showMediaFixedHeight = computed(() => appearance.value?.feed?.media_size_mode === 'fixed');
+
 const showStandardLayoutOptions = computed(() => !previewIsShowcase.value);
 
 const showShowcaseLayoutOptions = computed(() => previewIsShowcase.value);
@@ -1695,10 +1786,38 @@ const previewColorCssVars = computed(() => {
     '--crt-showcase-share-color': shareColor || c.post_icon || '#e2e8f0',
     '--crt-post-min': `${minW}px`,
     '--crt-border': b.enabled !== false ? b.color || '#e2e8f0' : 'transparent',
+    '--crt-border-width': `${Math.max(0, Math.min(Number(b.width ?? 1) || 0, 8))}px`,
     '--crt-card-bg': g.enabled !== false ? g.color || '#ffffff' : 'transparent',
   };
   const font = widget.font_family;
   if (font && font !== 'inherit') vars['--crt-font'] = font;
+
+  const mediaSizeMode = String(feed.media_size_mode || 'auto');
+  const mediaAspectRatioMap = {
+    '1:1': '1 / 1',
+    '4:3': '4 / 3',
+    '16:9': '16 / 9',
+    '3:4': '3 / 4',
+    '9:16': '9 / 16',
+  };
+  const mediaFit = feed.media_fit === 'contain' ? 'contain' : 'cover';
+  if (mediaSizeMode === 'fixed') {
+    const h = Math.max(80, Math.min(Number(feed.media_height) || 220, 800));
+    vars['--crt-media-height'] = `${h}px`;
+    vars['--crt-media-max-height'] = 'none';
+    vars['--crt-media-aspect'] = 'auto';
+    vars['--crt-media-img-height'] = '100%';
+    vars['--crt-media-img-max-height'] = 'none';
+    vars['--crt-media-fit'] = mediaFit;
+  } else if (mediaSizeMode === 'aspect') {
+    vars['--crt-media-height'] = 'auto';
+    vars['--crt-media-max-height'] = 'none';
+    vars['--crt-media-aspect'] = mediaAspectRatioMap[feed.media_aspect_ratio] || mediaAspectRatioMap['1:1'];
+    vars['--crt-media-img-height'] = '100%';
+    vars['--crt-media-img-max-height'] = 'none';
+    vars['--crt-media-fit'] = mediaFit;
+  }
+
   return vars;
 });
 
@@ -1815,6 +1934,13 @@ function previewShowcaseAvatarUsesLetter(p) {
   if (a.image_source === 'custom' && String(a.custom_url || '').trim()) return false;
   if (a.image_source === 'connected' && String(p?.account_avatar_url || '').trim()) return false;
   return true;
+}
+
+function previewPlatformIconStyle(provider) {
+  const mode = String(appearance.value?.post?.platform_icon_color_mode || 'brand');
+  if (mode !== 'custom') return {};
+  const color = appearance.value?.post?.platform_icon_color || appearance.value?.colors?.post_icon || '#64748b';
+  return { color };
 }
 
 function previewSocialIconClass(provider) {

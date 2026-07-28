@@ -1288,7 +1288,9 @@ function formatDate(v) {
 
 onMounted(async () => {
   if (!workspaces.list.length) await workspaces.fetchAll();
-  if (!credentials.list.length) await credentials.fetchAll();
+  // Always resolve the *workspace owner's* credentials — matters when a super
+  // admin is setting up a feed on behalf of another user.
+  await credentials.fetchForWorkspace(workspaceId.value);
   if (!isEdit.value) {
     const firstAvailableType = availableSocialTypes.value[0]?.type || '';
     if (!form.type || !availableSocialTypes.value.some((item) => item.type === form.type)) {

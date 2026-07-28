@@ -45,6 +45,6 @@ class AutoPilotController extends Controller
 
     private function authorizeCampaign(Request $request, Campaign $campaign): void
     {
-        abort_if($campaign->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $campaign->user_id !== $request->user()->id, 403);
     }
 }
