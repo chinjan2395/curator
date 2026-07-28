@@ -40,7 +40,7 @@ class ContentPackageController extends Controller
         ContentPackage $contentPackage,
         ContentPackageMediaResolver $mediaResolver,
     ): JsonResponse {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
             'media_urls' => ['sometimes', 'array', 'max:4'],
@@ -73,7 +73,7 @@ class ContentPackageController extends Controller
 
     public function refine(Request $request, ContentPackage $contentPackage): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
             'instruction' => ['required', 'string', 'max:2000'],
@@ -94,7 +94,7 @@ class ContentPackageController extends Controller
 
     public function updateStatus(Request $request, ContentPackage $contentPackage, LearningPromptService $learning): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:draft,in_review,approved,scheduled,published,rejected'],
@@ -113,7 +113,7 @@ class ContentPackageController extends Controller
 
     public function updateCaption(Request $request, ContentPackage $contentPackage): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
             'caption' => ['required', 'string'],
@@ -126,7 +126,7 @@ class ContentPackageController extends Controller
 
     public function versions(Request $request, ContentPackage $contentPackage): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $rootId = $contentPackage->parent_id ?? $contentPackage->id;
 
@@ -151,7 +151,7 @@ class ContentPackageController extends Controller
      */
     public function generateVariants(Request $request, ContentPackage $contentPackage): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         if ($contentPackage->variant_group_id !== null) {
             return ApiResponse::error('This package already has variants. Generate variants from the original package.', null, 422);
@@ -181,7 +181,7 @@ class ContentPackageController extends Controller
      */
     public function markWinner(Request $request, ContentPackage $contentPackage, AiContentService $ai): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $winner = $ai->markVariantWinner($contentPackage);
 
@@ -194,7 +194,7 @@ class ContentPackageController extends Controller
      */
     public function variantGroup(Request $request, ContentPackage $contentPackage): JsonResponse
     {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $siblings = $contentPackage->variantSiblings();
 
@@ -209,7 +209,7 @@ class ContentPackageController extends Controller
         Request $request,
         ContentPackage $contentPackage,
     ): JsonResponse {
-        abort_if($contentPackage->user_id !== $request->user()->id, 403);
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
             'instruction' => ['nullable', 'string', 'max:2000'],

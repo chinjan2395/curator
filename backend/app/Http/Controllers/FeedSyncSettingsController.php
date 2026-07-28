@@ -37,7 +37,7 @@ class FeedSyncSettingsController extends Controller
 
     private function authorizeOwner(PatchFeedSyncSettingsRequest $request, Workspace $workspace): void
     {
-        if ($workspace->owner_id !== $request->user()->id) {
+        if (! $workspace->isAccessibleBy($request->user())) {
             abort(403, 'Unauthorized');
         }
     }

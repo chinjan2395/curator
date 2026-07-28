@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/sync-summary', [UserSyncSummaryController::class, 'show']);
     Route::post('/user/sync-summary/acknowledge', [UserSyncSummaryController::class, 'acknowledge']);
     Route::apiResource('workspaces', WorkspaceController::class);
+    Route::get('workspaces/{workspace}/credentials', [WorkspaceController::class, 'credentials']);
     Route::apiResource('workspaces.feeds', FeedController::class);
     Route::patch('workspaces/{workspace}/feeds/{feed}/sync-settings', [FeedSyncSettingsController::class, 'patch']);
     Route::post('workspaces/{workspace}/feeds/{feed}/sync', [FeedSyncController::class, 'sync']);

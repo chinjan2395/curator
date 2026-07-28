@@ -43,8 +43,19 @@
       :columns="columns"
       :rows="workspaces.list"
     >
-      <template #cell-name="{ value }">
+      <template #cell-name="{ value, row }">
         <span class="font-medium text-slate-800">{{ value }}</span>
+        <span
+          v-if="row.is_owner === false"
+          class="ml-2 inline-flex items-center gap-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 text-2xs"
+        >
+          <AppIcon name="shield" class="w-3 h-3" />
+          Not yours
+        </span>
+      </template>
+
+      <template #cell-owner="{ row }">
+        <span class="text-slate-500">{{ row.owner_name || row.owner_email || '—' }}</span>
       </template>
 
       <template #cell-actions="{ row }">
@@ -68,18 +79,23 @@
 </template>
 
 <script setup>
-import { inject, onMounted } from 'vue'
+import { computed, inject, onMounted } from 'vue'
 import { useWorkspacesStore } from '../stores/workspaces'
+import { useAuthStore } from '../stores/auth'
 import { AppAlert, AppEmptyState, AppButton, AppCard, AppIcon, AppSkeleton, AppTable } from '../components/ui/index.js'
 import { AppPageHeader, AppSection, AppStack } from '../components/layout/index.js'
 
 const workspaces = useWorkspacesStore()
+const auth = useAuthStore()
 const { confirm } = inject('confirm')
 
-const columns = [
+const isSuperAdmin = computed(() => auth.user?.role === 'superadmin')
+
+const columns = computed(() => [
   { key: 'name', label: 'Name' },
+  ...(isSuperAdmin.value ? [{ key: 'owner', label: 'Owner' }] : []),
   { key: 'actions', label: 'Actions', class: 'w-48' },
-]
+])
 
 onMounted(async () => {
   await workspaces.fetchAll()

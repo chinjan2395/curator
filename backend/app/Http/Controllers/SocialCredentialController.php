@@ -148,7 +148,7 @@ class SocialCredentialController extends Controller
 
     private function authorizeOwner(Request $request, SocialCredential $socialCredential): void
     {
-        if ($socialCredential->user_id !== $request->user()->id) {
+        if (! $socialCredential->isAccessibleBy($request->user())) {
             abort(403, 'Unauthorized');
         }
     }
