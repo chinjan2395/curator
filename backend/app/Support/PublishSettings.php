@@ -19,6 +19,12 @@ class PublishSettings
         'layers',
     ];
 
+    public const MEDIA_SIZE_MODES = ['auto', 'aspect', 'fixed'];
+
+    public const MEDIA_ASPECT_RATIOS = ['1:1', '4:3', '16:9', '3:4', '9:16'];
+
+    public const MEDIA_FITS = ['cover', 'contain'];
+
     public static function defaults(): array
     {
         return [
@@ -28,6 +34,10 @@ class PublishSettings
                 'posts_per_page' => 12,
                 'post_min_width' => 260,
                 'show_load_more' => true,
+                'media_size_mode' => 'auto',
+                'media_aspect_ratio' => '1:1',
+                'media_height' => 220,
+                'media_fit' => 'cover',
             ],
             'post' => [
                 'show_titles' => true,
@@ -121,6 +131,23 @@ class PublishSettings
         $out['feed']['posts_per_page'] = max(1, min($perPage, 100));
         $minW = (int) ($out['feed']['post_min_width'] ?? 260);
         $out['feed']['post_min_width'] = max(120, min($minW, 600));
+        $out['feed']['media_size_mode'] = self::enumOrFallback(
+            (string) ($out['feed']['media_size_mode'] ?? 'auto'),
+            self::MEDIA_SIZE_MODES,
+            'auto',
+        );
+        $out['feed']['media_aspect_ratio'] = self::enumOrFallback(
+            (string) ($out['feed']['media_aspect_ratio'] ?? '1:1'),
+            self::MEDIA_ASPECT_RATIOS,
+            '1:1',
+        );
+        $mediaHeight = (int) ($out['feed']['media_height'] ?? 220);
+        $out['feed']['media_height'] = max(80, min($mediaHeight, 800));
+        $out['feed']['media_fit'] = self::enumOrFallback(
+            (string) ($out['feed']['media_fit'] ?? 'cover'),
+            self::MEDIA_FITS,
+            'cover',
+        );
 
         $out['post']['show_titles'] = (bool) ($out['post']['show_titles'] ?? true);
         $out['post']['show_share_icons'] = (bool) ($out['post']['show_share_icons'] ?? false);

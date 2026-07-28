@@ -127,6 +127,52 @@
                   <AppInput v-model.number="appearance.feed.post_min_width" type="number" min="120" max="600" input-class="w-full py-2" />
                 </div>
               </div>
+
+              <div class="pt-2 space-y-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Thumbnail sizing</label>
+                  <AppSelect v-model="appearance.feed.media_size_mode" select-class="w-full py-2" :show-placeholder="false">
+                    <option value="auto">Automatic (original size)</option>
+                    <option value="aspect">Fixed aspect ratio</option>
+                    <option value="fixed">Fixed height</option>
+                  </AppSelect>
+                  <p class="text-xs text-slate-500 mt-1">
+                    Controls the width/height of post thumbnails in the embedded feed.
+                  </p>
+                </div>
+                <div v-if="showMediaAspectRatio" class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Aspect ratio</label>
+                    <AppSelect v-model="appearance.feed.media_aspect_ratio" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="1:1">Square (1:1)</option>
+                      <option value="4:3">Classic (4:3)</option>
+                      <option value="16:9">Landscape (16:9)</option>
+                      <option value="3:4">Portrait (3:4)</option>
+                      <option value="9:16">Story (9:16)</option>
+                    </AppSelect>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Image fit</label>
+                    <AppSelect v-model="appearance.feed.media_fit" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="cover">Fill (crop)</option>
+                      <option value="contain">Fit (no crop)</option>
+                    </AppSelect>
+                  </div>
+                </div>
+                <div v-if="showMediaFixedHeight" class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Height (px)</label>
+                    <AppInput v-model.number="appearance.feed.media_height" type="number" min="80" max="800" input-class="w-full py-2" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Image fit</label>
+                    <AppSelect v-model="appearance.feed.media_fit" select-class="w-full py-2" :show-placeholder="false">
+                      <option value="cover">Fill (crop)</option>
+                      <option value="contain">Fit (no crop)</option>
+                    </AppSelect>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Post Display Section -->
@@ -1573,6 +1619,10 @@ const showFeedOptionsSection = computed(() => !previewIsShowcase.value);
 
 const showPostMinWidth = computed(() => FEED_STYLES_WITH_MIN_WIDTH.has(activeFeedStyle.value));
 
+const showMediaAspectRatio = computed(() => appearance.value?.feed?.media_size_mode === 'aspect');
+
+const showMediaFixedHeight = computed(() => appearance.value?.feed?.media_size_mode === 'fixed');
+
 const showStandardLayoutOptions = computed(() => !previewIsShowcase.value);
 
 const showShowcaseLayoutOptions = computed(() => previewIsShowcase.value);
@@ -1699,6 +1749,33 @@ const previewColorCssVars = computed(() => {
   };
   const font = widget.font_family;
   if (font && font !== 'inherit') vars['--crt-font'] = font;
+
+  const mediaSizeMode = String(feed.media_size_mode || 'auto');
+  const mediaAspectRatioMap = {
+    '1:1': '1 / 1',
+    '4:3': '4 / 3',
+    '16:9': '16 / 9',
+    '3:4': '3 / 4',
+    '9:16': '9 / 16',
+  };
+  const mediaFit = feed.media_fit === 'contain' ? 'contain' : 'cover';
+  if (mediaSizeMode === 'fixed') {
+    const h = Math.max(80, Math.min(Number(feed.media_height) || 220, 800));
+    vars['--crt-media-height'] = `${h}px`;
+    vars['--crt-media-max-height'] = 'none';
+    vars['--crt-media-aspect'] = 'auto';
+    vars['--crt-media-img-height'] = '100%';
+    vars['--crt-media-img-max-height'] = 'none';
+    vars['--crt-media-fit'] = mediaFit;
+  } else if (mediaSizeMode === 'aspect') {
+    vars['--crt-media-height'] = 'auto';
+    vars['--crt-media-max-height'] = 'none';
+    vars['--crt-media-aspect'] = mediaAspectRatioMap[feed.media_aspect_ratio] || mediaAspectRatioMap['1:1'];
+    vars['--crt-media-img-height'] = '100%';
+    vars['--crt-media-img-max-height'] = 'none';
+    vars['--crt-media-fit'] = mediaFit;
+  }
+
   return vars;
 });
 

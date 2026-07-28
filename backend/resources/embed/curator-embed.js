@@ -28,6 +28,18 @@
   var lazyLoad = feedOpts.lazy_load !== false;
   var showLoadMore = feedOpts.show_load_more !== false;
 
+  var MEDIA_ASPECT_RATIOS = {
+    '1:1': '1 / 1',
+    '4:3': '4 / 3',
+    '16:9': '16 / 9',
+    '3:4': '3 / 4',
+    '9:16': '9 / 16',
+  };
+  var mediaSizeMode = String(feedOpts.media_size_mode || 'auto');
+  var mediaAspectRatio = MEDIA_ASPECT_RATIOS[feedOpts.media_aspect_ratio] || MEDIA_ASPECT_RATIOS['1:1'];
+  var mediaHeight = Math.max(80, Math.min(parseInt(feedOpts.media_height, 10) || 220, 800));
+  var mediaFit = feedOpts.media_fit === 'contain' ? 'contain' : 'cover';
+
   var SHARE_SHOWCASE_UPLOAD =
     '<svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.65875 0.821899V13.0736L17.2182 6.94777L9.65875 0.821899Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M0.138031 13.1146C0.138031 8.46583 3.7997 4.60382 10.2833 4.60382V9.39066C10.2833 9.39066 6.07325 8.10554 1.03012 13.1146C0.76259 13.1439 0.138031 13.1146 0.138031 13.1146Z" fill="currentColor"></path></svg>';
 
@@ -550,6 +562,22 @@
       shareColor = postOpts.showcase_share_icon_color || c.post_icon || '#64748b';
     }
     el.style.setProperty('--crt-showcase-share-color', shareColor);
+
+    if (mediaSizeMode === 'fixed') {
+      el.style.setProperty('--crt-media-height', mediaHeight + 'px');
+      el.style.setProperty('--crt-media-max-height', 'none');
+      el.style.setProperty('--crt-media-aspect', 'auto');
+      el.style.setProperty('--crt-media-img-height', '100%');
+      el.style.setProperty('--crt-media-img-max-height', 'none');
+      el.style.setProperty('--crt-media-fit', mediaFit);
+    } else if (mediaSizeMode === 'aspect') {
+      el.style.setProperty('--crt-media-height', 'auto');
+      el.style.setProperty('--crt-media-max-height', 'none');
+      el.style.setProperty('--crt-media-aspect', mediaAspectRatio);
+      el.style.setProperty('--crt-media-img-height', '100%');
+      el.style.setProperty('--crt-media-img-max-height', 'none');
+      el.style.setProperty('--crt-media-fit', mediaFit);
+    }
   }
 
   function ensureInner(container) {
