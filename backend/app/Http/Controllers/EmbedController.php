@@ -20,7 +20,9 @@ class EmbedController extends Controller
 }
 .crt-inner{min-height:24px;}
 .crt-card{
-  border:1px solid var(--crt-border,#e2e8f0);
+  border-style:solid;
+  border-width:var(--crt-border-width,1px);
+  border-color:var(--crt-border,#e2e8f0);
   border-radius:12px;
   background:var(--crt-card-bg,#ffffff);
   overflow:hidden;
