@@ -2,6 +2,7 @@
 
 namespace App\Services\Media;
 
+use App\Models\Feed;
 use App\Models\Post;
 use App\Models\SocialCredential;
 use App\Support\EphemeralMediaUrl;
@@ -90,6 +91,68 @@ class GraphMediaUrlRefresher
         $raw['media'] = array_merge(is_array($raw['media'] ?? null) ? $raw['media'] : [], $item);
         $post->raw_data = $raw;
         $post->save();
+
+        return true;
+    }
+
+    /**
+     * Re-fetches the account/page profile picture from Graph when the stored
+     * `account_avatar_url` has expired (or was never cached). Mirrors what the
+     * Instagram/Facebook syncers do, so a request can self-heal between syncs
+     * (e.g. after the local media cache disk was wiped on redeploy).
+     */
+    public function refreshFeedAvatar(Feed $feed): bool
+    {
+        if (! in_array($feed->type, self::SUPPORTED_PROVIDERS, true)) {
+            return false;
+        }
+
+        $credential = $feed->socialCredential;
+        if (! $credential instanceof SocialCredential || $credential->provider !== $feed->type) {
+            return false;
+        }
+
+        $pageId = $this->normalizeFacebookPageId(trim((string) $feed->facebook_page_id));
+        if ($pageId === '') {
+            return false;
+        }
+
+        $pageToken = $this->resolveFacebookPageAccessToken($credential, $pageId);
+        if (! $pageToken) {
+            return false;
+        }
+
+        if ($feed->type === 'instagram') {
+            $igUserId = trim((string) $feed->instagram_business_account_id);
+            if ($igUserId === '') {
+                return false;
+            }
+
+            $response = Http::timeout(20)->get(
+                'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$igUserId,
+                ['fields' => 'profile_picture_url', 'access_token' => $pageToken]
+            );
+            $pic = trim((string) ($response->ok() ? $response->json('profile_picture_url') : ''));
+        } else {
+            $response = Http::timeout(20)->get(
+                'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId,
+                ['fields' => 'picture.type(large){url}', 'access_token' => $pageToken]
+            );
+            $pic = trim((string) ($response->ok() ? $response->json('picture.data.url') : ''));
+        }
+
+        if ($pic === '') {
+            Log::warning('Feed avatar URL refresh failed.', [
+                'feed_id' => $feed->id,
+                'provider' => $feed->type,
+                'status' => $response->status(),
+            ]);
+
+            return false;
+        }
+
+        $feed->account_avatar_url = $pic;
+        $feed->save();
 
         return true;
     }

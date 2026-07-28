@@ -53,6 +53,8 @@ class PublishSettings
                 'showcase_share_icon' => 'upload_share',
                 'showcase_share_icon_color_mode' => 'post_icon',
                 'showcase_share_icon_color' => '#e2e8f0',
+                'platform_icon_color_mode' => 'brand',
+                'platform_icon_color' => '#64748b',
             ],
             'colors' => [
                 'post_icon' => '#64748b',
@@ -63,6 +65,7 @@ class PublishSettings
                 'post_border' => [
                     'enabled' => true,
                     'color' => '#e2e8f0',
+                    'width' => 1,
                 ],
                 'post_bg' => [
                     'enabled' => true,
@@ -185,6 +188,15 @@ class PublishSettings
             (string) ($out['post']['showcase_share_icon_color'] ?? '#e2e8f0'),
             '#e2e8f0',
         );
+        $out['post']['platform_icon_color_mode'] = self::enumOrFallback(
+            (string) ($out['post']['platform_icon_color_mode'] ?? 'brand'),
+            ['brand', 'custom'],
+            'brand',
+        );
+        $out['post']['platform_icon_color'] = self::sanitizeHexColor(
+            (string) ($out['post']['platform_icon_color'] ?? '#64748b'),
+            '#64748b',
+        );
 
         foreach (['post_icon', 'post_text', 'post_date', 'post_link', 'post_button'] as $key) {
             $out['colors'][$key] = self::sanitizeHexColor((string) ($out['colors'][$key] ?? $defaults['colors'][$key]), (string) $defaults['colors'][$key]);
@@ -195,6 +207,8 @@ class PublishSettings
             (string) ($out['colors']['post_border']['color'] ?? $defaults['colors']['post_border']['color']),
             (string) $defaults['colors']['post_border']['color'],
         );
+        $borderWidth = (int) ($out['colors']['post_border']['width'] ?? $defaults['colors']['post_border']['width']);
+        $out['colors']['post_border']['width'] = max(0, min($borderWidth, 8));
         $out['colors']['post_bg']['enabled'] = (bool) ($out['colors']['post_bg']['enabled'] ?? true);
         $out['colors']['post_bg']['color'] = self::sanitizeHexColor(
             (string) ($out['colors']['post_bg']['color'] ?? $defaults['colors']['post_bg']['color']),
