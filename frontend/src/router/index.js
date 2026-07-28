@@ -125,12 +125,12 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
 
-  if (auth.token && to.meta.menuId) {
+  // Load navigation visibility before any authenticated shell paints so
+  // default-hidden modules never flash in the sidebar on cold boot.
+  if (auth.token && to.matched.some((record) => record.meta.requiresAuth)) {
     const navigation = useNavigationSettingsStore();
-    if (!navigation.loaded) {
-      await navigation.fetch();
-    }
-    if (!navigation.isMenuEnabled(to.meta.menuId)) {
+    await navigation.ensureLoaded();
+    if (to.meta.menuId && !navigation.isMenuEnabled(to.meta.menuId)) {
       next('/');
       return;
     }

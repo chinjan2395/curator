@@ -6,19 +6,69 @@ import { hydrateFromSession, isFresh, persistToSession, withDedupe } from '../ut
 const NAV_TTL_MS = 60 * 60 * 1000;
 const CACHE_KEY = 'navigation-settings';
 
-const DEFAULT_MENUS = {};
+/** Keep in sync with NavigationMenuRegistry::menuIds() / defaultHiddenMenuIds(). */
+const ALL_MENU_IDS = [
+  'integrations',
+  'curator',
+  'campaigns',
+  'schedule',
+  'content-library',
+  'brand-kit',
+  'analytics',
+  'inbox',
+  'notifications',
+  'oauth-apps',
+  'admin-users',
+  'admin-sync-ops',
+  'admin-system',
+  'admin-trends',
+  'admin-moderation',
+  'admin-activity',
+  'admin-dev-tools',
+];
+
+const DEFAULT_HIDDEN_MENU_IDS = [
+  'curator',
+  'campaigns',
+  'schedule',
+  'content-library',
+  'inbox',
+  'admin-trends',
+  'admin-moderation',
+];
+
 const DEFAULT_FEATURES = { publish_brand_kit: true };
 
-export const useNavigationSettingsStore = defineStore('navigationSettings', {
-  state: () => ({
-    menus: { ...DEFAULT_MENUS },
+function buildDefaultMenus() {
+  const hidden = new Set(DEFAULT_HIDDEN_MENU_IDS);
+  return Object.fromEntries(ALL_MENU_IDS.map((id) => [id, !hidden.has(id)]));
+}
+
+function initialState() {
+  const defaults = {
+    menus: buildDefaultMenus(),
     features: { ...DEFAULT_FEATURES },
     registry: { menus: {}, features: {} },
     loaded: false,
     loading: false,
     saving: false,
     error: null,
-  }),
+  };
+
+  const cached = hydrateFromSession(CACHE_KEY);
+  if (!cached?.value) return defaults;
+
+  return {
+    ...defaults,
+    menus: { ...defaults.menus, ...(cached.value.menus || {}) },
+    features: { ...defaults.features, ...(cached.value.features || {}) },
+    registry: cached.value.registry || defaults.registry,
+    loaded: true,
+  };
+}
+
+export const useNavigationSettingsStore = defineStore('navigationSettings', {
+  state: () => initialState(),
   getters: {
     isMenuEnabled: (state) => (id) => {
       if (state.menus[id] === undefined) return true;
@@ -31,8 +81,8 @@ export const useNavigationSettingsStore = defineStore('navigationSettings', {
   },
   actions: {
     applyPayload(data) {
-      if (data?.menus) this.menus = { ...data.menus };
-      if (data?.features) this.features = { ...data.features };
+      if (data?.menus) this.menus = { ...buildDefaultMenus(), ...data.menus };
+      if (data?.features) this.features = { ...DEFAULT_FEATURES, ...data.features };
       if (data?.registry) this.registry = data.registry;
     },
     async fetch({ force = false, background = true } = {}) {
@@ -54,11 +104,19 @@ export const useNavigationSettingsStore = defineStore('navigationSettings', {
 
       return this.revalidate();
     },
+    async ensureLoaded() {
+      if (this.loaded) {
+        // Still kick a background refresh when cache is stale, but never block paint.
+        this.fetch({ background: true }).catch(() => {});
+        return;
+      }
+      await this.fetch({ background: false });
+    },
     async revalidate() {
-      if (this.loading) return;
       this.loading = true;
       this.error = null;
       try {
+        // withDedupe shares one in-flight GET across concurrent callers (router + layout).
         const payload = await withDedupe(CACHE_KEY, async () => {
           const { data } = await axios.get('/api/navigation-settings', { skipErrorToast: true });
           const next = data.data || data;
@@ -69,7 +127,9 @@ export const useNavigationSettingsStore = defineStore('navigationSettings', {
         this.loaded = true;
         return payload;
       } catch (err) {
+        // Keep seeded defaults / session cache so hidden modules stay hidden on failure.
         this.error = err.response?.data?.message || 'Failed to load navigation settings';
+        this.loaded = true;
       } finally {
         this.loading = false;
       }
