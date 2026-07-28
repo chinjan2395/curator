@@ -105,16 +105,46 @@ class MediaProxyService
         }
 
         $source = trim((string) $feed->account_avatar_url);
-        if ($source === '') {
-            return false;
+
+        if ($source !== '' && EphemeralMediaUrl::isExpiredOrExpiringSoon($source)) {
+            if ($this->graphRefresher->refreshFeedAvatar($feed)) {
+                $feed->refresh();
+                $source = trim((string) $feed->account_avatar_url);
+            } else {
+                Log::info('Media proxy: feed avatar URL expired and Graph refresh failed.', ['feed_id' => $feed->id]);
+            }
         }
 
-        $cached = $this->downloadFeedAvatar($feed, $source);
-        if (! $cached) {
-            Log::warning('Media proxy: unable to cache feed avatar.', ['feed_id' => $feed->id]);
+        if ($source !== '' && $this->downloadFeedAvatar($feed, $source)) {
+            return true;
         }
 
-        return $cached;
+        // Last resort: the source URL may already be dead (403/404) without
+        // an `oe=` expiry we could detect up front — try a Graph refresh + retry.
+        if ($this->graphRefresher->refreshFeedAvatar($feed)) {
+            $feed->refresh();
+            $fresh = trim((string) $feed->account_avatar_url);
+            if ($fresh !== '' && $this->downloadFeedAvatar($feed, $fresh)) {
+                return true;
+            }
+        }
+
+        if (! $this->feedCacheExists($feed)) {
+            Log::warning('Media proxy: unable to cache feed avatar after refresh + download attempts.', ['feed_id' => $feed->id]);
+        }
+
+        return $this->feedCacheExists($feed);
+    }
+
+    /**
+     * True when the feed has no usable cached avatar file on disk — used by
+     * syncers to decide whether to (re)dispatch caching, since the DB column
+     * being set doesn't guarantee the underlying file still exists (e.g. an
+     * ephemeral filesystem wiped it on redeploy/restart).
+     */
+    public function feedAvatarCacheMissing(Feed $feed): bool
+    {
+        return ! $this->feedCacheExists($feed);
     }
 
     public function clearPostThumbnailCache(Post $post): void

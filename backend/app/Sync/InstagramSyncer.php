@@ -5,6 +5,7 @@ namespace App\Sync;
 use App\Jobs\CacheFeedAvatarJob;
 use App\Models\Feed;
 use App\Models\SocialCredential;
+use App\Services\Media\MediaProxyService;
 use App\Support\EphemeralMediaUrl;
 use App\Support\FeedItemMetricsMapper;
 use App\Support\OAuthAppConfigResolver;
@@ -16,6 +17,10 @@ use Illuminate\Support\Facades\Http;
 class InstagramSyncer
 {
     use ResolvesFacebookPage;
+
+    public function __construct(
+        private readonly MediaProxyService $mediaProxy,
+    ) {}
 
     public function accounts(SocialCredential $credential): array|JsonResponse
     {
@@ -163,7 +168,7 @@ class InstagramSyncer
             }
             if (
                 EphemeralMediaUrl::needsProxy($feed->account_avatar_url)
-                && ! filled($feed->cached_avatar_path)
+                && $this->mediaProxy->feedAvatarCacheMissing($feed)
             ) {
                 CacheFeedAvatarJob::dispatchSync($feed->id);
             }
