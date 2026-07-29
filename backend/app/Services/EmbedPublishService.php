@@ -69,7 +69,7 @@ class EmbedPublishService
     public function updateSettings(Workspace $workspace, array $patch): array
     {
         $current = PublishSettings::merge($workspace->publish_settings);
-        $normalized = PublishSettings::validateAndNormalize(array_replace_recursive($current, $patch));
+        $normalized = PublishSettings::validateAndNormalize(PublishSettings::deepMerge($current, $patch));
 
         $workspace->publish_settings = $normalized;
         $workspace->save();
