@@ -157,14 +157,14 @@
               class="group relative px-5 py-4 transition-colors md:px-6"
               :class="notification.read_at ? 'bg-white/70' : 'bg-slate-50/80'"
             >
-              <div class="absolute left-0 top-4 h-[calc(100%-2rem)] w-1 rounded-r-full" :class="notificationMeta(notification).railClass" />
+              <div class="absolute left-0 top-4 h-[calc(100%-2rem)] w-1 rounded-r-full" :class="getNotificationMeta(notification).railClass" />
               <div class="flex flex-col gap-4 pl-3 md:flex-row md:items-start md:justify-between">
                 <div class="flex items-start gap-4">
                   <div
                     class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ring-1 ring-inset"
-                    :class="notificationMeta(notification).iconWrapClass"
+                    :class="getNotificationMeta(notification).iconWrapClass"
                   >
-                    <AppIcon :name="notificationMeta(notification).icon" class="h-5 w-5" />
+                    <AppIcon :name="getNotificationMeta(notification).icon" class="h-5 w-5" />
                   </div>
                   <div class="space-y-2">
                     <div class="flex flex-wrap items-center gap-2">
@@ -172,8 +172,8 @@
                       <AppBadge :variant="notification.read_at ? 'default' : 'success'">
                         {{ notification.read_at ? 'Read' : 'New' }}
                       </AppBadge>
-                      <AppBadge :variant="notificationMeta(notification).badgeVariant">
-                        {{ notificationMeta(notification).label }}
+                      <AppBadge :variant="getNotificationMeta(notification).badgeVariant">
+                        {{ getNotificationMeta(notification).label }}
                       </AppBadge>
                     </div>
                     <p class="max-w-3xl text-sm leading-6 text-slate-600">
@@ -182,7 +182,7 @@
                     <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                       <span class="inline-flex items-center gap-1.5">
                         <AppIcon name="clock" class="h-3.5 w-3.5" />
-                        {{ formatRelative(notification.created_at) }}
+                        {{ formatRelativeTime(notification.created_at) }}
                       </span>
                       <span v-if="notification.data?.workspace_name" class="inline-flex items-center gap-1.5">
                         <AppIcon name="workspaces" class="h-3.5 w-3.5" />
@@ -222,6 +222,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useNotificationsStore } from '../stores/notifications';
 import { AppAlert, AppBadge, AppButton, AppCard, AppEmptyState, AppIcon, AppLoader } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import { formatRelativeTime } from '../utils/datetime';
+import { getNotificationMeta, inferNotificationCategory } from '../utils/notificationDisplay';
 
 const store = useNotificationsStore();
 const activeFilter = ref('all');
@@ -235,32 +237,10 @@ const filters = [
   { key: 'ai', label: 'AI', description: 'Generation and scoring', icon: 'sparkles', badgeClass: 'bg-violet-100 text-violet-700', category: 'ai' },
 ];
 
-const categoryMap = {
-  success: { label: 'Success', badgeVariant: 'success', icon: 'check', iconWrapClass: 'bg-emerald-50 text-emerald-700 ring-emerald-100', railClass: 'bg-emerald-400' },
-  warning: { label: 'Warning', badgeVariant: 'warning', icon: 'alert', iconWrapClass: 'bg-amber-50 text-amber-700 ring-amber-100', railClass: 'bg-amber-400' },
-  sync: { label: 'Sync', badgeVariant: 'info', icon: 'sync', iconWrapClass: 'bg-sky-50 text-sky-700 ring-sky-100', railClass: 'bg-sky-400' },
-  ai: { label: 'AI', badgeVariant: 'purple', icon: 'sparkles', iconWrapClass: 'bg-violet-50 text-violet-700 ring-violet-100', railClass: 'bg-violet-400' },
-  default: { label: 'Update', badgeVariant: 'default', icon: 'bell', iconWrapClass: 'bg-slate-100 text-slate-700 ring-slate-200', railClass: 'bg-slate-400' },
-};
-
-function inferCategory(notification) {
-  const text = `${notification.type || ''} ${notification.title || ''} ${notification.body || ''}`.toLowerCase();
-  if (/(fail|error|warning|retry|blocked|sync_failed)/.test(text)) return 'warning';
-  if (/(generated|approved|published|complete|success|ready|done)/.test(text)) return 'success';
-  if (/(sync|ingest|import|webhook|feed)/.test(text)) return 'sync';
-  if (/(ai|llm|caption|variant|score|draft|prompt|image)/.test(text)) return 'ai';
-  return 'default';
-}
-
-function notificationMeta(notification) {
-  const category = inferCategory(notification);
-  return categoryMap[category] || categoryMap.default;
-}
-
 const groupedCategories = computed(() => {
   const counts = { all: store.items.length, unread: 0, success: 0, warning: 0, sync: 0, ai: 0 };
   for (const notification of store.items) {
-    const category = inferCategory(notification);
+    const category = inferNotificationCategory(notification);
     if (!notification.read_at) counts.unread += 1;
     if (counts[category] !== undefined) counts[category] += 1;
   }
@@ -283,12 +263,12 @@ const visibleCategories = computed(() => {
 const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return store.items;
   if (activeFilter.value === 'unread') return store.items.filter((notification) => !notification.read_at);
-  return store.items.filter((notification) => inferCategory(notification) === activeFilter.value);
+  return store.items.filter((notification) => inferNotificationCategory(notification) === activeFilter.value);
 });
 
 const totalCount = computed(() => store.items.length);
-const priorityCount = computed(() => store.items.filter((notification) => inferCategory(notification) === 'warning').length);
-const newestLabel = computed(() => formatRelative(store.items[0]?.created_at));
+const priorityCount = computed(() => store.items.filter((notification) => inferNotificationCategory(notification) === 'warning').length);
+const newestLabel = computed(() => formatRelativeTime(store.items[0]?.created_at));
 const activeLabel = computed(() => filters.find((filter) => filter.key === activeFilter.value)?.label || 'All alerts');
 
 async function refresh() {
@@ -299,39 +279,8 @@ async function markAll() {
   await store.markAllRead();
 }
 
-function markRead(id) {
-  const notification = store.items.find((item) => item.id === id);
-  if (!notification) return;
-  notification.read_at = new Date().toISOString();
-  if (store.unreadCount > 0) {
-    store.unreadCount -= 1;
-  }
-}
-
-function formatRelative(value) {
-  if (!value) return 'Just now';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Just now';
-
-  const diffMs = date.getTime() - Date.now();
-  const absSeconds = Math.round(Math.abs(diffMs) / 1000);
-  const units = [
-    ['year', 60 * 60 * 24 * 365],
-    ['month', 60 * 60 * 24 * 30],
-    ['day', 60 * 60 * 24],
-    ['hour', 60 * 60],
-    ['minute', 60],
-  ];
-
-  for (const [unit, seconds] of units) {
-    if (absSeconds >= seconds) {
-      const count = Math.max(1, Math.round(absSeconds / seconds));
-      return `${count} ${unit}${count === 1 ? '' : 's'} ${diffMs > 0 ? 'from now' : 'ago'}`;
-    }
-  }
-
-  return diffMs > 0 ? 'Soon' : 'Just now';
+async function markRead(id) {
+  await store.markRead(id);
 }
 
 onMounted(() => store.fetchAll());
