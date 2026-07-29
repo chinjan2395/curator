@@ -115,14 +115,37 @@ class PublishSettings
             return $base;
         }
 
-        return array_replace_recursive($base, $stored);
+        return self::deepMerge($base, $stored);
+    }
+
+    /**
+     * Deep-merges two settings trees, but only recurses when both sides are
+     * associative arrays for a given key. List arrays (or non-array values)
+     * in the patch fully replace the base value instead of being merged by
+     * numeric index (unlike array_replace_recursive).
+     *
+     * @param  array<string, mixed>  $base
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public static function deepMerge(array $base, array $patch): array
+    {
+        foreach ($patch as $key => $value) {
+            if (is_array($value) && isset($base[$key]) && is_array($base[$key]) && ! array_is_list($value)) {
+                $base[$key] = self::deepMerge($base[$key], $value);
+            } else {
+                $base[$key] = $value;
+            }
+        }
+
+        return $base;
     }
 
     /** @return array<string, mixed> */
     public static function validateAndNormalize(array $tree): array
     {
         $defaults = self::defaults();
-        $out = array_replace_recursive($defaults, $tree);
+        $out = self::deepMerge($defaults, $tree);
 
         if (! in_array($out['feed_style'], self::STYLES, true)) {
             $out['feed_style'] = $defaults['feed_style'];
