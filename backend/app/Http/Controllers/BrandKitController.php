@@ -185,6 +185,6 @@ class BrandKitController extends Controller
 
     private function authorizeKit(Request $request, BrandKit $brandKit): void
     {
-        abort_unless($brandKit->user_id === $request->user()->id, 403);
+        abort_unless($request->user()->isSuperAdmin() || $brandKit->user_id === $request->user()->id, 403);
     }
 }

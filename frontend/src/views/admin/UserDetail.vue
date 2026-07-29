@@ -147,6 +147,10 @@
           Workspaces
           <span class="ml-2 text-2xs font-normal text-slate-400">({{ users.currentUser.workspaces?.length ?? 0 }})</span>
         </h2>
+        <p v-if="actorIsSuperAdmin && users.currentUser.workspaces?.length" class="text-2xs text-slate-400 -mt-1">
+          As a super admin you can open any of these workspaces to manage feeds, curation, and
+          publishing on this user's behalf.
+        </p>
         <div v-if="!users.currentUser.workspaces?.length" class="text-sm-pro text-slate-400">
           No workspaces created.
         </div>
@@ -154,10 +158,23 @@
           <li
             v-for="ws in users.currentUser.workspaces"
             :key="ws.id"
-            class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5"
           >
-            <AppIcon name="workspaces" class="w-4 h-4 text-slate-400 shrink-0" />
-            <span class="text-sm-pro font-medium text-slate-700">{{ ws.name }}</span>
+            <router-link
+              v-if="actorIsSuperAdmin"
+              :to="`/workspaces/${ws.id}/feeds`"
+              class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 hover:border-violet-200 hover:bg-violet-50/60 transition-colors group"
+            >
+              <AppIcon name="workspaces" class="w-4 h-4 text-slate-400 group-hover:text-violet-500 shrink-0" />
+              <span class="text-sm-pro font-medium text-slate-700 flex-1">{{ ws.name }}</span>
+              <span class="text-2xs font-medium text-violet-600 flex items-center gap-1 shrink-0">
+                Manage
+                <AppIcon name="chevron-right" class="w-3 h-3" />
+              </span>
+            </router-link>
+            <div v-else class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+              <AppIcon name="workspaces" class="w-4 h-4 text-slate-400 shrink-0" />
+              <span class="text-sm-pro font-medium text-slate-700">{{ ws.name }}</span>
+            </div>
           </li>
         </ul>
       </AppCard>

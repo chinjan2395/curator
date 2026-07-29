@@ -419,7 +419,7 @@
     var wrap = document.createElement('span');
     wrap.className = 'crt-showcase-provider-icon';
     wrap.setAttribute('aria-hidden', 'true');
-    wrap.style.color = providerBrandColor(p);
+    wrap.style.color = resolvedPlatformIconColor(p);
     wrap.innerHTML = providerGlyphSvg(p, 44);
     return wrap;
   }
@@ -434,6 +434,14 @@
     if (p === 'threads') return '#101419';
     if (p === 'rss') return '#ea580c';
     return 'currentColor';
+  }
+
+  function resolvedPlatformIconColor(provider) {
+    var mode = normalizeUnderscore(postOpts.platform_icon_color_mode || 'brand');
+    if (mode === 'custom') {
+      return postOpts.platform_icon_color || colors.post_icon || '#64748b';
+    }
+    return providerBrandColor(provider);
   }
 
   function providerGlyphSvg(provider, size) {
@@ -480,7 +488,7 @@
     var wrap = document.createElement('span');
     wrap.className = 'crt-platform-badge crt-platform-badge--inline';
     wrap.setAttribute('aria-hidden', 'true');
-    wrap.style.color = providerBrandColor(p);
+    wrap.style.color = resolvedPlatformIconColor(p);
     wrap.innerHTML = platformInlineSvg(p);
     return wrap;
   }
@@ -644,6 +652,9 @@
         el.style.setProperty('--crt-border', 'transparent');
       }
     }
+    var borderWidth = typeof b.width === 'number' ? b.width : parseInt(b.width, 10);
+    if (!isFinite(borderWidth) || borderWidth < 0) borderWidth = 1;
+    el.style.setProperty('--crt-border-width', Math.min(borderWidth, 8) + 'px');
     var g = c.post_bg || {};
     if (!isDarkTheme) {
       if (g.enabled !== false) {

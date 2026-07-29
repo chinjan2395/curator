@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\DuplicateScanCompleted;
 use App\Models\PostDuplicateGroup;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\DuplicateDetectionService;
 use Illuminate\Bus\Queueable;
@@ -30,7 +31,8 @@ class DuplicateScanJob implements ShouldQueue
     public function handle(DuplicateDetectionService $detector): void
     {
         $workspace = Workspace::query()->find($this->workspaceId);
-        if (! $workspace || (int) $workspace->owner_id !== $this->userId) {
+        $user = User::query()->find($this->userId);
+        if (! $workspace || ! $user || ! $workspace->isAccessibleBy($user)) {
             return;
         }
 
