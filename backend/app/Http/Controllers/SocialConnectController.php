@@ -163,7 +163,6 @@ class SocialConnectController extends Controller
                 // channel only — then channels.list?mine=true cannot see the Brand channel
                 // the business actually wants to sync.
                 'prompt' => 'consent select_account',
-                'include_granted_scopes' => 'true',
             ])
             ->redirect()
             ->getTargetUrl();
@@ -195,7 +194,6 @@ class SocialConnectController extends Controller
                 'state' => $state,
                 'access_type' => 'offline',
                 'prompt' => 'consent',
-                'include_granted_scopes' => 'true',
             ])
             ->redirect()
             ->getTargetUrl();
