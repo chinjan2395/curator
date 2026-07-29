@@ -21,7 +21,7 @@ class EmbedController extends Controller
 .crt-inner{min-height:24px;}
 .crt-card{
   border:1px solid var(--crt-border,#e2e8f0);
-  border-radius:12px;
+  border-radius:var(--crt-radius,12px);
   background:var(--crt-card-bg,#ffffff);
   overflow:hidden;
   box-shadow:0 1px 3px rgba(0,0,0,.06);
@@ -116,11 +116,11 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(var(--crt-post-min,260px),1fr));
-  gap:12px;
+  gap:var(--crt-gap,12px);
 }
 .crt-inner.crt-layout--waterfall{
   column-count:3;
-  column-gap:12px;
+  column-gap:var(--crt-gap,12px);
 }
 @media (max-width:900px){ .crt-inner.crt-layout--waterfall{ column-count:2; } }
 @media (max-width:640px){ .crt-inner.crt-layout--waterfall{ column-count:1; } }
@@ -129,7 +129,7 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--list{
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:var(--crt-gap,12px);
 }
 .crt-inner.crt-layout--list .crt-card{
   display:flex;
@@ -144,7 +144,7 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--carousel{
   display:flex;
   flex-direction:row;
-  gap:12px;
+  gap:var(--crt-gap,12px);
   overflow-x:auto;
   scroll-snap-type:x mandatory;
   padding-bottom:8px;
@@ -159,7 +159,7 @@ class EmbedController extends Controller
   grid-auto-flow:column;
   grid-auto-columns:minmax(var(--crt-post-min,260px),320px);
   overflow-x:auto;
-  gap:12px;
+  gap:var(--crt-gap,12px);
   padding-bottom:8px;
   scroll-snap-type:x mandatory;
 }
@@ -406,7 +406,7 @@ class EmbedController extends Controller
   display:grid;
   grid-template-columns:repeat(4,1fr);
   grid-auto-rows:100px;
-  gap:10px;
+  gap:var(--crt-gap,10px);
 }
 @media (max-width:900px){ .crt-inner.crt-layout--mosaic{ grid-template-columns:repeat(2,1fr); } }
 .crt-inner.crt-layout--mosaic .crt-card:nth-child(6n+1){ grid-column:span 2; grid-row:span 2; }
@@ -416,7 +416,7 @@ class EmbedController extends Controller
   display:grid;
   grid-template-columns:repeat(6,1fr);
   grid-auto-rows:88px;
-  gap:8px;
+  gap:var(--crt-gap,8px);
 }
 @media (max-width:900px){
   .crt-inner.crt-layout--tetris{ grid-template-columns:repeat(3,1fr); }
@@ -426,7 +426,7 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--select{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:12px;
+  gap:var(--crt-gap,12px);
 }
 @media (max-width:900px){ .crt-inner.crt-layout--select{ grid-template-columns:repeat(2,1fr); } }
 .crt-inner.crt-layout--select .crt-card:first-child{ grid-column:1/-1; }
@@ -437,7 +437,7 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--cover_flow{
   display:flex;
   perspective:1200px;
-  gap:10px;
+  gap:var(--crt-gap,10px);
   overflow-x:auto;
   padding:28px 12px;
   transform-style:preserve-3d;
@@ -457,17 +457,31 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--stagger{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(var(--crt-post-min,260px),1fr));
-  gap:12px;
+  gap:var(--crt-gap,12px);
 }
 @keyframes crtFadeUp{
   from{ opacity:0; transform:translateY(14px); }
   to{ opacity:1; transform:translateY(0); }
+}
+@keyframes crtSlideIn{
+  from{ opacity:0; transform:translateX(-24px); }
+  to{ opacity:1; transform:translateX(0); }
 }
 .crt-inner.crt-layout--stagger .crt-card{
   animation:crtFadeUp .55s ease backwards;
 }
 
 .crt-inner.crt-layout--layers .crt-card{ cursor:pointer; }
+
+.crt-modal-overlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.72);padding:24px;}
+.crt-modal-overlay.is-open{display:flex;}
+.crt-modal{position:relative;max-width:520px;width:100%;max-height:88vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+.crt-modal-close{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;border-radius:999px;background:rgba(15,23,42,.08);font-size:20px;line-height:1;cursor:pointer;z-index:2;}
+.crt-modal-media img{width:100%;display:block;max-height:60vh;object-fit:contain;background:#f1f5f9;}
+.crt-modal-body{padding:16px 18px 20px;}
+.crt-modal-title{font-size:16px;font-weight:700;margin-bottom:8px;}
+.crt-modal-text{font-size:14px;line-height:1.4;color:#334155;white-space:pre-wrap;margin-bottom:14px;}
+.crt-modal-link{font-size:13px;font-weight:600;color:#2563eb;text-decoration:none;}
 CSS;
 
         return response($css, 200, [

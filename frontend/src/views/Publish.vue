@@ -410,7 +410,7 @@
                   <AppSelect v-model="appearance.widget.click_action" select-class="w-full py-2" :show-placeholder="false">
                     <option value="new_tab">Open in new tab</option>
                     <option value="modal">Open in modal</option>
-                    <option value="same_tab">Same tab</option>
+                    <option value="none">No action (disabled)</option>
                   </AppSelect>
                 </div>
               </div>
@@ -2077,6 +2077,7 @@ async function saveAppearance() {
   await publish.savePublishSettings(workspaceId.value, appearance.value);
   await publish.fetchCode(workspaceId.value, { force: true, background: false });
   embedPreviewVersion.value += 1;
+  await loadPreview();
 }
 
 async function refresh() {
