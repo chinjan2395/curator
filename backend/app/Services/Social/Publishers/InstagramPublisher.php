@@ -74,6 +74,10 @@ class InstagramPublisher implements PublisherInterface
             'caption' => $caption,
         ]);
 
+        // Instagram downloads the image asynchronously; publishing before the
+        // container reports FINISHED fails with "Media ID is not available".
+        $this->client->waitUntilReady($pageToken, $container['creation_id']);
+
         return $container['creation_id'];
     }
 
@@ -102,6 +106,7 @@ class InstagramPublisher implements PublisherInterface
                 'image_url' => $imageUrl,
                 'is_carousel_item' => 'true',
             ]);
+            $this->client->waitUntilReady($pageToken, $child['creation_id']);
             $childIds[] = $child['creation_id'];
         }
 
@@ -110,6 +115,8 @@ class InstagramPublisher implements PublisherInterface
             'children' => implode(',', $childIds),
             'caption' => $caption,
         ]);
+
+        $this->client->waitUntilReady($pageToken, $container['creation_id']);
 
         return $container['creation_id'];
     }

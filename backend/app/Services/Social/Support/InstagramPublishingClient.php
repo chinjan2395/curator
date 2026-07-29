@@ -41,7 +41,7 @@ class InstagramPublishingClient
     ): void {
         for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
             $response = Http::get($this->graphUrl('/'.$containerId), [
-                'fields' => 'status_code',
+                'fields' => 'status_code,status',
                 'access_token' => $pageToken,
             ]);
 
@@ -53,7 +53,14 @@ class InstagramPublishingClient
             }
 
             if ($status === self::STATUS_ERROR) {
-                throw new RuntimeException('Instagram media container failed processing.');
+                // `status` carries Instagram's human-readable reason (unsupported format,
+                // image too small, unreachable URL). Without it the later publish call
+                // only reports the opaque "Media ID is not available".
+                $detail = trim((string) ($body->json('status') ?? ''));
+
+                throw new RuntimeException(
+                    'Instagram could not process the media'.($detail !== '' ? ': '.$detail : '.')
+                );
             }
 
             if ($attempt < $maxAttempts - 1 && $sleepSeconds > 0 && ! app()->environment('testing')) {

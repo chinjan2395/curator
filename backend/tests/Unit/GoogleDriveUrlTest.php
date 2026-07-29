@@ -23,4 +23,24 @@ class GoogleDriveUrlTest extends TestCase
             GoogleDriveUrl::toThumbnailUrl($url),
         );
     }
+
+    public function test_publish_url_requests_full_resolution(): void
+    {
+        $url = 'https://drive.google.com/uc?id=abc123&export=media';
+
+        $this->assertSame(
+            'https://drive.google.com/thumbnail?id=abc123&sz=w2048',
+            GoogleDriveUrl::toPublishUrl($url),
+        );
+    }
+
+    public function test_publish_url_upgrades_a_stored_preview_thumbnail(): void
+    {
+        $url = 'https://drive.google.com/thumbnail?id=abc123&sz=w256';
+
+        $this->assertSame(
+            'https://drive.google.com/thumbnail?id=abc123&sz=w2048',
+            GoogleDriveUrl::toPublishUrl($url),
+        );
+    }
 }

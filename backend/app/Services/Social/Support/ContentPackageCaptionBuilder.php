@@ -3,6 +3,7 @@
 namespace App\Services\Social\Support;
 
 use App\Models\ContentPackage;
+use App\Support\GoogleDriveUrl;
 
 class ContentPackageCaptionBuilder
 {
@@ -36,7 +37,18 @@ class ContentPackageCaptionBuilder
     {
         $urls = $package->media_urls ?? [];
 
-        return is_array($urls) ? array_values(array_filter($urls, static fn ($u) => is_string($u) && $u !== '')) : [];
+        if (! is_array($urls)) {
+            return [];
+        }
+
+        $urls = array_values(array_filter($urls, static fn ($u) => is_string($u) && $u !== ''));
+
+        // Stored URLs may be preview-size Drive thumbnails; social APIs need full resolution.
+        return array_map(static function (string $url): string {
+            return GoogleDriveUrl::isGoogleDriveUrl($url)
+                ? (GoogleDriveUrl::toPublishUrl($url) ?? $url)
+                : $url;
+        }, $urls);
     }
 
     public static function firstMediaUrl(ContentPackage $package): ?string
