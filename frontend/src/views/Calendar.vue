@@ -4,7 +4,7 @@
       <template #actions>
         <AppButton size="sm" @click="showForm = !showForm">
           <AppIcon name="add" class="w-3.5 h-3.5 mr-1.5" />
-          Schedule post
+          Create post
         </AppButton>
       </template>
     </AppPageHeader>
@@ -54,13 +54,40 @@
               <AppIcon name="calendar" class="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <AppTitle size="sm">Schedule post</AppTitle>
-              <p class="text-sm text-slate-500 mt-0.5">Pick an account and approved content package. Requirements are checked before scheduling.</p>
+              <AppTitle size="sm">Create post</AppTitle>
+              <p class="text-sm text-slate-500 mt-0.5">Pick an account and approved content package. Requirements are checked before publishing.</p>
             </div>
           </div>
         </template>
 
         <form class="space-y-4" @submit.prevent="submitSchedule">
+          <AppFormField id="schedule-mode" label="When to publish" required>
+            <div class="sched-mode-toggle" role="radiogroup">
+              <button
+                type="button"
+                class="sched-mode-btn"
+                :class="{ 'sched-mode-btn--active': form.mode === 'now' }"
+                role="radio"
+                :aria-checked="form.mode === 'now'"
+                @click="form.mode = 'now'"
+              >
+                <AppIcon name="send" class="w-3.5 h-3.5 mr-1.5" />
+                Post now
+              </button>
+              <button
+                type="button"
+                class="sched-mode-btn"
+                :class="{ 'sched-mode-btn--active': form.mode === 'later' }"
+                role="radio"
+                :aria-checked="form.mode === 'later'"
+                @click="form.mode = 'later'"
+              >
+                <AppIcon name="calendar" class="w-3.5 h-3.5 mr-1.5" />
+                Schedule for later
+              </button>
+            </div>
+          </AppFormField>
+
           <div class="grid gap-4 sm:grid-cols-2">
             <AppFormField id="schedule-credential" label="Social account" required>
               <AppSelect
@@ -76,6 +103,7 @@
             </AppFormField>
 
             <AppFormField
+              v-if="form.mode === 'later'"
               id="schedule-at"
               label="Publish time"
               required
@@ -130,7 +158,7 @@
               :loading="scheduling"
             >
               <AppIcon name="send" class="w-3.5 h-3.5 mr-1.5" />
-              {{ scheduling ? 'Scheduling…' : 'Schedule post' }}
+              {{ submitButtonLabel }}
             </AppButton>
           </div>
         </form>
@@ -249,6 +277,7 @@ const showForm = ref(false);
 const scheduling = ref(false);
 const minScheduleAt = minLocalDatetimeInputValue();
 const form = ref({
+  mode: 'now',
   social_credential_id: '',
   content_package_id: route.query.content_package_id ? String(route.query.content_package_id) : '',
   scheduled_at: '',
@@ -302,9 +331,14 @@ const canSubmitSchedule = computed(() => (
   !scheduling.value
   && form.value.social_credential_id
   && form.value.content_package_id
-  && form.value.scheduled_at
+  && (form.value.mode === 'now' || form.value.scheduled_at)
   && scheduleValidation.value.valid
 ));
+
+const submitButtonLabel = computed(() => {
+  if (scheduling.value) return form.value.mode === 'now' ? 'Posting…' : 'Scheduling…';
+  return form.value.mode === 'now' ? 'Post now' : 'Schedule post';
+});
 
 const packageFieldHint = computed(() => {
   if (!selectedSchedulePlatform.value) {
@@ -411,17 +445,24 @@ function closeForm() {
 
 async function submitSchedule() {
   if (!canSubmitSchedule.value) {
-    toast.error('Fix the content requirements above before scheduling.');
+    toast.error(form.value.mode === 'now'
+      ? 'Fix the content requirements above before posting.'
+      : 'Fix the content requirements above before scheduling.');
     return;
   }
   scheduling.value = true;
   try {
-    await axios.post('/api/schedule', {
+    const { data } = await axios.post('/api/schedule', {
       social_credential_id: Number(form.value.social_credential_id),
       content_package_id: form.value.content_package_id ? Number(form.value.content_package_id) : null,
-      scheduled_at: localDatetimeInputToUtcIso(form.value.scheduled_at),
+      scheduled_at: form.value.mode === 'later' ? localDatetimeInputToUtcIso(form.value.scheduled_at) : null,
     });
-    toast.success('Post scheduled');
+    const post = data.data || data;
+    if (form.value.mode === 'now' && post?.status !== 'published') {
+      toast.error(data.message || 'Publish failed; it will be retried automatically.');
+    } else {
+      toast.success(data.message || (form.value.mode === 'now' ? 'Post published' : 'Post scheduled'));
+    }
     closeForm();
     await load();
   } finally {
@@ -609,5 +650,30 @@ onMounted(load);
 
 .sched-cancel-btn:hover {
   background: #fee2e2;
+}
+
+.sched-mode-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  background: #f1f5f9;
+  border-radius: 0.625rem;
+}
+
+.sched-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sched-mode-btn--active {
+  background: #fff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 </style>

@@ -39,8 +39,10 @@ class ScheduleController extends Controller
         $validated = $request->validate([
             'social_credential_id' => ['required', 'exists:social_credentials,id'],
             'content_package_id' => ['required', 'exists:content_packages,id'],
-            'scheduled_at' => ['required', 'date', 'after:now'],
+            'scheduled_at' => ['nullable', 'date', 'after:now'],
         ]);
+
+        $publishNow = empty($validated['scheduled_at']);
 
         $credential = SocialCredential::findOrFail($validated['social_credential_id']);
         abort_if(! $request->user()->isSuperAdmin() && $credential->user_id !== $request->user()->id, 403);
@@ -74,11 +76,20 @@ class ScheduleController extends Controller
             'user_id' => $request->user()->id,
             'social_credential_id' => $credential->id,
             'content_package_id' => $package->id,
-            'scheduled_at' => Carbon::parse($validated['scheduled_at'])->utc(),
+            'scheduled_at' => $publishNow ? now() : Carbon::parse($validated['scheduled_at'])->utc(),
             'status' => 'scheduled',
         ]);
 
         event(ScheduledPostStatusChanged::fromModel($post->load(['socialCredential', 'contentPackage'])));
+
+        if ($publishNow) {
+            app(SocialPublisherService::class)->publish($post);
+            $post = $post->fresh(['socialCredential', 'contentPackage']);
+
+            return $post->status === 'published'
+                ? ApiResponse::success($post, 'Post published.', 201)
+                : ApiResponse::success($post, $post->error_message ?? 'Publish failed; it will be retried automatically.', 201);
+        }
 
         return ApiResponse::success($post, 'Post scheduled.', 201);
     }

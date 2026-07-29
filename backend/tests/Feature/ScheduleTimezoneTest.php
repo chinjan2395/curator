@@ -170,6 +170,35 @@ class ScheduleTimezoneTest extends TestCase
             ->assertJsonValidationErrors(['content_package_id']);
     }
 
+    public function test_store_without_scheduled_at_publishes_immediately(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $credential = $this->credentialFor($user);
+        $package = $this->packageFor($user);
+
+        $response = $this->postJson('/api/schedule', [
+            'social_credential_id' => $credential->id,
+            'content_package_id' => $package->id,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $post = ScheduledPost::first();
+        $this->assertNotNull($post);
+
+        // Publish was attempted synchronously in the request, not deferred to the scheduler:
+        // either it succeeded, or a real publish attempt was made and failed/retried.
+        $this->assertTrue(
+            $post->status === 'published' || $post->retry_count > 0,
+            'Expected the publish attempt to run inline instead of waiting for schedule:run.'
+        );
+    }
+
     public function test_store_rejects_unsupported_native_provider(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-06-08T12:00:00Z'));
