@@ -62,7 +62,6 @@ class GoogleDriveController extends Controller
                 'state' => $state,
                 'access_type' => 'offline',
                 'prompt' => 'consent',
-                'include_granted_scopes' => 'true',
             ])
             ->redirect()
             ->getTargetUrl();
