@@ -771,7 +771,6 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { useCampaignsStore } from '../stores/campaigns';
-import { useRealtimeStore } from '../stores/realtime';
 import { useToastStore } from '../stores/toast';
 import {
   AppAlert,
@@ -794,6 +793,7 @@ import ScheduleValidationPanel from '../components/ScheduleValidationPanel.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import { usePlatformPublishSpecs } from '../composables/usePlatformPublishSpecs';
 import { useNavigationVisibility } from '../composables/useNavigationVisibility';
+import { useRealtimeWithFallback } from '../composables/useRealtimeWithFallback';
 import { CONTENT_TYPE_ICONS } from '../constants/platformPublishSpecs';
 import {
   draftHasPublishIssue,
@@ -802,6 +802,8 @@ import {
   validateDraftForNativePublish,
 } from '../utils/scheduleContentValidation';
 
+const GENERATION_TIMEOUT_MS = 3 * 60 * 1000;
+
 const route = useRoute();
 const router = useRouter();
 const store = useCampaignsStore();
@@ -809,8 +811,9 @@ const toast = useToastStore();
 const { isMenuEnabled } = useNavigationVisibility();
 const showScheduleAction = computed(() => isMenuEnabled('schedule'));
 const showContentLibraryLink = computed(() => isMenuEnabled('content-library'));
-const realtime = useRealtimeStore();
-let unsubscribeAi = null;
+let generationTimeoutId = null;
+let generationPollId = null;
+let packagesBeforeGenerate = 0;
 
 const { getSpecsForPlatforms } = usePlatformPublishSpecs();
 const platformAcceptsEntries = computed(() => getSpecsForPlatforms(splitList(campaignForm.platformsText)));
@@ -968,11 +971,70 @@ const canSaveCampaign = computed(
 
 onMounted(async () => {
   await Promise.all([load(), loadAssets(), loadBrandKits(), loadContentTemplates(), loadContentBlocks()]);
-  unsubscribeAi = realtime.on('aiGeneration', handleAiGeneration);
 });
 
 onUnmounted(() => {
-  if (unsubscribeAi) unsubscribeAi();
+  clearGeneratingState();
+});
+
+function clearGenerationTimeout() {
+  if (generationTimeoutId) {
+    window.clearTimeout(generationTimeoutId);
+    generationTimeoutId = null;
+  }
+}
+
+function clearGenerationPoll() {
+  if (generationPollId) {
+    window.clearInterval(generationPollId);
+    generationPollId = null;
+  }
+}
+
+function clearGeneratingState() {
+  clearGenerationTimeout();
+  clearGenerationPoll();
+  generating.value = false;
+  generationProgress.value = '';
+}
+
+function armGenerationTimeout() {
+  clearGenerationTimeout();
+  generationTimeoutId = window.setTimeout(() => {
+    if (!generating.value) return;
+    clearGeneratingState();
+    toast.info('Still processing in the background — refresh shortly or check Notifications for the result.');
+  }, GENERATION_TIMEOUT_MS);
+}
+
+function startGenerationPoll() {
+  clearGenerationPoll();
+  // Always poll while a generate is in-flight so success is visible even when
+  // WebSocket/Reverb is unavailable in production.
+  generationPollId = window.setInterval(() => {
+    if (document.hidden || !generating.value) return;
+    pollGenerationProgress();
+  }, 15_000);
+}
+
+async function pollGenerationProgress() {
+  if (!generating.value) return;
+  await load({ showLoader: false });
+  if (packages.value.length > packagesBeforeGenerate) {
+    clearGeneratingState();
+    activeTab.value = 'drafts';
+    platformFilter.value = 'all';
+    toast.success('Content generated');
+    if (packages.value.length === 1) {
+      expandedPackageId.value = packages.value[0].id;
+    }
+  }
+}
+
+useRealtimeWithFallback({
+  event: 'aiGeneration',
+  onEvent: handleAiGeneration,
+  poll: () => pollGenerationProgress(),
 });
 
 function handleAiGeneration(event) {
@@ -981,7 +1043,9 @@ function handleAiGeneration(event) {
   if (event.job_type === 'campaign_generate' && Number(event.resource_id) === campaignId) {
     if (event.status === 'started') {
       generating.value = true;
-      generationProgress.value = event.message || '';
+      generationProgress.value = event.message || 'Generating…';
+      armGenerationTimeout();
+      startGenerationPoll();
       return;
     }
     if (event.status === 'progress') {
@@ -990,10 +1054,11 @@ function handleAiGeneration(event) {
       generationProgress.value = platform
         ? `Generating ${platform} (${step}/${total})…`
         : (event.message || 'Generating…');
+      armGenerationTimeout();
+      startGenerationPoll();
       return;
     }
-    generating.value = false;
-    generationProgress.value = '';
+    clearGeneratingState();
     if (event.status === 'completed') {
       toast.success(event.message || 'Content generated');
       load({ showLoader: false }).then(() => {
@@ -1415,11 +1480,16 @@ async function saveCampaign() {
 }
 
 async function generate() {
+  packagesBeforeGenerate = packages.value.length;
   generating.value = true;
+  generationProgress.value = 'Queued…';
+  armGenerationTimeout();
+  startGenerationPoll();
   try {
     await store.generate(route.params.id);
+    toast.info('Generation runs in the background — this can take up to a minute. Drafts will appear here and you will get a notification when it is ready.');
   } catch {
-    generating.value = false;
+    clearGeneratingState();
   }
 }
 

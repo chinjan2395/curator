@@ -46,13 +46,7 @@ export const useCampaignsStore = defineStore('campaigns', {
     async generate(id) {
       try {
         const { data } = await axios.post(`/api/campaigns/${id}/generate`);
-        const payload = data.data || data;
-        if (payload?.queued) {
-          useToastStore().info('Content generation started…');
-        } else {
-          useToastStore().success('Content generated');
-        }
-        return payload;
+        return data.data || data;
       } catch (e) {
         throw e;
       }
