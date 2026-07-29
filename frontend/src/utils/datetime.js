@@ -64,6 +64,35 @@ export function localMonthUtcRange(referenceDate = new Date()) {
 }
 
 /**
+ * Human-readable relative time label ("X unit(s) ago"/"from now", "Just now", "Soon").
+ */
+export function formatRelativeTime(value) {
+  if (!value) return 'Just now';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Just now';
+
+  const diffMs = date.getTime() - Date.now();
+  const absSeconds = Math.round(Math.abs(diffMs) / 1000);
+  const units = [
+    ['year', 60 * 60 * 24 * 365],
+    ['month', 60 * 60 * 24 * 30],
+    ['day', 60 * 60 * 24],
+    ['hour', 60 * 60],
+    ['minute', 60],
+  ];
+
+  for (const [unit, seconds] of units) {
+    if (absSeconds >= seconds) {
+      const count = Math.max(1, Math.round(absSeconds / seconds));
+      return `${count} ${unit}${count === 1 ? '' : 's'} ${diffMs > 0 ? 'from now' : 'ago'}`;
+    }
+  }
+
+  return diffMs > 0 ? 'Soon' : 'Just now';
+}
+
+/**
  * Minimum value for datetime-local inputs (now, in local time).
  */
 export function minLocalDatetimeInputValue(date = new Date()) {

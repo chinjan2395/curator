@@ -34,6 +34,13 @@ export const useNotificationsStore = defineStore('notifications', {
         throw e;
       }
     },
+    async markRead(id) {
+      const item = this.items.find((n) => n.id === id);
+      if (!item || item.read_at) return;
+      await axios.post(`/api/notifications/${id}/read`);
+      item.read_at = new Date().toISOString();
+      if (this.unreadCount > 0) this.unreadCount -= 1;
+    },
     pushNotification(notification, unreadCount) {
       if (!notification) return;
       this.items = [notification, ...this.items.filter((n) => n.id !== notification.id)];

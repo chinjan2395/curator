@@ -296,22 +296,7 @@
           </button>
 
           <!-- Notification bell -->
-          <button
-            v-if="showNotifications"
-            type="button"
-            class="relative p-2 rounded-lg transition-colors"
-            :class="syncUnreadCount > 0 ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'"
-            title="Notifications"
-            @click="openNotifications"
-          >
-            <AppIcon name="bell" class="w-5 h-5" />
-            <span
-              v-if="headerUnreadCount > 0"
-              class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-blue-600 text-white text-[10px] leading-[1.1rem] font-semibold text-center"
-            >
-              {{ headerUnreadCount > 99 ? '99+' : headerUnreadCount }}
-            </span>
-          </button>
+          <NotificationBell v-if="showNotifications" />
 
           <!-- User avatar -->
           <div class="h-8 w-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex items-center justify-center select-none ml-1 ring-2 ring-blue-100">
@@ -442,6 +427,7 @@ import { ref, computed, watch, provide, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router';
 import { AppIcon } from '../components/ui';
+import { NotificationBell } from '../components/layout';
 import { useAuthStore } from '../stores/auth';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { useActivityLogStore } from '../stores/activityLog';
@@ -473,7 +459,6 @@ const profileDropdownRef = ref(null);
 const sidebarCollapsed = ref(false);
 const mobileSidebarOpen = ref(false);
 const headerBreadcrumbs = ref([]);
-const syncUnreadCount = computed(() => Number(auth.syncSummary?.scheduler_unread_count || 0));
 
 // Surfaces a clear "acting on behalf of" cue whenever a super admin is inside
 // a workspace route for a workspace they don't personally own.
@@ -484,11 +469,6 @@ const viewingWorkspaceOnBehalf = computed(() => {
   const workspace = workspaces.list.find((w) => w.id === workspaceId);
   if (!workspace || workspace.is_owner !== false) return null;
   return workspace;
-});
-const headerUnreadCount = computed(() => {
-  const sync = syncUnreadCount.value;
-  if (!showNotifications.value) return sync;
-  return sync + Number(notifications.unreadCount || 0);
 });
 let unsubscribeHandlers = [];
 provide('setHeaderBreadcrumbs', (crumbs) => { headerBreadcrumbs.value = crumbs; });
@@ -718,21 +698,6 @@ async function resendVerification() {
   }
 }
 
-async function openNotifications() {
-  const syncUnread = syncUnreadCount.value;
-  const appUnread = Number(notifications.unreadCount || 0);
-  if (syncUnread > 0) {
-    toast.info(`${syncUnread} new post${syncUnread !== 1 ? 's' : ''} synced by scheduler/job.`);
-    await auth.acknowledgeSyncNotifications();
-  }
-  if (appUnread > 0 && showNotifications.value) {
-    router.push('/notifications');
-    return;
-  }
-  if (syncUnread > 0) return;
-  const totalSinceLogin = Number(auth.syncSummary?.scheduler_synced_post_count || 0);
-  toast.info(`No new notifications right now. ${totalSinceLogin} posts synced since your last login.`);
-}
 </script>
 
 <style scoped>
