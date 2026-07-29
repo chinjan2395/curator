@@ -95,6 +95,17 @@ class GenerateCampaignContentJob implements ShouldQueue
                 $e->getMessage(),
             ));
 
+            $notifications->notify(
+                $campaign->user,
+                'campaign_generation_failed',
+                'Content generation failed',
+                "AI content generation failed for campaign \"{$campaign->name}\".",
+                [
+                    'campaign_id' => $campaign->id,
+                    'error' => $e->getMessage(),
+                ],
+            );
+
             throw $e;
         }
     }
