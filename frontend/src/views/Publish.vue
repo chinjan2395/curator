@@ -2012,10 +2012,18 @@ function formatPreviewDate(v) {
   }
 }
 
+const appearanceHydratedFor = ref(null);
+
 watch(
   () => publish.publishSettings,
   (s) => {
+    // Background stats revalidation (see stores/publish.js fetchStats) can reassign
+    // publishSettings after this workspace's appearance was already hydrated once; only
+    // resync here on the first load for a given workspace so it doesn't clobber unsaved
+    // edits the user is actively making (e.g. mid-toggle checkboxes) with stale server data.
+    if (appearanceHydratedFor.value === workspaceId.value) return;
     appearance.value = s ? mergePublishAppearance(s) : null;
+    appearanceHydratedFor.value = workspaceId.value;
   },
   { immediate: true },
 );
@@ -2133,6 +2141,8 @@ async function refresh() {
   if (!workspaceId.value) return;
   previewLoading.value = true;
   try {
+    // Explicit refresh should discard any unsaved local edits and resync from the server.
+    appearanceHydratedFor.value = null;
     await publish.fetchStats(workspaceId.value, { force: true, background: false });
     await publish.fetchCode(workspaceId.value, { force: true, background: false });
     await loadPreview();
