@@ -1777,18 +1777,34 @@ const previewColorCssVars = computed(() => {
   if (shareColorMode === 'post_text') shareColor = c.post_text;
   else if (shareColorMode === 'post_button') shareColor = c.post_button;
   else if (shareColorMode === 'custom') shareColor = post.showcase_share_icon_color || c.post_icon;
+  const isDarkTheme = String(widget.theme || 'light') === 'dark';
+
   const vars = {
-    '--crt-icon': c.post_icon,
-    '--crt-text': c.post_text,
-    '--crt-date': c.post_date,
-    '--crt-link': c.post_link,
-    '--crt-btn': c.post_button,
+    '--crt-gap': `${Math.max(0, Math.min(Number(widget.gap) || 16, 64))}px`,
+    '--crt-radius': `${Math.max(0, Math.min(Number(widget.border_radius) || 12, 48))}px`,
     '--crt-showcase-share-color': shareColor || c.post_icon || '#e2e8f0',
     '--crt-post-min': `${minW}px`,
-    '--crt-border': b.enabled !== false ? b.color || '#e2e8f0' : 'transparent',
     '--crt-border-width': `${Math.max(0, Math.min(Number(b.width ?? 1) || 0, 8))}px`,
-    '--crt-card-bg': g.enabled !== false ? g.color || '#ffffff' : 'transparent',
   };
+
+  if (isDarkTheme) {
+    vars['--crt-icon'] = '#94a3b8';
+    vars['--crt-text'] = '#f1f5f9';
+    vars['--crt-date'] = '#94a3b8';
+    vars['--crt-link'] = '#38bdf8';
+    vars['--crt-btn'] = '#f1f5f9';
+    vars['--crt-card-bg'] = '#0f172a';
+    vars['--crt-border'] = '#1e293b';
+  } else {
+    vars['--crt-icon'] = c.post_icon;
+    vars['--crt-text'] = c.post_text;
+    vars['--crt-date'] = c.post_date;
+    vars['--crt-link'] = c.post_link;
+    vars['--crt-btn'] = c.post_button;
+    vars['--crt-border'] = b.enabled !== false ? b.color || '#e2e8f0' : 'transparent';
+    vars['--crt-card-bg'] = g.enabled !== false ? g.color || '#ffffff' : 'transparent';
+  }
+
   const font = widget.font_family;
   if (font && font !== 'inherit') vars['--crt-font'] = font;
 
