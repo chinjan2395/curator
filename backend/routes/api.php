@@ -117,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('workspaces/{workspace}/publish/settings', [FeedPublishController::class, 'updateSettings']);
     Route::post('workspaces/{workspace}/publish', [FeedPublishController::class, 'publish']);
     Route::get('workspaces/{workspace}/publish/code', [FeedPublishController::class, 'publishCode']);
+    Route::post('workspaces/{workspace}/publish/brand-kit', [FeedPublishController::class, 'applyBrandKit']);
     Route::get('workspaces/{workspace}/posts', [PostController::class, 'workspaceIndex']);
     Route::put('workspaces/{workspace}/posts/bulk', [PostController::class, 'bulkUpdate']);
     Route::apiResource('workspaces.feeds.posts', PostController::class)->only(['index', 'update', 'destroy']);
@@ -206,6 +207,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('content/brand-kits', [BrandKitController::class, 'store']);
     Route::put('content/brand-kits/{brandKit}', [BrandKitController::class, 'update']);
     Route::delete('content/brand-kits/{brandKit}', [BrandKitController::class, 'destroy']);
+    Route::patch('content/brand-kits/{brandKit}/overrides', [BrandKitController::class, 'updateOverrides']);
+    Route::post('content/brand-kits/{brandKit}/reset', [BrandKitController::class, 'resetOverride']);
+    Route::post('content/brand-kits/{brandKit}/duplicate', [BrandKitController::class, 'duplicate']);
+    Route::post('content/brand-kits/{brandKit}/create-child', [BrandKitController::class, 'createChild']);
+    Route::post('content/brand-kits/{brandKit}/set-as-master', [BrandKitController::class, 'setAsMaster']);
+    Route::get('content/brand-kits/{brandKit}/resolved', [BrandKitController::class, 'resolved']);
 
     Route::get('content/templates', [ContentTemplateController::class, 'index']);
     Route::post('content/templates', [ContentTemplateController::class, 'store']);
