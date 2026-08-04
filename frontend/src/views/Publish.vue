@@ -697,7 +697,7 @@
           </div>
           <p class="publish-preview-skeleton__caption">Loading published posts preview…</p>
         </div>
-        <div v-else-if="!previewPosts.length" class="text-sm-pro text-slate-600 space-y-2">
+        <div v-else-if="!visiblePreviewPosts.length" class="text-sm-pro text-slate-600 space-y-2">
           <p>No published posts in this preview yet.</p>
           <p class="text-2xs text-slate-500">
             Approving in <strong class="font-medium text-slate-600">Curate</strong> only marks posts as approved.
@@ -1098,7 +1098,7 @@
             <template v-else>
               <div :class="['crt-inner', previewLayoutClass]" :style="previewInnerStyle">
                 <a
-                  v-for="(p, idx) in previewPosts"
+                  v-for="(p, idx) in visiblePreviewPosts"
                   :key="p.id"
                   :href="postLinkHref(p)"
                   target="_blank"
@@ -1216,7 +1216,7 @@
         </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <a
-              v-for="p in previewPosts"
+              v-for="p in visiblePreviewPosts"
               :key="p.id"
               :href="postLinkHref(p)"
               target="_blank"
@@ -1688,8 +1688,23 @@ const showEmbedWidgetSection = computed(
 
 const previewSkeletonCount = computed(() => (previewIsShowcase.value ? 3 : 6));
 
+// previewPosts reflects the last-SAVED platform/content-type filters (the public feed API
+// applies them server-side). Narrowing the filters further here re-filters instantly,
+// client-side, so the preview panel reacts on the spot instead of only after Save+reload.
+const visiblePreviewPosts = computed(() => {
+  const widget = appearance.value?.widget;
+  let posts = previewPosts.value;
+  if (widget?.platform_filters?.length) {
+    posts = posts.filter((p) => widget.platform_filters.includes(p.provider));
+  }
+  if (widget?.content_type_filters?.length) {
+    posts = posts.filter((p) => widget.content_type_filters.includes(p.content_type));
+  }
+  return posts;
+});
+
 const showcasePreviewRows = computed(() =>
-  previewPosts.value.map((p) => {
+  visiblePreviewPosts.value.map((p) => {
     const { plain, tags } = splitPreviewHashtags(p.content || '');
     return { p, plain, tags };
   }),
@@ -1825,7 +1840,7 @@ const previewInnerStyle = computed(() => {
   if (!appearance.value) return {};
   const st = String(appearance.value.feed_style || 'grid').replace(/-/g, '_');
   if (st === 'layers') {
-    const n = previewPosts.value.length;
+    const n = visiblePreviewPosts.value.length;
     return {
       position: 'relative',
       minHeight: `${Math.min(520, 140 + Math.max(0, n - 1) * 26)}px`,
@@ -2012,10 +2027,18 @@ function formatPreviewDate(v) {
   }
 }
 
+const appearanceHydratedFor = ref(null);
+
 watch(
   () => publish.publishSettings,
   (s) => {
+    // Background stats revalidation (see stores/publish.js fetchStats) can reassign
+    // publishSettings after this workspace's appearance was already hydrated once; only
+    // resync here on the first load for a given workspace so it doesn't clobber unsaved
+    // edits the user is actively making (e.g. mid-toggle checkboxes) with stale server data.
+    if (appearanceHydratedFor.value === workspaceId.value) return;
     appearance.value = s ? mergePublishAppearance(s) : null;
+    appearanceHydratedFor.value = workspaceId.value;
   },
   { immediate: true },
 );
@@ -2133,6 +2156,8 @@ async function refresh() {
   if (!workspaceId.value) return;
   previewLoading.value = true;
   try {
+    // Explicit refresh should discard any unsaved local edits and resync from the server.
+    appearanceHydratedFor.value = null;
     await publish.fetchStats(workspaceId.value, { force: true, background: false });
     await publish.fetchCode(workspaceId.value, { force: true, background: false });
     await loadPreview();
