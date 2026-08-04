@@ -41,14 +41,14 @@ trait ResolvesFacebookPage
     }
 
     /**
-     * @return array<int, array{id: string, name: string}>
+     * @return array<int, array{id: string, name: string, avatar_url: ?string}>
      */
     protected function fetchFacebookPagesFromMeAccounts(string $userToken): array
     {
         $pages = [];
         $nextUrl = 'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts';
         $query = [
-            'fields' => 'id,name',
+            'fields' => 'id,name,picture.type(large){url}',
             'limit' => 100,
             'access_token' => $userToken,
         ];
@@ -67,9 +67,11 @@ trait ResolvesFacebookPage
                 if ($id === '') {
                     continue;
                 }
+                $avatarUrl = trim((string) (data_get($p, 'picture.data.url') ?? ''));
                 $pages[] = [
                     'id' => $id,
                     'name' => (string) ($p['name'] ?? ''),
+                    'avatar_url' => $avatarUrl !== '' ? $avatarUrl : null,
                 ];
             }
 
@@ -127,7 +129,7 @@ trait ResolvesFacebookPage
     protected function fetchFacebookPageBrief(string $pageId, string $userToken): ?array
     {
         $resp = Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/'.$pageId, [
-            'fields' => 'id,name',
+            'fields' => 'id,name,picture.type(large){url}',
             'access_token' => $userToken,
         ]);
 
@@ -140,9 +142,12 @@ trait ResolvesFacebookPage
             return null;
         }
 
+        $avatarUrl = trim((string) ($resp->json('picture.data.url') ?? ''));
+
         return [
             'id' => $id,
             'name' => (string) ($resp->json('name') ?? ''),
+            'avatar_url' => $avatarUrl !== '' ? $avatarUrl : null,
         ];
     }
 
