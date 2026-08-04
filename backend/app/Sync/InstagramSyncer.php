@@ -32,7 +32,7 @@ class InstagramSyncer
         $accountsOut = [];
         $nextUrl = 'https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts';
         $query = [
-            'fields' => 'id,name,instagram_business_account{id,username}',
+            'fields' => 'id,name,instagram_business_account{id,username,profile_picture_url}',
             'limit' => 100,
             'access_token' => $userToken,
         ];
@@ -58,11 +58,13 @@ class InstagramSyncer
                 if ($igId === '') {
                     continue;
                 }
+                $avatarUrl = trim((string) ($ig['profile_picture_url'] ?? ''));
                 $accountsOut[] = [
                     'facebook_page_id' => (string) ($row['id'] ?? ''),
                     'facebook_page_name' => (string) ($row['name'] ?? ''),
                     'instagram_business_account_id' => $igId,
                     'instagram_username' => (string) ($ig['username'] ?? ''),
+                    'avatar_url' => $avatarUrl !== '' ? $avatarUrl : null,
                 ];
             }
 
