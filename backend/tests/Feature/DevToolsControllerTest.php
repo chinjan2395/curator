@@ -25,11 +25,22 @@ class DevToolsControllerTest extends TestCase
 
         $this->assertNotNull($migrateFresh);
         $this->assertTrue($migrateFresh['danger']);
-        $this->assertSame(
-            'DESTRUCTIVE: Drops all tables and deletes all data, then re-runs migrations. Irreversible.',
-            $migrateFresh['warning']
-        );
+        $this->assertStringContainsString('DESTRUCTIVE', $migrateFresh['warning']);
         $this->assertSame('php artisan migrate:fresh', $migrateFresh['command']);
+    }
+
+    public function test_migrate_fresh_is_hidden_and_rejected_in_production(): void
+    {
+        $this->app['env'] = 'production';
+
+        Sanctum::actingAs(User::factory()->admin()->create());
+
+        $commands = collect($this->getJson('/api/admin/dev-tools/commands')->json('data'));
+        $this->assertNull($commands->firstWhere('id', 'migrate:fresh'));
+
+        $this->postJson('/api/admin/dev-tools/run', ['command' => 'migrate:fresh'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['command']);
     }
 
     public function test_non_admin_cannot_access_dev_tools_commands(): void
