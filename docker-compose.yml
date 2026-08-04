@@ -107,7 +107,11 @@ services:
     ports:
       - "3306:3306"
     volumes:
+      # App data persists across rebuilds/restarts. Never use `docker compose down -v`
+      # unless you intend to wipe the database.
       - ./mysql-data:/var/lib/mysql
+      # Creates `curator_testing` on first volume init (PHPUnit RefreshDatabase target).
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"]
       interval: 5s
