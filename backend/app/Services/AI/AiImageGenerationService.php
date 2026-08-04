@@ -95,7 +95,8 @@ class AiImageGenerationService
             $kit = $campaign->brandKit;
             $context['brand_kit_name'] = $kit->name;
 
-            $colors = is_array($kit->colors) ? $kit->colors : [];
+            $resolved = $kit->resolve();
+            $colors = is_array($resolved['colors'] ?? null) ? $resolved['colors'] : [];
             foreach (['primary', 'secondary', 'accent', 'background', 'text'] as $colorKey) {
                 if (! empty($colors[$colorKey])) {
                     $context['brand_color_'.$colorKey] = $colors[$colorKey];
@@ -135,7 +136,8 @@ class AiImageGenerationService
         $kit = $package->campaign?->brandKit;
         if ($kit) {
             $colorBits = [];
-            $colors = is_array($kit->colors) ? $kit->colors : [];
+            $kitColors = $kit->resolve()['colors'] ?? [];
+            $colors = is_array($kitColors) ? $kitColors : [];
             foreach (['primary', 'secondary', 'accent'] as $key) {
                 if (! empty($colors[$key])) {
                     $colorBits[] = $key.' '.$colors[$key];

@@ -103,9 +103,36 @@ export const usePublishStore = defineStore('publish', {
           persistToSession(statsCacheKey(workspaceId), this.stats);
         }
         useToastStore().success('Feed appearance saved');
+        // brand_kit_synced is computed server-side against the linked kit's live
+        // resolved values — a local patch can't reproduce that, so re-fetch it.
+        if (this.stats?.brand_kit_id) {
+          this.fetchStats(workspaceId, { force: true, background: false }).catch(() => {});
+        }
         return result.publish_settings;
       } catch (err) {
         const msg = err.response?.data?.message || 'Failed to save settings';
+        this.error = msg;
+        useToastStore().error(msg);
+        throw err;
+      } finally {
+        this.savingSettings = false;
+      }
+    },
+    async applyBrandKit(workspaceId, brandKitId) {
+      this.savingSettings = true;
+      this.error = null;
+      try {
+        const { data } = await axios.post(
+          `/api/workspaces/${workspaceId}/publish/brand-kit`,
+          { brand_kit_id: brandKitId },
+        );
+        const stats = Array.isArray(data) ? data : data.data ?? data;
+        this.applyStats(stats);
+        persistToSession(statsCacheKey(workspaceId), stats);
+        useToastStore().success('Brand kit applied');
+        return stats;
+      } catch (err) {
+        const msg = err.response?.data?.message || 'Failed to apply brand kit';
         this.error = msg;
         useToastStore().error(msg);
         throw err;
