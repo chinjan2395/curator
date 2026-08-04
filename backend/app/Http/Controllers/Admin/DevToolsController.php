@@ -4,15 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResponse;
+use App\Support\DestructiveDatabaseGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Validation\Rule;
 
 class DevToolsController extends Controller
 {
     /**
      * Commands that are safe to run from the UI.
      * Keys are the identifier sent by the frontend; values describe the Artisan command and UI metadata.
+     * Commands with danger=true are omitted/blocked outside local/testing (see DestructiveDatabaseGuard).
      */
     private const COMMAND_META = [
         'optimize:clear'             => ['command' => 'optimize:clear'],
@@ -26,7 +29,7 @@ class DevToolsController extends Controller
         'migrate:fresh'              => [
             'command' => 'migrate:fresh',
             'danger'  => true,
-            'warning' => 'DESTRUCTIVE: Drops all tables and deletes all data, then re-runs migrations. Irreversible.',
+            'warning' => 'DESTRUCTIVE: Drops all tables and deletes all data, then re-runs migrations. Irreversible. Blocked in production.',
         ],
         'queue:restart'              => ['command' => 'queue:restart'],
         'queue:drain'                => ['command' => 'queue:work --stop-when-empty'],
@@ -36,11 +39,23 @@ class DevToolsController extends Controller
         'media:backfill-cache'       => ['command' => 'media:backfill-cache'],
     ];
 
+    /** @return array<string, array{command: string, danger?: bool, warning?: string}> */
+    private function allowedCommandMeta(): array
+    {
+        $allowDanger = DestructiveDatabaseGuard::allowsDestructiveCommands();
+
+        return array_filter(
+            self::COMMAND_META,
+            static fn (array $meta): bool => $allowDanger || empty($meta['danger'])
+        );
+    }
+
     /** Return the list of allowed commands so the UI can render them. */
     public function index(): JsonResponse
     {
-        $commands = array_map(function (string $key): array {
-            $meta = self::COMMAND_META[$key];
+        $commands = [];
+
+        foreach ($this->allowedCommandMeta() as $key => $meta) {
             $entry = [
                 'id'      => $key,
                 'command' => 'php artisan ' . $meta['command'],
@@ -51,27 +66,39 @@ class DevToolsController extends Controller
                 $entry['warning'] = $meta['warning'];
             }
 
-            return $entry;
-        }, array_keys(self::COMMAND_META));
+            $commands[] = $entry;
+        }
 
-        return ApiResponse::success(array_values($commands));
+        return ApiResponse::success($commands);
     }
 
     /** Run one of the whitelisted Artisan commands. */
     public function run(Request $request): JsonResponse
     {
+        $allowed = $this->allowedCommandMeta();
+
         $validated = $request->validate([
-            'command' => ['required', 'string', 'in:' . implode(',', array_keys(self::COMMAND_META))],
+            'command' => ['required', 'string', Rule::in(array_keys($allowed))],
         ]);
 
         $commandKey     = $validated['command'];
-        $artisanCommand = self::COMMAND_META[$commandKey]['command'];
+        $artisanCommand = $allowed[$commandKey]['command'];
+
+        // Belt-and-suspenders: never run wipe commands outside local/testing.
+        if (! empty($allowed[$commandKey]['danger'])) {
+            DestructiveDatabaseGuard::abortIfDestructiveCommandBlocked($artisanCommand);
+        }
 
         try {
             $options = [];
 
-            // migrate commands run non-interactively in production
-            if (in_array($commandKey, ['migrate', 'migrate:fresh'], true)) {
+            // Non-interactive migrate (additive only — migrate:fresh is gated above).
+            if ($commandKey === 'migrate') {
+                $options = ['--force' => true];
+            }
+
+            if ($commandKey === 'migrate:fresh') {
+                // Only reachable in local/testing; still needs --force when APP_ENV != local.
                 $options = ['--force' => true];
             }
 

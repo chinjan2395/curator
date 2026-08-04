@@ -39,6 +39,9 @@ Services (as configured):
 Notes:
 - Frontend container uses `VITE_API_PROXY_TARGET=http://backend:8000`.
 - Backend service in Compose is configured to use MySQL host `mysql`.
+- MySQL data lives in `./mysql-data` and survives `docker compose up --build` / restarts.
+  Avoid `docker compose down -v` unless you intend to wipe the database.
+- PHPUnit uses a separate `curator_testing` schema so `RefreshDatabase` never wipes app data.
 
 ## Run Locally (without Docker)
 
