@@ -23,14 +23,18 @@ use App\Services\AI\OpenAiImageProvider;
 use App\Services\AI\StubAiImageProvider;
 use App\Services\Storage\GoogleDriveTokenService;
 use App\Support\ContentPackageMediaResolver;
+use App\Support\DestructiveDatabaseGuard;
 use App\Support\GoogleDriveConfig;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
@@ -79,6 +83,21 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Official Laravel kill-switch for migrate:fresh / db:wipe / migrate:refresh /
+        // migrate:reset / migrate:rollback. Works even when CommandStarting is skipped
+        // (PHPUnit). Never enable in production — protects Postgres data.
+        DB::prohibitDestructiveCommands(! $this->app->environment(['local', 'testing']));
+
+        // Extra guard for production HTTP/CLI Artisan::call (CommandStarting is not
+        // dispatched during PHPUnit — see Console Kernel::rerouteSymfonyCommandEvents).
+        Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            if ($event->command === null || $event->command === '') {
+                return;
+            }
+
+            DestructiveDatabaseGuard::abortIfDestructiveCommandBlocked($event->command);
+        });
+
         RateLimiter::for('auth', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });
