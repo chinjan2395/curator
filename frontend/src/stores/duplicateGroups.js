@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import axios from 'axios';
 import { usePostsStore } from './posts';
 import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
 
@@ -52,7 +53,7 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
     error.value = null;
     try {
       const groups = await withDedupe(cacheKey, async () => {
-        const res = await window.axios.get(`/api/workspaces/${workspaceId}/duplicate-groups`);
+        const res = await axios.get(`/api/workspaces/${workspaceId}/duplicate-groups`);
         const next = res.data?.data ?? res.data ?? [];
         persistToSession(cacheKey, next);
         return next;
@@ -71,7 +72,7 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
     loading.value = true;
     error.value = null;
     try {
-      await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/scan`);
+      await axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/scan`);
       invalidate(duplicateGroupsCacheKey(workspaceId));
     } catch (e) {
       error.value = e?.response?.data?.message ?? 'Scan failed.';
@@ -83,7 +84,7 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
 
   async function keepPost(workspaceId, groupId, postId) {
     const group = list.value.find((entry) => entry.id === groupId);
-    await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/keep/${postId}`);
+    await axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/keep/${postId}`);
     list.value = list.value.filter((g) => g.id !== groupId);
     persistToSession(duplicateGroupsCacheKey(workspaceId), list.value);
     const postsStore = usePostsStore();
@@ -96,7 +97,7 @@ export const useDuplicateGroupsStore = defineStore('duplicateGroups', () => {
   }
 
   async function dismiss(workspaceId, groupId) {
-    await window.axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/dismiss`);
+    await axios.post(`/api/workspaces/${workspaceId}/duplicate-groups/${groupId}/dismiss`);
     list.value = list.value.filter((g) => g.id !== groupId);
     persistToSession(duplicateGroupsCacheKey(workspaceId), list.value);
   }
