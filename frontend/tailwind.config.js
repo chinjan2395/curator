@@ -4,6 +4,11 @@ export default {
     './index.html',
     './src/**/*.{vue,js,ts,jsx,tsx}',
   ],
+  // `AppPage.vue`'s `maxWidth` prop builds its class with a runtime template
+  // literal (`max-w-${maxWidth}`), which Tailwind's static content scanner
+  // can't see — safelist the documented prop values so `4xl`/`5xl`/`6xl`/`7xl`
+  // actually apply instead of silently no-op'ing to full width.
+  safelist: ['max-w-4xl', 'max-w-5xl', 'max-w-6xl', 'max-w-7xl'],
   theme: {
     extend: {
       fontFamily: {

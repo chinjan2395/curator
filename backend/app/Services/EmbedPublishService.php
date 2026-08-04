@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EmbedPostEvent;
 use App\Models\Workspace;
 use App\Repositories\Contracts\PostRepositoryInterface;
+use App\Support\BrandKitExpandedSettings;
 use App\Support\PublicFeedCache;
 use App\Support\PublishSettings;
 use Illuminate\Support\Str;
@@ -53,6 +54,13 @@ class EmbedPublishService
             'last_published_at' => $workspace->last_published_at,
             'public_key' => $workspace->public_key,
             'publish_settings' => PublishSettings::merge($workspace->publish_settings),
+            'brand_kit_id' => $workspace->brand_kit_id,
+            'brand_kit_name' => $workspace->brandKit?->name,
+            'brand_kit_synced' => $workspace->brand_kit_id
+                ? PublishSettings::merge($workspace->publish_settings) === PublishSettings::validateAndNormalize(
+                    BrandKitExpandedSettings::mapToPublishSettings($workspace->brandKit->resolve()),
+                )
+                : null,
         ];
     }
 

@@ -125,16 +125,18 @@ class AiContentScoringTest extends TestCase
         $kit = BrandKit::create([
             'user_id' => $user->id,
             'name' => 'Acme Brand',
-            'colors' => [
-                'primary' => '#111111',
-                'secondary' => '#222222',
-                'accent' => '#333333',
-                'background' => '#ffffff',
-                'text' => '#000000',
-            ],
-            'fonts' => [
-                'heading' => 'Georgia',
-                'body' => 'Inter',
+            'overrides' => [
+                'colors' => [
+                    'primary' => '#111111',
+                    'secondary' => '#222222',
+                    'accent' => '#333333',
+                    'background' => '#ffffff',
+                    'text' => '#000000',
+                ],
+                'fonts' => [
+                    'heading' => 'Georgia',
+                    'body' => 'Inter',
+                ],
             ],
         ]);
 

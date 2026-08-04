@@ -239,15 +239,16 @@ class AiContentService
         if ($campaign?->brandKit) {
             $kit = $campaign->brandKit;
             $context['brand_kit_name'] = $kit->name;
+            $resolved = $kit->resolve();
 
-            $colors = is_array($kit->colors) ? $kit->colors : [];
+            $colors = is_array($resolved['colors'] ?? null) ? $resolved['colors'] : [];
             foreach (['primary', 'secondary', 'accent', 'background', 'text'] as $colorKey) {
                 if (! empty($colors[$colorKey])) {
                     $context['brand_color_'.$colorKey] = $colors[$colorKey];
                 }
             }
 
-            $fonts = is_array($kit->fonts) ? $kit->fonts : [];
+            $fonts = is_array($resolved['fonts'] ?? null) ? $resolved['fonts'] : [];
             if (! empty($fonts['heading']) && $fonts['heading'] !== 'inherit') {
                 $context['brand_font_heading'] = $fonts['heading'];
             }
