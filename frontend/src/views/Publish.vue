@@ -14,6 +14,7 @@
     </template>
 
     <template #actions>
+      <BrandKitBadge v-if="workspaceId" :workspace-id="workspaceId" @applied="onBrandKitAppliedOrReverted" />
       <AppButton
         size="sm"
         class="!w-auto !px-3 !py-1.5"
@@ -40,6 +41,13 @@
         </AppButton>
       </div>
     </div>
+
+    <BrandKitDriftBanner
+      v-if="workspaceId"
+      :workspace-id="workspaceId"
+      class="mb-2"
+      @reverted="onBrandKitAppliedOrReverted"
+    />
 
     <div v-if="publish.loading && !publish.stats" class="grid grid-cols-1 lg:grid-cols-[minmax(0,550px)_minmax(0,1fr)] gap-6 items-start">
       <AppCard class="p-6 space-y-4">
@@ -310,35 +318,6 @@
                     />
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Import from brand kit -->
-            <div v-if="showBrandKitImport" class="space-y-3 py-5">
-              <h3 class="text-sm font-semibold text-slate-900">Import from brand kit</h3>
-              <p class="text-xs text-slate-500">Instantly apply your brand colors and font to the embed appearance.</p>
-              <div class="flex flex-wrap items-end gap-2">
-                <div class="flex-1 min-w-[10rem]">
-                  <AppSelect
-                    :model-value="brandKitImportId"
-                    :show-placeholder="false"
-                    select-class="w-full"
-                    @update:model-value="selectAndApplyBrandKit"
-                  >
-                    <option value="">Select brand kit…</option>
-                    <option v-for="kit in brandKitsForImport" :key="kit.id" :value="String(kit.id)">
-                      {{ kit.name }}{{ kit.is_default ? ' (default)' : '' }}
-                    </option>
-                  </AppSelect>
-                </div>
-                <AppButton
-                  size="sm"
-                  variant="secondary"
-                  :disabled="!brandKitImportId"
-                  @click="applyBrandKit"
-                >
-                  Re-apply
-                </AppButton>
               </div>
             </div>
 
@@ -1294,13 +1273,14 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
 import { useWorkspacesStore } from '../stores/workspaces';
 import { usePublishStore } from '../stores/publish';
 import { useToastStore } from '../stores/toast';
 import { useNavigationSettingsStore } from '../stores/navigationSettings';
 import SocialIcon from '../components/SocialIcon.vue';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
+import BrandKitBadge from '../components/publish/BrandKitBadge.vue';
+import BrandKitDriftBanner from '../components/publish/BrandKitDriftBanner.vue';
 import { AppButton, AppCard, AppCheckbox, AppIcon, AppInput, AppSelect, AppSkeleton } from '../components/ui';
 import { fetchPreviewPosts } from '../composables/usePublishApi';
 import { postLinkHref, trackEmbedPostEvent } from '../composables/useEmbedAnalytics';
@@ -1310,7 +1290,6 @@ defineOptions({ name: 'PublishView' });
 
 const toast = useToastStore();
 const navigationSettings = useNavigationSettingsStore();
-const showBrandKitImport = computed(() => navigationSettings.isFeatureEnabled('publish_brand_kit'));
 const route = useRoute();
 const router = useRouter();
 const workspaces = useWorkspacesStore();
@@ -1406,10 +1385,6 @@ const previewClickTrackedAt = new Map();
 
 /** Local copy of publish_settings for the appearance form */
 const appearance = ref(null);
-
-/** Brand kit import */
-const brandKitsForImport = ref([]);
-const brandKitImportId = ref('');
 
 const FEED_STYLES_WITH_MIN_WIDTH = new Set(['grid', 'grid_carousel']);
 
@@ -2056,65 +2031,24 @@ onMounted(async () => {
   if (!navigationSettings.loaded) {
     await navigationSettings.fetch();
   }
-  if (showBrandKitImport.value) {
-    loadBrandKitsForImport();
-  }
 });
 
-async function loadBrandKitsForImport() {
-  try {
-    const { data } = await axios.get('/api/content/brand-kits', { skipErrorToast: true });
-    brandKitsForImport.value = data.data || data || [];
-    const def = brandKitsForImport.value.find((k) => k.is_default);
-    if (def) brandKitImportId.value = String(def.id);
-  } catch {
-    brandKitsForImport.value = [];
-  }
-}
-
-function selectAndApplyBrandKit(value) {
-  brandKitImportId.value = value;
-  applyBrandKit();
-}
-
-function applyBrandKit() {
-  if (!appearance.value || !brandKitImportId.value) return;
-  const kit = brandKitsForImport.value.find((k) => String(k.id) === brandKitImportId.value);
-  if (!kit) return;
-
-  const colors = kit.colors || {};
-  if (colors.primary) {
-    appearance.value.colors.post_button = colors.primary;
-    appearance.value.colors.post_link = colors.primary;
-  }
-  if (colors.text) {
-    appearance.value.colors.post_text = colors.text;
-    appearance.value.colors.post_icon = colors.text;
-  }
-  if (colors.background) {
-    appearance.value.colors.post_bg.enabled = true;
-    appearance.value.colors.post_bg.color = colors.background;
-  }
-  if (colors.secondary) appearance.value.colors.post_date = colors.secondary;
-  if (colors.accent) {
-    appearance.value.colors.post_border.enabled = true;
-    appearance.value.colors.post_border.color = colors.accent;
-  }
-
-  const fonts = kit.fonts || {};
-  if (fonts.body && fonts.body !== 'inherit') {
-    appearance.value.widget.font_family = fonts.body;
-  } else if (fonts.heading && fonts.heading !== 'inherit') {
-    appearance.value.widget.font_family = fonts.heading;
-  }
-
-  const logoUrl = kit.logo_url || '';
-  if (logoUrl) {
-    appearance.value.branding.media_badge.image_source = 'custom';
-    appearance.value.branding.media_badge.custom_url = logoUrl;
-  }
-
-  toast.success(`Brand kit "${kit.name}" applied — save to publish changes.`);
+/**
+ * The brand-kit toolbar badge (apply) and drift banner (revert) both change
+ * `workspace.publish_settings` on the server without going through
+ * `saveAppearance()`. `fetchStats`'s stale-while-revalidate reassignment of
+ * `publish.publishSettings` is intentionally ignored after first hydration
+ * (see the watcher above) so it doesn't clobber in-progress edits — so a
+ * successful apply/revert must explicitly re-hydrate the local `appearance`
+ * draft and refresh the embed code/preview, mirroring `refresh()` below.
+ */
+async function onBrandKitAppliedOrReverted() {
+  appearanceHydratedFor.value = null;
+  appearance.value = publish.publishSettings ? mergePublishAppearance(publish.publishSettings) : null;
+  appearanceHydratedFor.value = workspaceId.value;
+  await publish.fetchCode(workspaceId.value, { force: true, background: false });
+  embedPreviewVersion.value += 1;
+  await loadPreview();
 }
 
 onBeforeUnmount(() => {

@@ -25,7 +25,7 @@ class AssetUrl
             'content.assets.file',
             now()->addDays(7),
             ['asset' => $asset->id],
-            absolute: false,
+            absolute: true,
         );
     }
 }

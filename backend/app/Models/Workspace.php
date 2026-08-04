@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Workspace extends Model
 {
@@ -12,6 +13,7 @@ class Workspace extends Model
         'public_key',
         'publish_settings',
         'last_published_at',
+        'brand_kit_id',
     ];
 
     protected $casts = [
@@ -27,6 +29,11 @@ class Workspace extends Model
     public function feeds()
     {
         return $this->hasMany(Feed::class);
+    }
+
+    public function brandKit(): BelongsTo
+    {
+        return $this->belongsTo(BrandKit::class);
     }
 
     /**
