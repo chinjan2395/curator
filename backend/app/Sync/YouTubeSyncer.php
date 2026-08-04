@@ -184,10 +184,14 @@ class YouTubeSyncer
                     continue;
                 }
                 $sn = $item['snippet'] ?? [];
+                $thumbs = is_array($sn['thumbnails'] ?? null) ? $sn['thumbnails'] : [];
+                $avatarUrl = $thumbs['medium']['url'] ?? $thumbs['high']['url'] ?? $thumbs['default']['url'] ?? null;
+                $avatarUrl = is_string($avatarUrl) ? trim($avatarUrl) : '';
                 $channels[] = [
                     'id' => $id,
                     'title' => (string) ($sn['title'] ?? ''),
                     'custom_url' => ! empty($sn['customUrl']) ? (string) $sn['customUrl'] : null,
+                    'avatar_url' => $avatarUrl !== '' ? $avatarUrl : null,
                 ];
             }
 

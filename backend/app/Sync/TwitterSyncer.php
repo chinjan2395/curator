@@ -25,7 +25,14 @@ class TwitterSyncer
             return $resolved;
         }
 
-        return ['accounts' => [['id' => $resolved['id'], 'username' => $resolved['username'], 'name' => $resolved['name']]]];
+        $avatarUrl = trim((string) ($resolved['profile_image_url'] ?? ''));
+
+        return ['accounts' => [[
+            'id' => $resolved['id'],
+            'username' => $resolved['username'],
+            'name' => $resolved['name'],
+            'avatar_url' => $avatarUrl !== '' ? $avatarUrl : null,
+        ]]];
     }
 
     public function test(SocialCredential $credential): array|JsonResponse

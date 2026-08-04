@@ -185,26 +185,19 @@
                   hint="Google only returns the channel that was selected during YouTube connect. If your Brand Account is missing, reconnect YouTube and pick that channel in Google's picker."
                 >
                   <div class="feed-inline-select">
-                    <AppSelect
+                    <AccountPicker
                       v-model="selectedYoutubeChannelId"
-                      :disabled="loadingYoutubeChannels || !form.social_credential_id"
+                      :items="youtubeChannelPickerItems"
+                      :disabled="!form.social_credential_id"
+                      :loading="loadingYoutubeChannels"
                       :required="!!youtubeCredentials.length"
-                    >
-                      <option value="">
-                        {{
-                          !form.social_credential_id
-                            ? 'Select credential first'
-                            : loadingYoutubeChannels
-                              ? 'Loading channels…'
-                              : youtubeChannels.length
-                                ? 'Select channel'
-                                : 'No channel linked — reconnect YouTube'
-                        }}
-                      </option>
-                      <option v-for="ch in youtubeChannels" :key="ch.id" :value="ch.id">
-                        {{ youtubeChannelLabel(ch) }}
-                      </option>
-                    </AppSelect>
+                      :placeholder="
+                        !form.social_credential_id
+                          ? 'Select credential first'
+                          : 'Search channels by name or ID…'
+                      "
+                      empty-text="No channel linked — reconnect YouTube"
+                    />
                     <AppButton
                       variant="secondary"
                       size="sm"
@@ -213,9 +206,6 @@
                     >
                       {{ loadingYoutubeChannels ? 'Loading…' : 'Refresh' }}
                     </AppButton>
-                  </div>
-                  <div v-if="loadingYoutubeChannels" class="mt-2">
-                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                   <p v-if="youtubeChannelMismatch" class="feed-error-text mt-2">
                     Saved channel is not linked to this Google login. Pick a channel from the list, or reconnect YouTube and choose the Brand Account you want to sync.
@@ -262,18 +252,19 @@
               <div class="feed-field-card">
                 <AppFormField label="Facebook Page" hint="We’ll list Pages from /me/accounts. Reconnect Facebook if the correct Page does not appear.">
                   <div class="feed-inline-select">
-                    <AppSelect
+                    <AccountPicker
                       v-model="selectedFacebookPageId"
-                      :disabled="loadingFacebookPages || !form.social_credential_id"
+                      :items="facebookPagePickerItems"
+                      :disabled="!form.social_credential_id"
+                      :loading="loadingFacebookPages"
                       required
-                    >
-                      <option value="">
-                        {{ !form.social_credential_id ? 'Select credential first' : (loadingFacebookPages ? 'Loading pages…' : 'Select page') }}
-                      </option>
-                      <option v-for="p in facebookPages" :key="p.id" :value="String(p.id)">
-                        {{ p.name || p.id }} ({{ p.id }})
-                      </option>
-                    </AppSelect>
+                      :placeholder="
+                        !form.social_credential_id
+                          ? 'Select credential first'
+                          : 'Search pages by name or ID…'
+                      "
+                      empty-text="No Facebook Pages found for this account"
+                    />
                     <AppButton
                       variant="secondary"
                       size="sm"
@@ -282,9 +273,6 @@
                     >
                       {{ loadingFacebookPages ? 'Loading…' : 'Refresh' }}
                     </AppButton>
-                  </div>
-                  <div v-if="loadingFacebookPages" class="mt-2">
-                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -334,24 +322,19 @@
               <div class="feed-field-card">
                 <AppFormField label="Linked Page & Instagram account" hint="Only Pages with an attached Instagram Professional account are shown.">
                   <div class="feed-inline-select">
-                    <AppSelect
+                    <AccountPicker
                       v-model="selectedInstagramCombo"
-                      :disabled="loadingInstagramAccounts || !form.social_credential_id"
+                      :items="instagramAccountPickerItems"
+                      :disabled="!form.social_credential_id"
+                      :loading="loadingInstagramAccounts"
                       required
-                    >
-                      <option value="">
-                        {{
-                          !form.social_credential_id
-                            ? 'Select credential first'
-                            : loadingInstagramAccounts
-                              ? 'Loading accounts…'
-                              : 'Select account'
-                        }}
-                      </option>
-                      <option v-for="a in instagramAccounts" :key="instagramAccountValue(a)" :value="instagramAccountValue(a)">
-                        @{{ a.instagram_username || '…' }} · {{ a.facebook_page_name || 'Page' }} (IG {{ a.instagram_business_account_id }})
-                      </option>
-                    </AppSelect>
+                      :placeholder="
+                        !form.social_credential_id
+                          ? 'Select credential first'
+                          : 'Search accounts by name or ID…'
+                      "
+                      empty-text="No linked Instagram accounts found"
+                    />
                     <AppButton
                       variant="secondary"
                       size="sm"
@@ -360,9 +343,6 @@
                     >
                       {{ loadingInstagramAccounts ? 'Loading…' : 'Refresh' }}
                     </AppButton>
-                  </div>
-                  <div v-if="loadingInstagramAccounts" class="mt-2">
-                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -431,24 +411,19 @@
               <div class="feed-field-card">
                 <AppFormField label="X account" hint="Only the account returned from users/me for this credential will be synced.">
                   <div class="feed-inline-select">
-                    <AppSelect
+                    <AccountPicker
                       v-model="selectedTwitterUserId"
-                      :disabled="loadingTwitterAccount || !form.social_credential_id"
+                      :items="twitterAccountPickerItems"
+                      :disabled="!form.social_credential_id"
+                      :loading="loadingTwitterAccount"
                       :required="!!twitterCredentials.length"
-                    >
-                      <option value="">
-                        {{
-                          !form.social_credential_id
-                            ? 'Select credential first'
-                            : loadingTwitterAccount
-                              ? 'Loading account…'
-                              : 'Select account'
-                        }}
-                      </option>
-                      <option v-for="a in twitterAccounts" :key="a.id" :value="a.id">
-                        {{ twitterAccountLabel(a) }}
-                      </option>
-                    </AppSelect>
+                      :placeholder="
+                        !form.social_credential_id
+                          ? 'Select credential first'
+                          : 'Search account by name or ID…'
+                      "
+                      empty-text="No X account found for this credential"
+                    />
                     <AppButton
                       variant="secondary"
                       size="sm"
@@ -457,9 +432,6 @@
                     >
                       {{ loadingTwitterAccount ? 'Loading…' : 'Refresh' }}
                     </AppButton>
-                  </div>
-                  <div v-if="loadingTwitterAccount" class="mt-2">
-                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
               </div>
@@ -503,24 +475,19 @@
               <div class="feed-field-card">
                 <AppFormField label="TikTok account" hint="We load account info for this credential and sync videos from that connected account only.">
                   <div class="feed-inline-select">
-                    <AppSelect
+                    <AccountPicker
                       v-model="selectedTikTokOpenId"
-                      :disabled="loadingTikTokAccount || !form.social_credential_id"
+                      :items="tiktokAccountPickerItems"
+                      :disabled="!form.social_credential_id"
+                      :loading="loadingTikTokAccount"
                       :required="!!tiktokCredentials.length"
-                    >
-                      <option value="">
-                        {{
-                          !form.social_credential_id
-                            ? 'Select credential first'
-                            : loadingTikTokAccount
-                              ? 'Loading account…'
-                              : 'Select account'
-                        }}
-                      </option>
-                      <option v-for="a in tiktokAccounts" :key="a.open_id" :value="a.open_id">
-                        {{ tikTokAccountLabel(a) }}
-                      </option>
-                    </AppSelect>
+                      :placeholder="
+                        !form.social_credential_id
+                          ? 'Select credential first'
+                          : 'Search account by name or ID…'
+                      "
+                      empty-text="Could not load a TikTok account for this credential"
+                    />
                     <AppButton
                       variant="secondary"
                       size="sm"
@@ -529,9 +496,6 @@
                     >
                       {{ loadingTikTokAccount ? 'Loading…' : 'Refresh' }}
                     </AppButton>
-                  </div>
-                  <div v-if="loadingTikTokAccount" class="mt-2">
-                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -581,24 +545,19 @@
               <div class="feed-field-card">
                 <AppFormField label="Threads account" hint="We read /me for this credential and sync posts from that connected account only.">
                   <div class="feed-inline-select">
-                    <AppSelect
+                    <AccountPicker
                       v-model="selectedThreadsUserId"
-                      :disabled="loadingThreadsAccount || !form.social_credential_id"
+                      :items="threadsAccountPickerItems"
+                      :disabled="!form.social_credential_id"
+                      :loading="loadingThreadsAccount"
                       :required="!!threadsCredentials.length"
-                    >
-                      <option value="">
-                        {{
-                          !form.social_credential_id
-                            ? 'Select credential first'
-                            : loadingThreadsAccount
-                              ? 'Loading account…'
-                              : 'Select account'
-                        }}
-                      </option>
-                      <option v-for="a in threadsAccounts" :key="a.id" :value="a.id">
-                        {{ threadsAccountLabel(a) }}
-                      </option>
-                    </AppSelect>
+                      :placeholder="
+                        !form.social_credential_id
+                          ? 'Select credential first'
+                          : 'Search account by name or ID…'
+                      "
+                      empty-text="Could not load a Threads account for this credential"
+                    />
                     <AppButton
                       variant="secondary"
                       size="sm"
@@ -607,9 +566,6 @@
                     >
                       {{ loadingThreadsAccount ? 'Loading…' : 'Refresh' }}
                     </AppButton>
-                  </div>
-                  <div v-if="loadingThreadsAccount" class="mt-2">
-                    <AppSkeleton variant="line" :lines="2" />
                   </div>
                 </AppFormField>
                 <p
@@ -749,7 +705,8 @@ import { useCredentialsStore } from '../stores/credentials';
 import { useToastStore } from '../stores/toast';
 import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
-import { AppAlert, AppButton, AppCard, AppCheckbox, AppFormField, AppInput, AppSelect, AppSkeleton } from '../components/ui/index.js';
+import AccountPicker from '../components/feeds/AccountPicker.vue';
+import { AppAlert, AppButton, AppCard, AppCheckbox, AppFormField, AppInput, AppSelect } from '../components/ui/index.js';
 import WizardPageLayout from '../components/WizardPageLayout.vue';
 import {
   fetchFacebookPages,
@@ -929,15 +886,96 @@ const saveButtonText = computed(() => {
   return isEdit.value ? 'Save and continue' : 'Create and continue';
 });
 
-function youtubeChannelLabel(ch) {
-  const title = ch.title || 'Channel';
-  const cu = String(ch.custom_url || '').trim();
-  if (cu) {
-    const h = cu.startsWith('@') ? cu : `@${cu}`;
-    return `${title} (${h})`;
-  }
-  return `${title} (${ch.id})`;
-}
+const youtubeChannelPickerItems = computed(() =>
+  youtubeChannels.value.map((ch) => {
+    const title = ch.title || 'Channel';
+    const cu = String(ch.custom_url || '').trim();
+    const handle = cu ? (cu.startsWith('@') ? cu : `@${cu}`) : '';
+    const secondary = handle || String(ch.id || '');
+    return {
+      value: String(ch.id),
+      label: title,
+      secondary,
+      searchText: [title, handle, cu, ch.id].filter(Boolean).join(' '),
+      avatarUrl: ch.avatar_url || null,
+    };
+  }),
+);
+
+const facebookPagePickerItems = computed(() =>
+  facebookPages.value.map((p) => {
+    const name = p.name || p.id;
+    const id = String(p.id || '');
+    return {
+      value: id,
+      label: name,
+      secondary: id,
+      searchText: `${name} ${id}`,
+      avatarUrl: p.avatar_url || null,
+    };
+  }),
+);
+
+const instagramAccountPickerItems = computed(() =>
+  instagramAccounts.value.map((a) => {
+    const username = a.instagram_username ? `@${a.instagram_username}` : '@…';
+    const pageName = a.facebook_page_name || 'Page';
+    const igId = String(a.instagram_business_account_id || '');
+    const pageId = String(a.facebook_page_id || '');
+    return {
+      value: instagramAccountValue(a),
+      label: `${username} · ${pageName}`,
+      secondary: `IG ${igId}${pageId ? ` · Page ${pageId}` : ''}`,
+      searchText: [username, a.instagram_username, pageName, igId, pageId].filter(Boolean).join(' '),
+      avatarUrl: a.avatar_url || null,
+    };
+  }),
+);
+
+const twitterAccountPickerItems = computed(() =>
+  twitterAccounts.value.map((a) => {
+    const username = a.username ? `@${a.username}` : '@account';
+    const name = a.name && String(a.name).trim() ? String(a.name).trim() : '';
+    const id = String(a.id || '');
+    return {
+      value: id,
+      label: name ? `${username} — ${name}` : username,
+      secondary: id,
+      searchText: [username, a.username, name, id].filter(Boolean).join(' '),
+      avatarUrl: a.avatar_url || null,
+    };
+  }),
+);
+
+const tiktokAccountPickerItems = computed(() =>
+  tiktokAccounts.value.map((a) => {
+    const username = a.username ? `@${a.username}` : '@tiktok_user';
+    const display = a.display_name && String(a.display_name).trim() ? String(a.display_name).trim() : '';
+    const openId = String(a.open_id || '');
+    return {
+      value: openId,
+      label: display ? `${username} — ${display}` : username,
+      secondary: openId,
+      searchText: [username, a.username, display, openId].filter(Boolean).join(' '),
+      avatarUrl: a.avatar_url || null,
+    };
+  }),
+);
+
+const threadsAccountPickerItems = computed(() =>
+  threadsAccounts.value.map((a) => {
+    const username = a.username ? `@${a.username}` : '@threads_user';
+    const name = a.name && String(a.name).trim() ? String(a.name).trim() : '';
+    const id = String(a.id || '');
+    return {
+      value: id,
+      label: name ? `${username} — ${name}` : username,
+      secondary: id,
+      searchText: [username, a.username, name, id].filter(Boolean).join(' '),
+      avatarUrl: a.avatar_url || null,
+    };
+  }),
+);
 
 /** Public handle/title for embeds — matches backend youtube_display_label. */
 function youtubePublicLabelForSubmit() {
@@ -950,24 +988,6 @@ function youtubePublicLabelForSubmit() {
   }
   const t = String(ch.title || '').trim();
   return t || null;
-}
-
-function twitterAccountLabel(a) {
-  const u = (a.username && String(a.username)) || 'account';
-  const n = a.name && String(a.name).trim() ? ` — ${a.name}` : '';
-  return `@${u}${n} (${a.id})`;
-}
-
-function threadsAccountLabel(a) {
-  const u = (a.username && String(a.username).trim()) || 'threads_user';
-  const n = a.name && String(a.name).trim() ? ` — ${a.name}` : '';
-  return `@${u}${n} (${a.id})`;
-}
-
-function tikTokAccountLabel(a) {
-  const u = (a.username && String(a.username).trim()) || 'tiktok_user';
-  const n = a.display_name && String(a.display_name).trim() ? ` — ${a.display_name}` : '';
-  return `@${u}${n} (${a.open_id})`;
 }
 
 function instagramAccountValue(a) {
@@ -1880,7 +1900,7 @@ watch(
 .feed-inline-select {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.65rem;
 }
 

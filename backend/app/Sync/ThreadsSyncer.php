@@ -26,7 +26,14 @@ class ThreadsSyncer
             return $resolved;
         }
 
-        return ['accounts' => [['id' => $resolved['id'], 'username' => $resolved['username'], 'name' => $resolved['name']]]];
+        $avatarUrl = trim((string) ($resolved['threads_profile_picture_url'] ?? ''));
+
+        return ['accounts' => [[
+            'id' => $resolved['id'],
+            'username' => $resolved['username'],
+            'name' => $resolved['name'],
+            'avatar_url' => $avatarUrl !== '' ? $avatarUrl : null,
+        ]]];
     }
 
     public function test(SocialCredential $credential): array|JsonResponse
