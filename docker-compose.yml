@@ -9,6 +9,9 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/var/www/html
+      # Read-only so EmbedCapabilityParityTest can check the frontend's
+      # capability matrix against the backend's settings tree.
+      - ./frontend:/frontend:ro
     environment:
       - DB_CONNECTION=mysql
       - DB_HOST=mysql

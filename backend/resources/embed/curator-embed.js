@@ -1,9 +1,13 @@
-/* global CRT_POSTS_URL, CRT_PUBLIC_KEY, CRT_ANALYTICS_BASE, CRT_SETTINGS */
+/* global CRT_POSTS_URL, CRT_PUBLIC_KEY, CRT_ANALYTICS_BASE, CRT_SETTINGS, CRT_PREVIEW */
 (function () {
   var POSTS_URL = typeof CRT_POSTS_URL !== 'undefined' ? CRT_POSTS_URL : '';
   var PUBLIC_KEY = typeof CRT_PUBLIC_KEY !== 'undefined' ? CRT_PUBLIC_KEY : '';
   var ANALYTICS_BASE = typeof CRT_ANALYTICS_BASE !== 'undefined' ? CRT_ANALYTICS_BASE : '';
-  var SETTINGS = typeof CRT_SETTINGS !== 'undefined' ? CRT_SETTINGS : {};
+  /**
+   * Origin of the Publish preview host, injected only by that host. Production
+   * embeds leave it undefined and therefore never accept pushed settings.
+   */
+  var PREVIEW_ORIGIN = typeof CRT_PREVIEW !== 'undefined' ? String(CRT_PREVIEW || '') : '';
 
   var containers = Array.prototype.slice.call(
     document.querySelectorAll('[data-curator-feed="' + PUBLIC_KEY + '"]'),
@@ -14,21 +18,6 @@
   }
   if (containers.length === 0 || !POSTS_URL) return;
 
-  var feedStyle = String(SETTINGS.feed_style || 'grid').replace(/-/g, '_');
-  var feedOpts = SETTINGS.feed || {};
-  var postOpts = SETTINGS.post || {};
-  var colors = SETTINGS.colors || {};
-  var widgetOpts = SETTINGS.widget || {};
-  var branding = SETTINGS.branding || {};
-  var mediaBadgeCfg = branding.media_badge || {};
-  var sourceIconCfg = branding.source_icon || {};
-  var accountAvatarCfg = branding.account_avatar || {};
-
-  var perPage = Math.max(1, Math.min(parseInt(feedOpts.posts_per_page, 10) || 12, 100));
-  var postMin = Math.max(120, Math.min(parseInt(feedOpts.post_min_width, 10) || 260, 600));
-  var lazyLoad = feedOpts.lazy_load !== false;
-  var showLoadMore = feedOpts.show_load_more !== false;
-
   var MEDIA_ASPECT_RATIOS = {
     '1:1': '1 / 1',
     '4:3': '4 / 3',
@@ -36,10 +25,66 @@
     '3:4': '3 / 4',
     '9:16': '9 / 16',
   };
-  var mediaSizeMode = String(feedOpts.media_size_mode || 'auto');
-  var mediaAspectRatio = MEDIA_ASPECT_RATIOS[feedOpts.media_aspect_ratio] || MEDIA_ASPECT_RATIOS['1:1'];
-  var mediaHeight = Math.max(80, Math.min(parseInt(feedOpts.media_height, 10) || 220, 800));
-  var mediaFit = feedOpts.media_fit === 'contain' ? 'contain' : 'cover';
+
+  /**
+   * Everything below is derived from the active settings tree. It lives in
+   * mutable module scope rather than being re-derived per call so `boot()` can
+   * swap the whole tree — that is what lets the Publish preview render this
+   * exact runtime against an unsaved draft instead of maintaining a second,
+   * drift-prone copy of the card markup.
+   */
+  var SETTINGS;
+  var feedStyle;
+  var feedOpts;
+  var postOpts;
+  var colors;
+  var widgetOpts;
+  var branding;
+  var mediaBadgeCfg;
+  var sourceIconCfg;
+  var accountAvatarCfg;
+  var perPage;
+  var postMin;
+  var lazyLoad;
+  var showLoadMore;
+  var mediaSizeMode;
+  var mediaAspectRatio;
+  var mediaHeight;
+  var mediaFit;
+  var showcaseCardWidth;
+  var CLICK_ACTION;
+
+  function applySettings(settings) {
+    SETTINGS = settings && typeof settings === 'object' ? settings : {};
+    feedStyle = String(SETTINGS.feed_style || 'grid').replace(/-/g, '_');
+    feedOpts = SETTINGS.feed || {};
+    postOpts = SETTINGS.post || {};
+    colors = SETTINGS.colors || {};
+    widgetOpts = SETTINGS.widget || {};
+    branding = SETTINGS.branding || {};
+    mediaBadgeCfg = branding.media_badge || {};
+    sourceIconCfg = branding.source_icon || {};
+    accountAvatarCfg = branding.account_avatar || {};
+
+    perPage = Math.max(1, Math.min(parseInt(feedOpts.posts_per_page, 10) || 12, 100));
+    postMin = Math.max(120, Math.min(parseInt(feedOpts.post_min_width, 10) || 260, 600));
+    lazyLoad = feedOpts.lazy_load !== false;
+    showLoadMore = feedOpts.show_load_more !== false;
+
+    mediaSizeMode = String(feedOpts.media_size_mode || 'auto');
+    mediaAspectRatio = MEDIA_ASPECT_RATIOS[feedOpts.media_aspect_ratio] || MEDIA_ASPECT_RATIOS['1:1'];
+    mediaHeight = Math.max(80, Math.min(parseInt(feedOpts.media_height, 10) || 220, 800));
+    mediaFit = feedOpts.media_fit === 'contain' ? 'contain' : 'cover';
+    showcaseCardWidth = Math.max(
+      180,
+      Math.min(parseInt(feedOpts.showcase_card_width, 10) || 280, 640),
+    );
+
+    CLICK_ACTION =
+      ['modal', 'new_tab', 'none'].indexOf(widgetOpts.click_action) >= 0
+        ? widgetOpts.click_action
+        : 'new_tab';
+  }
 
   var SHARE_SHOWCASE_UPLOAD =
     '<svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.65875 0.821899V13.0736L17.2182 6.94777L9.65875 0.821899Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M0.138031 13.1146C0.138031 8.46583 3.7997 4.60382 10.2833 4.60382V9.39066C10.2833 9.39066 6.07325 8.10554 1.03012 13.1146C0.76259 13.1439 0.138031 13.1146 0.138031 13.1146Z" fill="currentColor"></path></svg>';
@@ -130,9 +175,6 @@
     el.addEventListener('touchstart', trackOnce, { passive: true });
     el.addEventListener('click', trackOnce);
   }
-
-  var CLICK_ACTION =
-    ['modal', 'new_tab', 'none'].indexOf(widgetOpts.click_action) >= 0 ? widgetOpts.click_action : 'new_tab';
 
   function wireClickAction(el, p, resolvedHref, isIframe) {
     if (CLICK_ACTION === 'none') {
@@ -305,15 +347,24 @@
 
   function appendSourceRow(body, p) {
     var si = sourceIconCfg;
+    // Showcase used to ignore these two toggles, so the Posts tab appeared to
+    // do nothing for the one layout that shows them most prominently.
+    var showIcon = postOpts.show_platform_icon !== false;
+    var showName = postOpts.show_feed_name !== false;
+    if (!showIcon && !showName) return;
+
     var srcRow = document.createElement('div');
     srcRow.className = 'crt-showcase-source';
 
-    var fn = document.createElement('span');
-    fn.className = 'crt-showcase-feed-name';
-    fn.textContent = accountDisplayLabel(p) || p.provider || 'Social';
+    var fn = null;
+    if (showName) {
+      fn = document.createElement('span');
+      fn.className = 'crt-showcase-feed-name';
+      fn.textContent = accountDisplayLabel(p) || p.provider || 'Social';
+    }
 
     var iconWrap = null;
-    if (si.show !== false && si.image_source !== 'none') {
+    if (showIcon && si.show !== false && si.image_source !== 'none') {
       iconWrap = document.createElement('span');
       iconWrap.className = 'crt-showcase-source-icon';
       var useCustom = si.image_source === 'custom' && si.custom_url;
@@ -330,13 +381,14 @@
     if (order !== 'after_name') order = 'before_name';
 
     if (order === 'after_name') {
-      srcRow.appendChild(fn);
+      if (fn) srcRow.appendChild(fn);
       if (iconWrap) srcRow.appendChild(iconWrap);
     } else {
       if (iconWrap) srcRow.appendChild(iconWrap);
-      srcRow.appendChild(fn);
+      if (fn) srcRow.appendChild(fn);
     }
 
+    if (!srcRow.hasChildNodes()) return;
     body.appendChild(srcRow);
   }
 
@@ -598,8 +650,22 @@
       ' crt-source-row--align-' +
       align;
 
-    if (showIcon && prov) {
-      row.appendChild(platformIconInlineEl(prov));
+    // Standard cards used to draw their own hard-coded platform glyph and
+    // ignore `branding.source_icon` entirely, so a custom feed icon only ever
+    // showed on showcase. Same config now drives both renderers.
+    var si = sourceIconCfg;
+    var iconEl = null;
+    if (showIcon && si.show !== false && si.image_source !== 'none') {
+      if (si.image_source === 'custom' && si.custom_url) {
+        iconEl = brandingImg(si.custom_url, 'crt-brand-img crt-brand-img--inline');
+      } else if (prov) {
+        iconEl = platformIconInlineEl(prov);
+      }
+    }
+
+    var order = normalizeUnderscore(si.position || 'before_name');
+    if (order !== 'after_name' && iconEl) {
+      row.appendChild(iconEl);
     }
 
     if (showName && label) {
@@ -609,14 +675,105 @@
       row.appendChild(lab);
     }
 
+    if (order === 'after_name' && iconEl) {
+      row.appendChild(iconEl);
+    }
+
     if (!row.hasChildNodes()) return null;
     return row;
   }
 
+  /**
+   * Mirrors `PublishSettings::defaults()['colors']`. A value equal to its
+   * default counts as "not chosen", which is how the theme knows it may supply
+   * its own palette entry without discarding a deliberate colour.
+   */
+  var COLOR_DEFAULTS = {
+    post_icon: '#64748b',
+    post_text: '#0f172a',
+    post_date: '#64748b',
+    post_link: '#2563eb',
+    post_button: '#0f172a',
+    header_text: '#64748b',
+    footer_text: '#0f172a',
+    post_border_color: '#e2e8f0',
+    post_bg_color: '#ffffff',
+  };
+
+  var THEME_PALETTES = {
+    light: {
+      icon: '#64748b',
+      text: '#0f172a',
+      date: '#64748b',
+      link: '#2563eb',
+      btn: '#0f172a',
+      headerText: '#64748b',
+      footerText: '#0f172a',
+      cardBg: '#ffffff',
+      border: '#e2e8f0',
+      surface: 'transparent',
+      shell: '#f1f5f9',
+      navBg: 'rgba(15,23,42,.10)',
+      navBgHover: 'rgba(15,23,42,.18)',
+      navColor: '#0f172a',
+      divider: 'rgba(15,23,42,.10)',
+    },
+    dark: {
+      icon: '#94a3b8',
+      text: '#f1f5f9',
+      date: '#94a3b8',
+      link: '#38bdf8',
+      btn: '#f1f5f9',
+      headerText: '#94a3b8',
+      footerText: '#f1f5f9',
+      cardBg: '#0f172a',
+      border: '#1e293b',
+      surface: '#0b1220',
+      shell: '#0a0a0a',
+      navBg: 'rgba(255,255,255,.14)',
+      navBgHover: 'rgba(255,255,255,.24)',
+      navColor: '#ffffff',
+      divider: 'rgba(255,255,255,.08)',
+    },
+  };
+
+  function prefersDark() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * `auto` follows the visitor's device. `custom` means the theme contributes
+   * nothing and the Colors tab is the sole source, which is the light palette
+   * plus whatever the user set.
+   */
+  function activePalette() {
+    var theme = String(widgetOpts.theme || 'light');
+    if (theme === 'dark') return THEME_PALETTES.dark;
+    if (theme === 'auto') return prefersDark() ? THEME_PALETTES.dark : THEME_PALETTES.light;
+    return THEME_PALETTES.light;
+  }
+
+  function sameColor(a, b) {
+    return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  }
+
+  /**
+   * The theme supplies the base; an explicit colour wins over it. Without this
+   * the Colors tab silently did nothing whenever the theme was dark.
+   */
+  function themedColor(value, defaultValue, themeValue) {
+    if (!value) return themeValue;
+    return sameColor(value, defaultValue) ? themeValue : value;
+  }
+
   function applyColorVars(el) {
     var c = colors;
-    var isDarkTheme = widgetOpts.theme === 'dark';
-    var fontFamily = String((SETTINGS.widget && SETTINGS.widget.font_family) || '');
+    var pal = activePalette();
+    var fontFamily = String(widgetOpts.font_family || '');
     if (fontFamily && fontFamily !== 'inherit') {
       el.style.setProperty('--crt-font', fontFamily);
     }
@@ -628,47 +785,64 @@
       '--crt-radius',
       Math.max(0, Math.min(parseInt(widgetOpts.border_radius, 10) || 12, 48)) + 'px',
     );
-    if (isDarkTheme) {
-      el.style.setProperty('--crt-icon', '#94a3b8');
-      el.style.setProperty('--crt-text', '#f1f5f9');
-      el.style.setProperty('--crt-date', '#94a3b8');
-      el.style.setProperty('--crt-link', '#38bdf8');
-      el.style.setProperty('--crt-btn', '#f1f5f9');
-      el.style.setProperty('--crt-card-bg', '#0f172a');
-      el.style.setProperty('--crt-border', '#1e293b');
-    } else {
-      el.style.setProperty('--crt-icon', c.post_icon || '#64748b');
-      el.style.setProperty('--crt-text', c.post_text || '#0f172a');
-      el.style.setProperty('--crt-date', c.post_date || '#64748b');
-      el.style.setProperty('--crt-link', c.post_link || '#2563eb');
-      el.style.setProperty('--crt-btn', c.post_button || '#0f172a');
-    }
+
+    var cols = parseInt(widgetOpts.columns, 10);
+    if ([2, 3, 4, 5].indexOf(cols) >= 0) el.style.setProperty('--crt-columns', String(cols));
+
+    el.style.setProperty('--crt-surface', pal.surface);
+    el.style.setProperty('--crt-showcase-nav-bg', pal.navBg);
+    el.style.setProperty('--crt-showcase-nav-bg-hover', pal.navBgHover);
+    el.style.setProperty('--crt-showcase-nav-color', pal.navColor);
+    el.style.setProperty('--crt-showcase-divider', pal.divider);
+
+    var shell = c.showcase_shell_bg || {};
+    el.style.setProperty(
+      '--crt-showcase-shell-bg',
+      shell.enabled ? shell.color || pal.shell : pal.shell,
+    );
+
+    el.style.setProperty('--crt-icon', themedColor(c.post_icon, COLOR_DEFAULTS.post_icon, pal.icon));
+    el.style.setProperty('--crt-text', themedColor(c.post_text, COLOR_DEFAULTS.post_text, pal.text));
+    el.style.setProperty('--crt-date', themedColor(c.post_date, COLOR_DEFAULTS.post_date, pal.date));
+    el.style.setProperty('--crt-link', themedColor(c.post_link, COLOR_DEFAULTS.post_link, pal.link));
+    el.style.setProperty('--crt-btn', themedColor(c.post_button, COLOR_DEFAULTS.post_button, pal.btn));
+    el.style.setProperty(
+      '--crt-header-text',
+      themedColor(c.header_text, COLOR_DEFAULTS.header_text, pal.headerText),
+    );
+    el.style.setProperty(
+      '--crt-footer-text',
+      themedColor(c.footer_text, COLOR_DEFAULTS.footer_text, pal.footerText),
+    );
+
     el.style.setProperty('--crt-post-min', postMin + 'px');
+    el.style.setProperty('--crt-showcase-card-width', showcaseCardWidth + 'px');
+
     var b = c.post_border || {};
-    if (!isDarkTheme) {
-      if (b.enabled !== false) {
-        el.style.setProperty('--crt-border', b.color || '#e2e8f0');
-      } else {
-        el.style.setProperty('--crt-border', 'transparent');
-      }
-    }
+    el.style.setProperty(
+      '--crt-border',
+      b.enabled === false
+        ? 'transparent'
+        : themedColor(b.color, COLOR_DEFAULTS.post_border_color, pal.border),
+    );
     var borderWidth = typeof b.width === 'number' ? b.width : parseInt(b.width, 10);
     if (!isFinite(borderWidth) || borderWidth < 0) borderWidth = 1;
     el.style.setProperty('--crt-border-width', Math.min(borderWidth, 8) + 'px');
+
     var g = c.post_bg || {};
-    if (!isDarkTheme) {
-      if (g.enabled !== false) {
-        el.style.setProperty('--crt-card-bg', g.color || '#ffffff');
-      } else {
-        el.style.setProperty('--crt-card-bg', 'transparent');
-      }
-    }
+    el.style.setProperty(
+      '--crt-card-bg',
+      g.enabled === false
+        ? 'transparent'
+        : themedColor(g.color, COLOR_DEFAULTS.post_bg_color, pal.cardBg),
+    );
+
     var mode = normalizeUnderscore(postOpts.showcase_share_icon_color_mode || 'post_icon');
-    var shareColor = c.post_icon || '#64748b';
-    if (mode === 'post_text') shareColor = c.post_text || '#0f172a';
-    else if (mode === 'post_button') shareColor = c.post_button || '#0f172a';
+    var shareColor = el.style.getPropertyValue('--crt-icon');
+    if (mode === 'post_text') shareColor = el.style.getPropertyValue('--crt-text');
+    else if (mode === 'post_button') shareColor = el.style.getPropertyValue('--crt-btn');
     else if (mode === 'custom') {
-      shareColor = postOpts.showcase_share_icon_color || c.post_icon || '#64748b';
+      shareColor = postOpts.showcase_share_icon_color || shareColor;
     }
     el.style.setProperty('--crt-showcase-share-color', shareColor);
 
@@ -691,6 +865,13 @@
 
   function ensureInner(container) {
     container.classList.add('crt-wrap');
+    // A previous boot may have left the showcase viewport wrapper (with its nav
+    // chevrons) in place. Re-using the nested inner would strand it, so any
+    // layout change starts from a clean container.
+    var viewport = container.querySelector('.crt-showcase-viewport');
+    if (viewport && feedStyle !== 'showcase_carousel') {
+      container.innerHTML = '';
+    }
     var inner = container.querySelector('.crt-inner');
     if (!inner) {
       inner = document.createElement('div');
@@ -1006,6 +1187,32 @@
     }
   }
 
+  /**
+   * Preview-only re-filtering.
+   *
+   * `platform_filters` / `content_type_filters` are applied server-side from the
+   * *saved* settings (`PublicFeedController`), so narrowing them in the Publish
+   * draft would not change the preview until after Save. Re-applying them here
+   * restores the immediate feedback the old Vue preview gave.
+   *
+   * Gated on preview: on a live embed the server has already narrowed the same
+   * set, so this would be a no-op, and leaving paging arithmetic untouched there
+   * is worth more than the redundant pass.
+   */
+  function filterForPreview(posts) {
+    if (!PREVIEW_ORIGIN) return posts;
+    var plats = (widgetOpts && widgetOpts.platform_filters) || [];
+    var types = (widgetOpts && widgetOpts.content_type_filters) || [];
+    if (!plats.length && !types.length) return posts;
+
+    return posts.filter(function (p) {
+      if (plats.length && plats.indexOf(p.provider) === -1) return false;
+      if (types.length && types.indexOf(p.content_type) === -1) return false;
+
+      return true;
+    });
+  }
+
   function fetchPage(offset) {
     var sep = POSTS_URL.indexOf('?') >= 0 ? '&' : '?';
     return fetch(POSTS_URL + sep + 'limit=' + perPage + '&offset=' + offset, {
@@ -1015,18 +1222,41 @@
     });
   }
 
-  containers.forEach(function (container) {
+  /** Everything a re-boot has to dispose of before rendering again. */
+  var activeStates = [];
+  var activeTimers = [];
+
+  function teardown() {
+    activeStates.forEach(function (state) {
+      state.disposed = true;
+      try {
+        if (state.io) state.io.disconnect();
+      } catch (e) {}
+      state.io = null;
+    });
+    activeStates = [];
+    activeTimers.forEach(function (id) {
+      clearInterval(id);
+    });
+    activeTimers = [];
+  }
+
+  function mount(container) {
     applyColorVars(container);
     var inner = ensureInner(container);
     if (feedStyle === 'showcase_carousel') {
       wrapShowcaseViewport(container, inner);
+    } else {
+      container.classList.remove('crt-wrap--showcase');
     }
     var state = {
       offset: 0,
       hasMore: true,
       loading: false,
+      disposed: false,
       io: null,
     };
+    activeStates.push(state);
 
     function appendPosts(posts) {
       var start = inner.querySelectorAll('.crt-card').length;
@@ -1038,17 +1268,20 @@
     }
 
     state.loadNext = function () {
-      if (!state.hasMore || state.loading) return;
+      if (state.disposed || !state.hasMore || state.loading) return;
       state.loading = true;
       var prevOffset = state.offset;
       fetchPage(prevOffset)
         .then(function (data) {
+          if (state.disposed) return;
           var posts = (data && data.posts) || [];
           state.loading = false;
           if (posts.length === 0) {
             state.hasMore = false;
           } else {
-            appendPosts(posts);
+            appendPosts(filterForPreview(posts));
+            // Advances by the *fetched* count, not the rendered one, so preview
+            // filtering cannot desynchronise paging.
             state.offset += posts.length;
             var meta = data.meta || {};
             if (meta.has_more === false) state.hasMore = false;
@@ -1072,6 +1305,7 @@
           }
         })
         .catch(function () {
+          if (state.disposed) return;
           state.loading = false;
           state.hasMore = false;
           inner.innerHTML =
@@ -1082,13 +1316,51 @@
     state.loadNext();
 
     if (widgetOpts.auto_refresh) {
-      setInterval(function () {
-        if (state.loading) return;
-        inner.innerHTML = '';
-        state.offset = 0;
-        state.hasMore = true;
-        state.loadNext();
-      }, 5 * 60 * 1000);
+      activeTimers.push(
+        setInterval(function () {
+          if (state.disposed || state.loading) return;
+          inner.innerHTML = '';
+          state.offset = 0;
+          state.hasMore = true;
+          state.loadNext();
+        }, 5 * 60 * 1000),
+      );
     }
-  });
+  }
+
+  function boot(settings) {
+    teardown();
+    applySettings(settings);
+    containers.forEach(mount);
+  }
+
+  boot(typeof CRT_SETTINGS !== 'undefined' ? CRT_SETTINGS : {});
+
+  // `theme: auto` follows the visitor's device, so the palette has to be
+  // re-resolved when that preference flips.
+  try {
+    var darkQuery = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    if (darkQuery && darkQuery.addEventListener) {
+      darkQuery.addEventListener('change', function () {
+        if (String(widgetOpts.theme || 'light') !== 'auto') return;
+        containers.forEach(applyColorVars);
+      });
+    }
+  } catch (e) {}
+
+  // Preview-only: the Publish page pushes its unsaved appearance draft in so
+  // the preview is this runtime rather than a second implementation of it.
+  if (PREVIEW_ORIGIN) {
+    window.addEventListener('message', function (e) {
+      if (e.origin !== PREVIEW_ORIGIN || e.source !== window.parent) return;
+      var data = e.data;
+      if (!data || data.type !== 'curator:settings' || data.key !== PUBLIC_KEY) return;
+      boot(data.settings);
+    });
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'curator:ready', key: PUBLIC_KEY }, PREVIEW_ORIGIN);
+      }
+    } catch (e2) {}
+  }
 })();

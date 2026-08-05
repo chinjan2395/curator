@@ -16,7 +16,9 @@ class EmbedController extends Controller
 .crt-wrap{
   font-family:var(--crt-font,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji");
   color:var(--crt-text,#0f172a);
-  background:transparent;
+  /* The theme owns the whole widget surface, not just the card internals.
+     Light resolves to transparent so the host page still shows through. */
+  background:var(--crt-surface,transparent);
 }
 .crt-inner{min-height:24px;}
 .crt-card{
@@ -56,6 +58,7 @@ class EmbedController extends Controller
 .crt-source-row--align-center.crt-source-row--inline{justify-content:center;}
 .crt-source-row--align-start.crt-source-row--inline{justify-content:flex-start;}
 .crt-source-label{
+  color:var(--crt-header-text,var(--crt-date,#64748b));
   font-size:12px;
   font-weight:600;
   letter-spacing:.02em;
@@ -121,12 +124,13 @@ class EmbedController extends Controller
   gap:var(--crt-gap,12px);
 }
 .crt-inner.crt-layout--waterfall{
-  column-count:3;
+  column-count:var(--crt-columns,3);
   column-gap:var(--crt-gap,12px);
 }
 @media (max-width:900px){ .crt-inner.crt-layout--waterfall{ column-count:2; } }
 @media (max-width:640px){ .crt-inner.crt-layout--waterfall{ column-count:1; } }
-.crt-inner.crt-layout--waterfall .crt-card{ break-inside:avoid; margin-bottom:12px; }
+/* Vertical rhythm has to track --crt-gap too, or the Gap control only moves columns. */
+.crt-inner.crt-layout--waterfall .crt-card{ break-inside:avoid; margin-bottom:var(--crt-gap,12px); }
 
 .crt-inner.crt-layout--list{
   display:flex;
@@ -139,8 +143,15 @@ class EmbedController extends Controller
   align-items:stretch;
   max-width:100%;
 }
-.crt-inner.crt-layout--list .crt-media{flex:0 0 200px;max-width:42%;max-height:200px;}
-.crt-inner.crt-layout--list .crt-media img{max-height:200px;}
+/* `align-self` keeps aspect-ratio meaningful — the row's align-items:stretch
+   would otherwise force the media to the card height and neutralise it. */
+.crt-inner.crt-layout--list .crt-media{
+  flex:0 0 var(--crt-list-media-width,200px);
+  max-width:42%;
+  align-self:flex-start;
+  max-height:var(--crt-media-max-height,200px);
+}
+.crt-inner.crt-layout--list .crt-media img{max-height:var(--crt-media-img-max-height,200px);}
 .crt-inner.crt-layout--list .crt-body{flex:1;}
 
 .crt-inner.crt-layout--carousel{
@@ -168,7 +179,7 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--grid_carousel .crt-card{ scroll-snap-align:start; }
 
 .crt-wrap.crt-wrap--showcase{
-  background:var(--crt-showcase-shell-bg,#0a0a0a);
+  background:var(--crt-showcase-shell-bg,var(--crt-surface,#0a0a0a));
   border-radius:14px;
   padding:10px 0 14px;
 }
@@ -183,8 +194,8 @@ class EmbedController extends Controller
   z-index:4;
   width:44px;height:44px;
   border:none;border-radius:999px;
-  background:rgba(255,255,255,.14);
-  color:#fff;
+  background:var(--crt-showcase-nav-bg,rgba(255,255,255,.14));
+  color:var(--crt-showcase-nav-color,#fff);
   padding:0;
   font-size:0;
   line-height:0;
@@ -198,7 +209,7 @@ class EmbedController extends Controller
   width:22px;
   height:22px;
 }
-.crt-showcase-nav:hover{background:rgba(255,255,255,.24);}
+.crt-showcase-nav:hover{background:var(--crt-showcase-nav-bg-hover,rgba(255,255,255,.24));}
 .crt-showcase-nav:active{transform:translateY(-50%) scale(.96);}
 .crt-showcase-nav--prev{left:6px;}
 .crt-showcase-nav--next{right:6px;}
@@ -206,7 +217,7 @@ class EmbedController extends Controller
 .crt-inner.crt-layout--showcase_carousel{
   display:flex;
   flex-direction:row;
-  gap:14px;
+  gap:var(--crt-gap,14px);
   overflow-x:auto;
   scroll-snap-type:x mandatory;
   scroll-padding:0 52px;
@@ -220,22 +231,29 @@ class EmbedController extends Controller
   display:none;
 }
 
+/* Radius, border and background come from the base .crt-card rule so the
+   Colors and Widget tabs are live for showcase like every other layout. */
 .crt-card.crt-card--showcase{
-  flex:0 0 min(280px,calc(85vw - 40px));
-  max-width:300px;
+  flex:0 0 min(var(--crt-showcase-card-width,280px),calc(85vw - 40px));
+  max-width:var(--crt-showcase-card-width,300px);
   scroll-snap-align:start;
   display:flex;
   flex-direction:column;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.1);
   box-shadow:0 8px 28px rgba(0,0,0,.45);
 }
+/* Showcase keeps its portrait defaults, but resolves them through the same
+   vars every other layout uses so the Thumbnails controls actually apply.
+   max-height must be restated — the base rule's 420px would clip a 9:16 card. */
 .crt-card.crt-card--showcase .crt-media{
-  aspect-ratio:3/4;
-  background:#111;
+  aspect-ratio:var(--crt-media-aspect,3/4);
+  height:var(--crt-media-height,auto);
+  max-height:var(--crt-media-max-height,none);
+  background:var(--crt-showcase-media-bg,#111);
 }
 .crt-card.crt-card--showcase .crt-media img{
-  object-fit:cover;
+  height:var(--crt-media-img-height,100%);
+  max-height:var(--crt-media-img-max-height,none);
+  object-fit:var(--crt-media-fit,cover);
 }
 .crt-media-overlay{
   position:absolute;inset:0;
@@ -272,13 +290,13 @@ class EmbedController extends Controller
   font-size:11px;
   letter-spacing:.05em;
   text-transform:uppercase;
-  color:var(--crt-date,#94a3b8);
+  color:var(--crt-header-text,var(--crt-date,#94a3b8));
 }
 .crt-showcase-source-icon svg{width:18px;height:18px;display:block;border-radius:4px;}
 .crt-showcase-source-icon .crt-brand-img--inline{border-radius:4px;}
 .crt-showcase-feed-name{
   font-weight:700;
-  color:var(--crt-date,#94a3b8);
+  color:var(--crt-header-text,var(--crt-date,#94a3b8));
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:100%;
 }
@@ -310,7 +328,7 @@ class EmbedController extends Controller
   display:flex;
   align-items:center;
   gap:10px;
-  border-top:1px solid rgba(255,255,255,.08);
+  border-top:1px solid var(--crt-showcase-divider,rgba(255,255,255,.08));
 }
 .crt-showcase-avatar{
   flex-shrink:0;
@@ -336,7 +354,7 @@ class EmbedController extends Controller
   font-size:11px;
   font-weight:800;
   letter-spacing:.06em;
-  color:var(--crt-text,#f8fafc);
+  color:var(--crt-footer-text,var(--crt-text,#f8fafc));
 }
 .crt-showcase-foot-date{
   font-size:11px;
