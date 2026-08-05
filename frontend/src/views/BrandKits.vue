@@ -312,20 +312,13 @@
           label="Starter colors"
           hint="Optional — you can fine-tune every setting in the editor after creating the kit."
         >
-          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div
+          <div class="rounded-xl border border-slate-200 px-3 py-1.5">
+            <AppearanceColorRow
               v-for="key in colorKeys"
               :key="key"
-              class="flex items-center gap-2"
-            >
-              <AppInput
-                v-model="masterForm.colors[key]"
-                type="color"
-                wrapper-class="!w-auto shrink-0"
-                input-class="h-9 w-11 rounded-lg border border-slate-300 cursor-pointer bg-white p-0"
-              />
-              <span class="text-xs text-slate-500 capitalize">{{ key }}</span>
-            </div>
+              v-model="masterForm.colors[key]"
+              :label="colorLabels[key]"
+            />
           </div>
         </AppFormField>
       </div>
@@ -385,6 +378,7 @@ import { useRouter } from 'vue-router';
 import { useBrandKitsStore } from '../stores/brandKits';
 import { AppPageHeader } from '../components/layout';
 import { AppBadge, AppButton, AppEmptyState, AppFormField, AppIcon, AppInput, AppModal, AppSkeleton } from '../components/ui';
+import AppearanceColorRow from '../components/publish/AppearanceColorRow.vue';
 
 defineOptions({ name: 'BrandKitsView' });
 
@@ -393,6 +387,13 @@ const store = useBrandKitsStore();
 const { confirm } = inject('confirm');
 
 const colorKeys = ['primary', 'secondary', 'accent', 'background', 'text'];
+const colorLabels = {
+  primary: 'Primary',
+  secondary: 'Secondary',
+  accent: 'Accent',
+  background: 'Background',
+  text: 'Text',
+};
 const DEFAULT_COLORS = {
   primary: '#2563eb',
   secondary: '#64748b',
