@@ -116,6 +116,16 @@
             </p>
           </div>
           <AppButton
+            v-if="activeGroup === 'colors' && draft"
+            size="sm"
+            variant="ghost"
+            :disabled="syncingBrandColors"
+            title="Overwrite the embed palette with these brand colours"
+            @click="pushIdentityColorsToEmbed"
+          >
+            {{ syncingBrandColors ? 'Applying…' : 'Apply to embed appearance' }}
+          </AppButton>
+          <AppButton
             v-if="!isRoot && overrideCountFor(currentGroup)"
             size="sm"
             variant="ghost"
@@ -223,6 +233,90 @@
               @reset="resetField"
             />
           </div>
+
+          <!-- Embed appearance reuses the Publish panels verbatim, so a kit can
+               never offer fewer options than the Publish page does. -->
+          <div
+            v-if="currentGroup.tab && draft"
+            class="bk-appearance"
+          >
+            <AppearanceLayoutPanel
+              v-if="currentGroup.tab === 'layout'"
+              v-model:settings="draft"
+              :caps="caps"
+              :feed-style-options="feedStyleOptions"
+            />
+            <AppearancePostsPanel
+              v-else-if="currentGroup.tab === 'posts'"
+              v-model:settings="draft"
+              :caps="caps"
+            />
+            <AppearanceColorsPanel
+              v-else-if="currentGroup.tab === 'colors'"
+              v-model:settings="draft"
+              :caps="caps"
+            />
+            <AppearanceWidgetPanel
+              v-else-if="currentGroup.tab === 'widget'"
+              v-model:settings="draft"
+              :caps="caps"
+              :platform-filter-options="PLATFORM_FILTER_OPTIONS"
+              :content-type-filter-options="CONTENT_TYPE_FILTER_OPTIONS"
+            />
+            <AppearanceBrandingPanel
+              v-else-if="currentGroup.tab === 'branding'"
+              v-model:settings="draft"
+              :caps="caps"
+            />
+
+            <p
+              v-if="hiddenForLayoutCount"
+              class="bk-appearance__note"
+            >
+              {{ hiddenForLayoutCount }} more option{{ hiddenForLayoutCount === 1 ? '' : 's' }} in this tab
+              apply to other feed layouts. Switch <b>Feed style</b> on the Layout tab to edit them — the
+              stored values are kept either way.
+            </p>
+          </div>
+        </div>
+
+        <!-- Same runtime the embed serves, so what a kit produces is visible
+             before it is applied to any workspace. -->
+        <div
+          v-if="currentGroup.tab && draft"
+          class="bk-preview"
+        >
+          <div class="bk-preview__head">
+            <span class="bk-preview__title">Live preview</span>
+            <AppSelect
+              v-if="previewWorkspaceOptions.length"
+              v-model="previewWorkspaceId"
+              :show-placeholder="false"
+              select-class="!h-8 !text-xs !py-0"
+              aria-label="Preview against workspace"
+            >
+              <option
+                v-for="w in previewWorkspaceOptions"
+                :key="w.id"
+                :value="String(w.id)"
+              >
+                {{ w.name }}
+              </option>
+            </AppSelect>
+          </div>
+          <EmbedLivePreview
+            v-if="previewPublicKey"
+            :public-key="previewPublicKey"
+            :settings="draft"
+            :theme="resolvedPreviewTheme"
+            :min-height="360"
+          />
+          <p
+            v-else
+            class="bk-preview__empty"
+          >
+            Publish a workspace once to get a public feed, then this kit can be previewed against it.
+          </p>
         </div>
       </section>
     </div>
@@ -237,13 +331,28 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBrandKitsStore } from '../stores/brandKits';
 import { useToastStore } from '../stores/toast';
+import { useWorkspacesStore } from '../stores/workspaces';
 import { AppPageHeader } from '../components/layout';
-import { AppButton, AppEmptyState, AppInput, AppSkeleton } from '../components/ui';
+import { AppButton, AppEmptyState, AppInput, AppSelect, AppSkeleton } from '../components/ui';
 import BrandKitFieldRow from '../components/content/BrandKitFieldRow.vue';
+import AppearanceBrandingPanel from '../components/publish/AppearanceBrandingPanel.vue';
+import AppearanceColorsPanel from '../components/publish/AppearanceColorsPanel.vue';
+import AppearanceLayoutPanel from '../components/publish/AppearanceLayoutPanel.vue';
+import AppearancePostsPanel from '../components/publish/AppearancePostsPanel.vue';
+import AppearanceWidgetPanel from '../components/publish/AppearanceWidgetPanel.vue';
+import EmbedLivePreview from '../components/publish/EmbedLivePreview.vue';
+import {
+  EMBED_CAPABILITIES,
+  EMBED_TABS,
+  normalizeLayout,
+  resolveCapabilities,
+} from '../constants/embedCapabilities';
+import { provideAppearanceOverrides } from '../composables/useAppearanceOverrides';
+import { applyIdentityColors } from '../constants/brandIdentityColors';
 
 defineOptions({ name: 'BrandKitEditorView' });
 
@@ -251,6 +360,15 @@ const route = useRoute();
 const router = useRouter();
 const store = useBrandKitsStore();
 const toast = useToastStore();
+const workspaces = useWorkspacesStore();
+
+const APPEARANCE_TAB_DESCRIPTIONS = {
+  layout: 'Feed style, loading behaviour and thumbnail sizing.',
+  posts: 'What each post card shows, and how the source row is laid out.',
+  colors: 'Element-level colours for the embedded feed.',
+  widget: 'Theme, grid metrics, click behaviour and content filters.',
+  branding: 'Badges, feed icons and the showcase footer avatar.',
+};
 
 const kitId = computed(() => route.params.id);
 const kit = ref(null);
@@ -260,6 +378,7 @@ const loading = ref(true);
 const activeGroup = ref('identity');
 const nameDraft = ref('');
 const resettingAll = ref(false);
+const syncingBrandColors = ref(false);
 
 const isRoot = computed(() => !kit.value?.parent_id);
 
@@ -286,6 +405,9 @@ function initials(name) {
 
 const FEED_STYLES = ['waterfall', 'grid', 'grid_carousel', 'carousel', 'showcase_carousel', 'mosaic', 'tetris', 'select', 'cover_flow', 'list', 'stagger', 'layers'];
 const opt = (v) => ({ value: v, label: humanize(v) });
+
+/** Same tiles as Publish's layout picker. */
+const EMBED_LAYOUT_LABELS = FEED_STYLES.map(opt);
 
 const GROUPS = [
   {
@@ -316,110 +438,37 @@ const GROUPS = [
       { label: 'Body font', path: 'fonts.body', type: 'text' },
     ],
   },
-  {
-    id: 'feed_colors',
-    label: 'Widget colors',
-    description: 'Element-level colors for the embedded feed. Defaults derive from the brand palette.',
-    fields: [
-      { label: 'Icon color', path: 'feed_colors.post_icon', type: 'color' },
-      { label: 'Text color', path: 'feed_colors.post_text', type: 'color' },
-      { label: 'Date color', path: 'feed_colors.post_date', type: 'color' },
-      { label: 'Link color', path: 'feed_colors.post_link', type: 'color' },
-      { label: 'Button color', path: 'feed_colors.post_button', type: 'color' },
-      { label: 'Post border enabled', path: 'feed_colors.post_border.enabled', type: 'checkbox' },
-      { label: 'Post border color', path: 'feed_colors.post_border.color', type: 'color', disabledWhen: 'feed_colors.post_border.enabled' },
-      { label: 'Post border width (px)', path: 'feed_colors.post_border.width', type: 'number', min: 0, max: 8, disabledWhen: 'feed_colors.post_border.enabled' },
-      { label: 'Post background enabled', path: 'feed_colors.post_bg.enabled', type: 'checkbox' },
-      { label: 'Post background color', path: 'feed_colors.post_bg.color', type: 'color', disabledWhen: 'feed_colors.post_bg.enabled' },
-    ],
-  },
-  {
-    id: 'feed',
-    label: 'Feed layout',
-    description: 'How posts are arranged and paginated in the embedded widget.',
-    fields: [
-      { label: 'Feed style', path: 'feed_style', type: 'select', options: FEED_STYLES.map(opt) },
-      { label: 'Lazy load images', path: 'feed.lazy_load', type: 'checkbox' },
-      { label: 'Posts per page', path: 'feed.posts_per_page', type: 'number', min: 1, max: 100 },
-      { label: 'Post min width (px)', path: 'feed.post_min_width', type: 'number', min: 120, max: 600 },
-      { label: 'Show "Load more"', path: 'feed.show_load_more', type: 'checkbox' },
-      { label: 'Media size mode', path: 'feed.media_size_mode', type: 'select', options: ['auto', 'aspect', 'fixed'].map(opt) },
-      { label: 'Media aspect ratio', path: 'feed.media_aspect_ratio', type: 'select', options: ['1:1', '4:3', '16:9', '3:4', '9:16'].map((v) => ({ value: v, label: v })) },
-      { label: 'Media height (px)', path: 'feed.media_height', type: 'number', min: 80, max: 800 },
-      { label: 'Media fit', path: 'feed.media_fit', type: 'select', options: ['cover', 'contain'].map(opt) },
-    ],
-  },
-  {
-    id: 'post',
-    label: 'Post display',
-    description: 'Which parts of each post the widget renders, and how the source row is laid out.',
-    fields: [
-      { label: 'Show titles', path: 'post.show_titles', type: 'checkbox' },
-      { label: 'Show share icons', path: 'post.show_share_icons', type: 'checkbox' },
-      { label: 'Show comments', path: 'post.show_comments', type: 'checkbox' },
-      { label: 'Show likes', path: 'post.show_likes', type: 'checkbox' },
-      { label: 'Autoplay videos', path: 'post.autoplay_videos', type: 'checkbox' },
-      { label: 'Show platform icon', path: 'post.show_platform_icon', type: 'checkbox' },
-      { label: 'Show feed / account name', path: 'post.show_feed_name', type: 'checkbox' },
-      { label: 'Source row layout', path: 'post.source_row_layout', type: 'select', options: ['stacked', 'inline'].map(opt) },
-      { label: 'Source row alignment', path: 'post.source_row_alignment', type: 'select', options: ['center', 'start'].map(opt) },
-      { label: 'Showcase content alignment', path: 'post.showcase_content_alignment', type: 'select', options: ['start', 'center'].map(opt) },
-      { label: 'Showcase share icon', path: 'post.showcase_share_icon', type: 'select', options: ['upload_share', 'arrow', 'none'].map(opt) },
-      { label: 'Showcase share icon color mode', path: 'post.showcase_share_icon_color_mode', type: 'select', options: ['post_icon', 'post_text', 'post_button', 'custom'].map(opt) },
-      { label: 'Showcase share icon color', path: 'post.showcase_share_icon_color', type: 'color' },
-      { label: 'Platform icon color mode', path: 'post.platform_icon_color_mode', type: 'select', options: ['brand', 'custom'].map(opt) },
-      { label: 'Platform icon color', path: 'post.platform_icon_color', type: 'color' },
-    ],
-  },
-  {
-    id: 'branding',
-    label: 'Branding & badges',
-    description: 'Media badge, source icon, and account avatar shown on each post.',
-    fields: [
-      { label: 'Show media badge', path: 'branding.media_badge.show', type: 'checkbox' },
-      { label: 'Media badge source', path: 'branding.media_badge.image_source', type: 'select', options: ['platform', 'custom', 'none'].map(opt) },
-      { label: 'Media badge custom URL', path: 'branding.media_badge.custom_url', type: 'text' },
-      { label: 'Media badge position', path: 'branding.media_badge.position', type: 'select', options: ['center', 'top_left', 'top_right', 'bottom_left', 'bottom_right'].map(opt) },
-      { label: 'Show source icon', path: 'branding.source_icon.show', type: 'checkbox' },
-      { label: 'Source icon source', path: 'branding.source_icon.image_source', type: 'select', options: ['platform', 'custom', 'none'].map(opt) },
-      { label: 'Source icon custom URL', path: 'branding.source_icon.custom_url', type: 'text' },
-      { label: 'Source icon position', path: 'branding.source_icon.position', type: 'select', options: ['before_name', 'after_name'].map(opt) },
-      { label: 'Show account avatar', path: 'branding.account_avatar.show', type: 'checkbox' },
-      { label: 'Account avatar source', path: 'branding.account_avatar.image_source', type: 'select', options: ['connected', 'initial', 'custom', 'none'].map(opt) },
-      { label: 'Account avatar custom URL', path: 'branding.account_avatar.custom_url', type: 'text' },
-      { label: 'Account avatar position', path: 'branding.account_avatar.position', type: 'select', options: ['footer_start', 'footer_end'].map(opt) },
-    ],
-  },
-  {
-    id: 'widget',
-    label: 'Widget behavior',
-    description: 'Theme, grid metrics, and how the widget reacts to a click.',
-    fields: [
-      { label: 'Theme', path: 'widget.theme', type: 'select', options: ['light', 'dark', 'auto', 'custom'].map(opt) },
-      { label: 'Columns', path: 'widget.columns', type: 'select', options: [2, 3, 4, 5].map((v) => ({ value: v, label: String(v) })) },
-      { label: 'Gap (px)', path: 'widget.gap', type: 'number', min: 0, max: 64 },
-      { label: 'Border radius (px)', path: 'widget.border_radius', type: 'number', min: 0, max: 48 },
-      { label: 'Font family', path: 'widget.font_family', type: 'text' },
-      { label: 'Animation', path: 'widget.animation', type: 'select', options: ['fade', 'slide', 'none'].map(opt) },
-      { label: 'Click action', path: 'widget.click_action', type: 'select', options: ['modal', 'new_tab', 'none'].map(opt) },
-      { label: 'Auto refresh', path: 'widget.auto_refresh', type: 'checkbox' },
-    ],
-  },
 ];
 
 const groupById = Object.fromEntries(GROUPS.map((g) => [g.id, g]));
 
 // Grouping the rail by what a field actually controls — who the brand is,
 // what it looks like, how the embedded widget behaves.
+/**
+ * The embed-appearance half of a kit is edited with the very same panels the
+ * Publish page uses, so a brand kit can never drift behind Publish on which
+ * options it offers. Each tab is presented as a pseudo-group in the rail.
+ */
+const APPEARANCE_GROUPS = EMBED_TABS.map((tab) => ({
+  id: `appearance:${tab.key}`,
+  tab: tab.key,
+  label: tab.label,
+  description: APPEARANCE_TAB_DESCRIPTIONS[tab.key],
+  fields: [],
+}));
+
+const groupByIdAll = { ...groupById, ...Object.fromEntries(APPEARANCE_GROUPS.map((g) => [g.id, g])) };
+
 const NAV_SECTIONS = [
-  { label: 'Identity', groups: [groupById.identity] },
-  { label: 'Appearance', groups: [groupById.colors, groupById.typography, groupById.feed_colors] },
-  { label: 'Feed & widget', groups: [groupById.feed, groupById.post, groupById.branding, groupById.widget] },
+  { label: 'Brand identity', groups: [groupById.identity, groupById.colors, groupById.typography] },
+  { label: 'Embed appearance', groups: APPEARANCE_GROUPS },
 ];
 
-const totalFieldCount = computed(() => GROUPS.reduce((n, g) => n + g.fields.length, 0));
+const totalFieldCount = computed(
+  () => GROUPS.reduce((n, g) => n + g.fields.length, 0) + Object.keys(EMBED_CAPABILITIES).length,
+);
 
-const currentGroup = computed(() => groupById[activeGroup.value] || GROUPS[0]);
+const currentGroup = computed(() => groupByIdAll[activeGroup.value] || GROUPS[0]);
 
 const overridePercent = computed(() => {
   if (!totalFieldCount.value) return 0;
@@ -427,6 +476,11 @@ const overridePercent = computed(() => {
 });
 
 function overrideCountFor(group) {
+  if (group.tab) {
+    return Object.entries(EMBED_CAPABILITIES).filter(
+      ([path, def]) => def.tab === group.tab && isOverridden(path),
+    ).length;
+  }
   return group.fields.filter((f) => overriddenPaths.value.includes(f.path)).length;
 }
 
@@ -450,8 +504,145 @@ function buildPatch(path, value) {
   return root;
 }
 
+/**
+ * The kit stores widget colours under `feed_colors` while the Publish panels
+ * write plain `colors`. Translating at this boundary is what lets the panels be
+ * reused verbatim on both pages.
+ */
+function toKitPath(panelPath) {
+  return panelPath.startsWith('colors.') ? `feed_${panelPath}` : panelPath;
+}
+
+/**
+ * A capability key may name a leaf (`widget.gap`) or a subtree
+ * (`colors.post_border`), so a subtree counts as overridden when any leaf below
+ * it is.
+ */
 function isOverridden(path) {
-  return overriddenPaths.value.includes(path);
+  const kitPath = toKitPath(path);
+  return overriddenPaths.value.some((p) => p === kitPath || p.startsWith(`${kitPath}.`));
+}
+
+/** Panel-space capability keys currently overridden — drives the group chips. */
+const overriddenCapabilityPaths = computed(() => {
+  const out = new Set();
+  Object.keys(EMBED_CAPABILITIES).forEach((path) => {
+    if (isOverridden(path)) out.add(path);
+  });
+  return out;
+});
+
+const canInherit = computed(() => !isRoot.value);
+
+provideAppearanceOverrides({
+  enabled: canInherit,
+  overriddenPaths: overriddenCapabilityPaths,
+  reset: (path) => resetSubtree(path),
+});
+
+/**
+ * Editable copy of the resolved tree in `PublishSettings` shape. The panels
+ * mutate it in place; `syncDraft` turns each mutation into a sparse override
+ * patch so inheritance from the Master is preserved.
+ */
+const draft = ref(null);
+let draftBaseline = null;
+let applyingRemote = false;
+
+function toPanelSettings(res) {
+  if (!res) return null;
+  return JSON.parse(
+    JSON.stringify({
+      feed_style: res.feed_style,
+      feed: res.feed,
+      post: res.post,
+      colors: res.feed_colors,
+      widget: res.widget,
+      branding: res.branding,
+    }),
+  );
+}
+
+function rebuildDraft() {
+  applyingRemote = true;
+  draft.value = toPanelSettings(resolved.value);
+  draftBaseline = JSON.parse(JSON.stringify(draft.value ?? null));
+  // Let the deep watcher observe the swap before edits count as user input.
+  nextTick(() => {
+    applyingRemote = false;
+  });
+}
+
+/** Collects every changed leaf as a dot-path, so patches stay sparse. */
+function diffLeaves(next, prev, prefix, out) {
+  if (next === null || typeof next !== 'object' || Array.isArray(next)) {
+    if (JSON.stringify(next) !== JSON.stringify(prev)) out.push([prefix, next]);
+    return;
+  }
+  Object.keys(next).forEach((k) => {
+    diffLeaves(next[k], prev == null ? undefined : prev[k], prefix ? `${prefix}.${k}` : k, out);
+  });
+}
+
+let syncTimer = null;
+function scheduleDraftSync() {
+  if (applyingRemote || !draft.value || !draftBaseline) return;
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncDraft, 400);
+}
+
+async function syncDraft() {
+  syncTimer = null;
+  if (!kit.value || !draft.value || !draftBaseline) return;
+  const changes = [];
+  diffLeaves(draft.value, draftBaseline, '', changes);
+  if (!changes.length) return;
+
+  const patch = {};
+  changes.forEach(([path, value]) => deepAssign(patch, toKitPath(path), value));
+  draftBaseline = JSON.parse(JSON.stringify(draft.value));
+
+  try {
+    const result = await store.patchOverrides(kit.value.id, patch);
+    applyResult(result, { keepDraft: true });
+  } catch {
+    // toast handled in store
+  }
+}
+
+function deepAssign(target, path, value) {
+  const keys = path.split('.');
+  let cur = target;
+  keys.forEach((k, i) => {
+    if (i === keys.length - 1) cur[k] = value;
+    else cur = cur[k] = cur[k] || {};
+  });
+}
+
+/**
+ * `keepDraft` avoids stomping in-flight typing after a patch round-trip; the
+ * server echo only has to refresh the inheritance markers.
+ */
+function applyResult(result, { keepDraft = false } = {}) {
+  resolved.value = result.resolved;
+  overriddenPaths.value = result.overridden_paths;
+  if (!keepDraft) rebuildDraft();
+}
+
+/** Resets every override under a capability key (leaf or subtree). */
+async function resetSubtree(panelPath) {
+  if (!kit.value) return;
+  const kitPath = toKitPath(panelPath);
+  const paths = overriddenPaths.value.filter((p) => p === kitPath || p.startsWith(`${kitPath}.`));
+  if (!paths.length) return;
+  try {
+    for (const path of paths) {
+      applyResult(await store.resetOverride(kit.value.id, path), { keepDraft: true });
+    }
+    rebuildDraft();
+  } catch {
+    // toast handled in store
+  }
 }
 
 async function updateField(path, value) {
@@ -495,14 +686,41 @@ async function resetPaths(paths, message) {
 }
 
 function resetAllToMaster() {
-  return resetPaths([...overriddenPaths.value], 'Reset to Master');
+  return resetPaths([...overriddenPaths.value], 'Reset to Master').then(rebuildDraft);
 }
 
 function resetSection() {
-  const paths = currentGroup.value.fields
-    .map((f) => f.path)
-    .filter((p) => overriddenPaths.value.includes(p));
-  return resetPaths(paths, `${currentGroup.value.label} reset to Master`);
+  const group = currentGroup.value;
+  // Appearance tabs have no static field list — their paths come from the
+  // capability matrix, and each may name a subtree rather than a leaf.
+  const prefixes = group.tab
+    ? Object.entries(EMBED_CAPABILITIES)
+      .filter(([, def]) => def.tab === group.tab)
+      .map(([path]) => toKitPath(path))
+    : group.fields.map((f) => f.path);
+  const paths = overriddenPaths.value.filter((p) =>
+    prefixes.some((prefix) => p === prefix || p.startsWith(`${prefix}.`)),
+  );
+  return resetPaths(paths, `${group.label} reset to Master`).then(rebuildDraft);
+}
+
+/**
+ * Re-seeds the embed palette from the identity palette. Creation does this
+ * automatically; this is the manual re-sync for when the brand colours change
+ * afterwards. It writes into `draft`, so the usual diff/patch path persists it
+ * and every touched field is recorded as a normal override.
+ */
+async function pushIdentityColorsToEmbed() {
+  if (!draft.value || !resolved.value || syncingBrandColors.value) return;
+  syncingBrandColors.value = true;
+  try {
+    applyIdentityColors(draft.value.colors, resolved.value.colors);
+    if (syncTimer) clearTimeout(syncTimer);
+    await syncDraft();
+    toast.success('Embed colours updated from the brand palette.');
+  } finally {
+    syncingBrandColors.value = false;
+  }
 }
 
 async function saveName() {
@@ -556,6 +774,40 @@ async function onLogoUpload(e) {
   }
 }
 
+const feedStyleOptions = EMBED_LAYOUT_LABELS;
+const PLATFORM_FILTER_OPTIONS = ['youtube', 'facebook', 'instagram', 'twitter', 'tiktok', 'threads', 'rss'];
+const CONTENT_TYPE_FILTER_OPTIONS = ['video', 'image', 'post', 'article'];
+
+const caps = computed(() => resolveCapabilities(normalizeLayout(draft.value?.feed_style), draft.value));
+
+/**
+ * Non-applicable options are counted rather than hidden silently: a kit is
+ * pushed to workspaces whose layout may differ, so the values still matter.
+ */
+const hiddenForLayoutCount = computed(() => {
+  const tab = currentGroup.value?.tab;
+  if (!tab) return 0;
+  return Object.entries(EMBED_CAPABILITIES).filter(([path, def]) => def.tab === tab && !caps.value[path])
+    .length;
+});
+
+const resolvedPreviewTheme = computed(() =>
+  String(draft.value?.widget?.theme || 'light') === 'dark' ? 'dark' : 'light',
+);
+
+const previewWorkspaceId = ref('');
+const previewWorkspaceOptions = computed(() => workspaces.list.filter((w) => w.public_key));
+const previewPublicKey = computed(
+  () =>
+    previewWorkspaceOptions.value.find((w) => String(w.id) === previewWorkspaceId.value)?.public_key || '',
+);
+
+watch(previewWorkspaceOptions, (list) => {
+  if (!previewWorkspaceId.value && list.length) previewWorkspaceId.value = String(list[0].id);
+});
+
+watch(draft, scheduleDraftSync, { deep: true });
+
 async function load() {
   loading.value = true;
   try {
@@ -567,6 +819,7 @@ async function load() {
     nameDraft.value = kitData.name;
     resolved.value = resolvedData.resolved;
     overriddenPaths.value = resolvedData.overridden_paths;
+    rebuildDraft();
   } catch {
     kit.value = null;
   } finally {
@@ -574,10 +827,56 @@ async function load() {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  load();
+  workspaces.fetchAll();
+});
 </script>
 
 <style scoped>
+.bk-appearance {
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.bk-appearance__note {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.bk-preview {
+  border-top: 1px solid #e6ebf2;
+  background: #fbfcfe;
+}
+
+.bk-preview__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.bk-preview__title {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #334155;
+}
+
+.bk-preview__head :deep(select) {
+  margin-left: auto;
+  max-width: 14rem;
+}
+
+.bk-preview__empty {
+  padding: 1.1rem 1rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
 .bk-editor {
   display: grid;
   gap: 0;
