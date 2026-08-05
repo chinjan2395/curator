@@ -42,6 +42,8 @@ class PublishSettings
                 'media_aspect_ratio' => '1:1',
                 'media_height' => 220,
                 'media_fit' => 'cover',
+                // Showcase carousel only — width of one card in the strip.
+                'showcase_card_width' => 280,
             ],
             'post' => [
                 'show_titles' => true,
@@ -66,6 +68,12 @@ class PublishSettings
                 'post_date' => '#64748b',
                 'post_link' => '#2563eb',
                 'post_button' => '#0f172a',
+                // Source row above the post body. Defaults to the post date
+                // colour, which is what it inherited before it had its own key.
+                'header_text' => '#64748b',
+                // Showcase footer handle. Defaults to the post text colour for
+                // the same reason. The footer date follows `post_date`.
+                'footer_text' => '#0f172a',
                 'post_border' => [
                     'enabled' => true,
                     'color' => '#e2e8f0',
@@ -74,6 +82,12 @@ class PublishSettings
                 'post_bg' => [
                     'enabled' => true,
                     'color' => '#ffffff',
+                ],
+                // Showcase carousel only — backdrop behind the horizontal strip.
+                // Disabled means "follow the widget theme".
+                'showcase_shell_bg' => [
+                    'enabled' => false,
+                    'color' => '#0a0a0a',
                 ],
             ],
             'widget' => [
@@ -155,6 +169,8 @@ class PublishSettings
             self::MEDIA_FITS,
             'cover',
         );
+        $cardWidth = (int) ($out['feed']['showcase_card_width'] ?? 280);
+        $out['feed']['showcase_card_width'] = max(180, min($cardWidth, 640));
 
         $out['post']['show_titles'] = (bool) ($out['post']['show_titles'] ?? true);
         $out['post']['show_share_icons'] = (bool) ($out['post']['show_share_icons'] ?? false);
@@ -202,7 +218,7 @@ class PublishSettings
             '#64748b',
         );
 
-        foreach (['post_icon', 'post_text', 'post_date', 'post_link', 'post_button'] as $key) {
+        foreach (['post_icon', 'post_text', 'post_date', 'post_link', 'post_button', 'header_text', 'footer_text'] as $key) {
             $out['colors'][$key] = self::sanitizeHexColor((string) ($out['colors'][$key] ?? $defaults['colors'][$key]), (string) $defaults['colors'][$key]);
         }
 
@@ -217,6 +233,11 @@ class PublishSettings
         $out['colors']['post_bg']['color'] = self::sanitizeHexColor(
             (string) ($out['colors']['post_bg']['color'] ?? $defaults['colors']['post_bg']['color']),
             (string) $defaults['colors']['post_bg']['color'],
+        );
+        $out['colors']['showcase_shell_bg']['enabled'] = (bool) ($out['colors']['showcase_shell_bg']['enabled'] ?? false);
+        $out['colors']['showcase_shell_bg']['color'] = self::sanitizeHexColor(
+            (string) ($out['colors']['showcase_shell_bg']['color'] ?? $defaults['colors']['showcase_shell_bg']['color']),
+            (string) $defaults['colors']['showcase_shell_bg']['color'],
         );
 
         $out['widget']['theme'] = self::enumOrFallback(

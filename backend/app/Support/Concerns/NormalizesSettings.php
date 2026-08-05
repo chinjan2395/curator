@@ -52,9 +52,11 @@ trait NormalizesSettings
         $value = trim($value);
         if (preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $value)) {
             if (strlen($value) === 4) {
-                return '#'.$value[1].$value[1].$value[2].$value[2].$value[3].$value[3];
+                $value = '#'.$value[1].$value[1].$value[2].$value[2].$value[3].$value[3];
             }
 
+            // Always lowercase: brand-kit drift detection compares colours with
+            // strict ===, so '#ABC' and '#aabbcc' must normalize identically.
             return strtolower($value);
         }
 
