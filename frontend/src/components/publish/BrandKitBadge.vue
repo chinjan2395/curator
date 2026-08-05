@@ -33,7 +33,7 @@
     </template>
 
     <template #default="{ close }">
-      <div class="w-60 p-1">
+      <div class="w-72 p-1 max-h-96 overflow-y-auto">
         <p class="px-3 py-1.5 text-2xs font-semibold uppercase tracking-wide text-slate-400">
           Apply a brand kit
         </p>
@@ -43,25 +43,49 @@
         >
           No brand kits yet.
         </p>
-        <AppButton
-          v-for="kit in brandKits.kits"
-          :key="kit.id"
-          type="button"
-          variant="ghost"
-          size="sm"
-          class="!w-full !justify-start !text-left"
-          :disabled="applying"
-          @click="apply(kit, close)"
+        <!-- Grouped by Master so it is obvious which kits inherit from which;
+             a flat list gave no clue that children exist at all. -->
+        <template
+          v-for="family in brandKits.groupedByMaster"
+          :key="family.master.id"
         >
-          <span class="truncate">{{ kit.name }}</span>
-          <AppBadge
-            v-if="kit.id === currentKitId"
-            variant="success"
-            class="ml-auto"
+          <AppButton
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="!w-full !justify-start !text-left"
+            :disabled="applying"
+            @click="apply(family.master, close)"
           >
-            Current
-          </AppBadge>
-        </AppButton>
+            <span class="truncate font-semibold">{{ family.master.name }}</span>
+            <AppBadge
+              v-if="family.master.id === currentKitId"
+              variant="success"
+              class="ml-auto"
+            >
+              Current
+            </AppBadge>
+          </AppButton>
+          <AppButton
+            v-for="child in family.children"
+            :key="child.id"
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="!w-full !justify-start !text-left !pl-7"
+            :disabled="applying"
+            @click="apply(child, close)"
+          >
+            <span class="truncate text-slate-600">{{ child.name }}</span>
+            <AppBadge
+              v-if="child.id === currentKitId"
+              variant="success"
+              class="ml-auto"
+            >
+              Current
+            </AppBadge>
+          </AppButton>
+        </template>
         <div class="my-1 border-t border-slate-100" />
         <AppButton
           type="button"
