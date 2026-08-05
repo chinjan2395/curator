@@ -20,7 +20,6 @@ import CampaignsList from '../views/CampaignsList.vue';
 import CampaignForm from '../views/CampaignForm.vue';
 import CampaignDetail from '../views/CampaignDetail.vue';
 import ContentLibrary from '../views/ContentLibrary.vue';
-import BrandKit from '../views/BrandKit.vue';
 import BrandKits from '../views/BrandKits.vue';
 import BrandKitEditor from '../views/BrandKitEditor.vue';
 import Calendar from '../views/Calendar.vue';
@@ -78,7 +77,6 @@ const routes = [
       { path: 'campaigns/new', name: 'campaign-new', component: CampaignForm, meta: { menuId: 'campaigns' } },
       { path: 'campaigns/:id', name: 'campaign-detail', component: CampaignDetail, meta: { menuId: 'campaigns' } },
       { path: 'content-library', name: 'content-library', component: ContentLibrary, meta: { menuId: 'content-library' } },
-      { path: 'brand-kit', name: 'brand-kit', component: BrandKit, meta: { menuId: 'brand-kit' } },
       { path: 'brand-kits', name: 'brand-kits', component: BrandKits, meta: { menuId: 'brand-kits' } },
       { path: 'brand-kits/:id/edit', name: 'brand-kit-editor', component: BrandKitEditor, meta: { menuId: 'brand-kits' } },
       { path: 'content', redirect: { name: 'content-library' } },

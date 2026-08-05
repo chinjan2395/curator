@@ -13,7 +13,7 @@ const ALL_MENU_IDS = [
   'campaigns',
   'schedule',
   'content-library',
-  'brand-kit',
+  'brand-kits',
   'analytics',
   'inbox',
   'notifications',
