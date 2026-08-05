@@ -56,10 +56,16 @@ class BrandKitController extends Controller
                 'fonts' => is_array($validated['fonts'] ?? null) ? $validated['fonts'] : [],
                 'watermark' => is_array($validated['watermark'] ?? null) ? $validated['watermark'] : [],
             ]);
+            // Seed the embed palette from the identity palette so a new Master
+            // opens with Brand identity and Embed appearance already in step.
+            // Both groups are stored, so every later edit is a plain override.
             $overrides = [
                 'colors' => $expanded['colors'],
                 'fonts' => $expanded['fonts'],
                 'watermark' => $expanded['watermark'],
+                'feed_colors' => BrandKitExpandedSettings::validateAndNormalize([
+                    'feed_colors' => BrandKitExpandedSettings::feedColorsFromIdentity($expanded['colors']),
+                ])['feed_colors'],
             ];
         }
 

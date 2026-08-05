@@ -7,8 +7,7 @@ import { useToastStore } from './toast';
  * kit data changes frequently while a user is actively editing overrides in
  * the Brand Kit Editor, so this intentionally skips the sessionCache TTL
  * pattern used by `publish.js`/`credentials.js` and just keeps an in-memory
- * list + a per-kit `resolved()` cache, matching `BrandKitPanel.vue`'s existing
- * "plain axios + local reactive state" convention for this feature area.
+ * list + a per-kit `resolved()` cache.
  */
 export const useBrandKitsStore = defineStore('brandKits', {
   state: () => ({
