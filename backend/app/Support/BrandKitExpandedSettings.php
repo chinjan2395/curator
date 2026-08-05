@@ -19,6 +19,28 @@ class BrandKitExpandedSettings
 {
     use NormalizesSettings;
 
+    /**
+     * Which brand identity colour seeds which embed appearance colour.
+     * Keys are `feed_colors` paths, values are `colors` (identity) keys.
+     *
+     * Mirrored in `frontend/src/constants/brandIdentityColors.js` so the editor's
+     * "Apply to embed appearance" button produces the same result as creation;
+     * `BrandKitIdentitySeedTest` fails if the two drift apart.
+     */
+    public const IDENTITY_COLOR_MAP = [
+        // Body copy and the card it sits on come straight across.
+        'post_text' => 'text',
+        'post_bg.color' => 'background',
+        // Links and the load-more button are the two "action" surfaces.
+        'post_link' => 'primary',
+        'post_button' => 'accent',
+        // Secondary is the muted role: icons, dates, the source row.
+        'post_icon' => 'secondary',
+        'post_date' => 'secondary',
+        'header_text' => 'secondary',
+        'footer_text' => 'text',
+    ];
+
     /** @return array<string, mixed> */
     public static function defaults(): array
     {
@@ -119,6 +141,49 @@ class BrandKitExpandedSettings
         $out['feed_colors'] = $publishShaped['colors'];
         $out['widget'] = $publishShaped['widget'];
         $out['branding'] = $publishShaped['branding'];
+
+        return $out;
+    }
+
+    /**
+     * Translates the kit's brand identity palette into the embed appearance
+     * palette (`feed_colors`).
+     *
+     * The two groups describe the same brand, so a new Master kit starts with
+     * its embed colours already derived from Brand identity instead of the
+     * generic Publish defaults. It is a one-time seed, not a live link: the
+     * editor writes `feed_colors` directly afterwards, so any override the user
+     * makes there survives later edits to the identity palette.
+     *
+     * @param  array<string, mixed>  $identity  the kit's `colors` group
+     * @return array<string, mixed> a `feed_colors`-shaped patch
+     */
+    public static function feedColorsFromIdentity(array $identity): array
+    {
+        $identityDefaults = self::defaults()['colors'];
+
+        $out = [
+            // Off by default in the map: turning the card background on is what
+            // makes the identity `background` colour visible at all.
+            'post_bg' => ['enabled' => true],
+            // Borders stay on the neutral default — deriving one from the
+            // palette tends to produce a harsh outline on light backgrounds.
+            'post_border' => PublishSettings::defaults()['colors']['post_border'],
+        ];
+
+        foreach (self::IDENTITY_COLOR_MAP as $target => $source) {
+            $value = self::sanitizeHexColor(
+                (string) ($identity[$source] ?? ''),
+                (string) ($identityDefaults[$source] ?? '#000000'),
+            );
+
+            $segments = explode('.', $target);
+            if (count($segments) === 2) {
+                $out[$segments[0]][$segments[1]] = $value;
+            } else {
+                $out[$target] = $value;
+            }
+        }
 
         return $out;
     }
