@@ -32,6 +32,30 @@
 .input-pro:hover:not(:focus):not(:disabled) {
   border-color: #b8c4d6;
 }
+/*
+ * `.input-pro` is emitted after `@tailwind utilities`, so its `px-3.5`/`w-full`
+ * beat any plain `p-0 w-11` a call site passes — a colour swatch collapses to a
+ * sliver unless every caller remembers `!p-0`. Give colour inputs their own
+ * sizing here so that is no longer the call site's problem.
+ */
+input[type='color'].input-pro {
+  padding: 0;
+  width: 3rem;
+  height: 2.25rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
+input[type='color'].input-pro::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+input[type='color'].input-pro::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.375rem;
+}
+input[type='color'].input-pro::-moz-color-swatch {
+  border: none;
+  border-radius: 0.375rem;
+}
 .label-pro {
   @apply block text-xs font-semibold mb-1.5;
   color: #475569; /* slate-600 */
