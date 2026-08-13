@@ -92,6 +92,8 @@ onMounted(async () => {
   if (route.query.error) {
     const msgs = {
       social_auth_failed: 'Social sign-in failed. Please try again.',
+      access_denied: 'Sign-in was cancelled. Try again if that was a mistake.',
+      redirect_uri_mismatch: 'Social sign-in is misconfigured (redirect URL). Ask an admin to check the OAuth app settings.',
       email_required: 'Your social account has no public email. Try a different method.',
       facebook_not_configured: 'Facebook login is not configured on the server (missing App ID).',
       facebook_invalid_app_id: 'Facebook App ID in server configuration is invalid.',
