@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\FacebookProvider;
 use Laravel\Socialite\Two\GoogleProvider;
 use Laravel\Socialite\Two\InvalidStateException;
 
@@ -573,10 +574,13 @@ class SocialConnectController extends Controller
                 $oauth->redirect_uri ?: $this->backendUrl('/api/social/callback/facebook')
             );
             $this->setFacebookConfig($oauth, $redirectUrl);
-            $fbUser = Socialite::driver('facebook')
+            $fbDriver = Socialite::driver('facebook')
                 ->stateless()
-                ->redirectUrl($redirectUrl)
-                ->user();
+                ->redirectUrl($redirectUrl);
+            if ($fbDriver instanceof FacebookProvider) {
+                $fbDriver->fields(['id', 'name', 'email', 'picture']);
+            }
+            $fbUser = $fbDriver->user();
 
             $token = $fbUser->token;
             $expiresIn = $fbUser->expiresIn;
