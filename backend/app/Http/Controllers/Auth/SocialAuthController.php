@@ -3,23 +3,29 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Support\EmailVerification;
 use App\Models\User;
+use App\Support\EmailVerification;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Socialite\Contracts\Provider;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\FacebookProvider;
 
 class SocialAuthController extends Controller
 {
     private const SUPPORTED_PROVIDERS = ['google', 'facebook', 'github', 'twitter'];
 
     private const X_OAUTH_AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
+
     private const X_OAUTH_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
+
     private const TWITTER_LOGIN_SCOPES = ['users.read', 'tweet.read', 'offline.access'];
 
     /**
@@ -28,6 +34,12 @@ class SocialAuthController extends Controller
      * @see https://developers.facebook.com/documentation/facebook-login/facebook-login-for-business
      */
     private const FACEBOOK_LOGIN_SCOPES = ['email', 'public_profile', 'pages_show_list'];
+
+    /**
+     * Socialite's Facebook driver requests gender/verified/link by default; Graph API v23
+     * rejects those fields and the whole /me call fails with a generic login error.
+     */
+    private const FACEBOOK_LOGIN_FIELDS = ['id', 'name', 'email', 'picture'];
 
     /**
      * Which social login providers have required .env credentials (client id + secret).
@@ -129,30 +141,50 @@ class SocialAuthController extends Controller
 
     private function socialiteCallback(string $provider, Request $request)
     {
+        if ($request->query('error')) {
+            return $this->providerErrorRedirect($provider, $request);
+        }
+
+        if (! $request->query('code')) {
+            Log::warning('Social login callback missing authorization code', ['provider' => $provider]);
+
+            return $this->loginErrorRedirect('social_auth_failed');
+        }
+
         try {
             $driver = Socialite::driver($provider)
                 ->redirectUrl($this->callbackUrl($provider))
                 ->stateless();
 
             if ($provider === 'facebook') {
-                $driver = $this->facebookLoginDriver($driver);
+                $driver = $this->facebookCallbackDriver($driver);
             }
 
             $socialUser = $driver->user();
-        } catch (\Exception) {
-            return redirect($this->frontendUrl('/login?error=social_auth_failed'));
+        } catch (\Throwable $e) {
+            return $this->socialiteFailureRedirect($provider, $e);
         }
 
         $email = $socialUser->getEmail();
         if (! $email) {
-            return redirect($this->frontendUrl('/login?error=email_required'));
+            return $this->loginErrorRedirect('email_required');
         }
 
-        $name = $socialUser->getName() ?: $socialUser->getNickname() ?: 'User';
-        $user = $this->findOrCreateUser($email, $name, $provider, (string) $socialUser->getId());
+        try {
+            $name = $socialUser->getName() ?: $socialUser->getNickname() ?: 'User';
+            $user = $this->findOrCreateUser($email, $name, $provider, (string) $socialUser->getId());
+        } catch (\Throwable $e) {
+            Log::warning('Social login failed to persist user', [
+                'provider' => $provider,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->loginErrorRedirect('social_auth_failed');
+        }
 
         if ($user->isDeactivated()) {
-            return redirect($this->frontendUrl('/login?error=account_deactivated'));
+            return $this->loginErrorRedirect('account_deactivated');
         }
 
         $token = $user->createToken('auth')->plainTextToken;
@@ -164,9 +196,9 @@ class SocialAuthController extends Controller
      * Facebook Login for Business: use a dashboard Configuration ID when set (Meta recommends not mixing scopes).
      * Otherwise request explicit scopes including at least one supported business permission per Meta requirements.
      *
-     * @param  \Laravel\Socialite\Contracts\Provider  $driver
+     * Applied on the authorize redirect only — `config_id` must not be posted to the token endpoint.
      */
-    private function facebookLoginDriver(\Laravel\Socialite\Contracts\Provider $driver): \Laravel\Socialite\Contracts\Provider
+    private function facebookLoginDriver(Provider $driver): Provider
     {
         $configId = trim((string) config('services.facebook.login_config_id'));
         if ($configId !== '') {
@@ -174,6 +206,101 @@ class SocialAuthController extends Controller
         }
 
         return $driver->scopes(self::FACEBOOK_LOGIN_SCOPES);
+    }
+
+    /**
+     * Restrict Graph /me fields so Socialite's defaults cannot fail the token→user step.
+     */
+    private function facebookCallbackDriver(Provider $driver): Provider
+    {
+        if ($driver instanceof FacebookProvider) {
+            $driver->fields(self::FACEBOOK_LOGIN_FIELDS);
+        }
+
+        return $driver;
+    }
+
+    private function providerErrorRedirect(string $provider, Request $request): RedirectResponse
+    {
+        $error = (string) $request->query('error');
+
+        Log::warning('Social login provider returned an error', [
+            'provider' => $provider,
+            'error' => $error,
+            'error_description' => $request->query('error_description'),
+            'error_reason' => $request->query('error_reason'),
+        ]);
+
+        $code = match ($error) {
+            'access_denied', 'user_denied' => 'access_denied',
+            'redirect_uri_mismatch' => 'redirect_uri_mismatch',
+            default => 'social_auth_failed',
+        };
+
+        return $this->loginErrorRedirect($code);
+    }
+
+    private function socialiteFailureRedirect(string $provider, \Throwable $e): RedirectResponse
+    {
+        $providerError = $this->providerErrorFromException($e);
+
+        Log::warning('Social login failed', [
+            'provider' => $provider,
+            'exception' => $e::class,
+            'message' => $e->getMessage(),
+            'provider_error' => $providerError,
+        ]);
+
+        return $this->loginErrorRedirect($this->loginErrorFromException($e, $providerError));
+    }
+
+    private function providerErrorFromException(\Throwable $e): ?string
+    {
+        if (! $e instanceof RequestException || ! $e->hasResponse()) {
+            return null;
+        }
+
+        $json = json_decode((string) $e->getResponse()->getBody(), true);
+        if (! is_array($json)) {
+            return null;
+        }
+
+        $error = $json['error'] ?? $json['error_description'] ?? null;
+        if (is_array($error)) {
+            $message = $error['message'] ?? $error['type'] ?? null;
+
+            return is_string($message) ? $message : null;
+        }
+
+        return is_string($error) ? $error : null;
+    }
+
+    private function loginErrorFromException(\Throwable $e, ?string $providerError): string
+    {
+        $haystack = strtolower(trim($e->getMessage().' '.(string) $providerError));
+
+        if (str_contains($haystack, 'redirect_uri')) {
+            return 'redirect_uri_mismatch';
+        }
+
+        if (str_contains($haystack, 'invalid_client') || str_contains($haystack, 'unauthorized_client')) {
+            return 'oauth_client_invalid';
+        }
+
+        if (str_contains($haystack, 'invalid_grant')) {
+            return 'token_exchange_failed';
+        }
+
+        if (str_contains($haystack, 'access_denied') || str_contains($haystack, 'user_denied')) {
+            return 'access_denied';
+        }
+
+        return 'social_auth_failed';
+    }
+
+    private function loginErrorRedirect(string $code): RedirectResponse
+    {
+        return redirect($this->frontendUrl('/login?error='.$code));
     }
 
     /**
@@ -285,7 +412,7 @@ class SocialAuthController extends Controller
     private function twitterCallback(Request $request)
     {
         if ($request->query('error')) {
-            return redirect($this->frontendUrl('/login?error=social_auth_failed'));
+            return $this->providerErrorRedirect('twitter', $request);
         }
 
         $stateParam = $request->query('state');
@@ -329,7 +456,21 @@ class SocialAuthController extends Controller
             ]);
 
         if (! $tokenResp->ok()) {
-            return redirect($this->frontendUrl('/login?error=token_exchange_failed'));
+            $error = strtolower((string) ($tokenResp->json('error') ?? ''));
+            Log::warning('Twitter login token exchange failed', [
+                'status' => $tokenResp->status(),
+                'error' => $tokenResp->json('error'),
+                'error_description' => $tokenResp->json('error_description'),
+            ]);
+
+            $code = match (true) {
+                str_contains($error, 'invalid_client'), str_contains($error, 'unauthorized_client') => 'oauth_client_invalid',
+                str_contains($error, 'invalid_grant') => 'token_exchange_failed',
+                str_contains($error, 'redirect_uri') => 'redirect_uri_mismatch',
+                default => 'token_exchange_failed',
+            };
+
+            return $this->loginErrorRedirect($code);
         }
 
         $accessToken = $tokenResp->json('access_token');

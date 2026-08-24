@@ -92,6 +92,8 @@ onMounted(async () => {
   if (route.query.error) {
     const msgs = {
       social_auth_failed: 'Social sign-in failed. Please try again.',
+      access_denied: 'Sign-in was cancelled. Try again if that was a mistake.',
+      redirect_uri_mismatch: 'Social sign-in is misconfigured (redirect URL). Ask an admin to check the OAuth app settings.',
       email_required: 'Your social account has no public email. Try a different method.',
       facebook_not_configured: 'Facebook login is not configured on the server (missing App ID).',
       facebook_invalid_app_id: 'Facebook App ID in server configuration is invalid.',
@@ -99,7 +101,8 @@ onMounted(async () => {
       github_not_configured: 'GitHub login is not configured on the server.',
       twitter_not_configured: 'Twitter login is not configured.',
       unsupported_provider: 'That sign-in method is not supported.',
-      token_exchange_failed: 'Authentication failed. Please try again.',
+      token_exchange_failed: 'The login code could not be exchanged. Try once more (do not refresh the callback). If it keeps failing, the OAuth client secret on Render does not match the provider console.',
+      oauth_client_invalid: 'The OAuth client secret on the server does not match Google/Facebook/X. Client ID can be unchanged while the secret is stale — update it in Render env from the provider console.',
       user_fetch_failed: 'Could not fetch your account info. Please try again.',
       invalid_state: 'Invalid OAuth state. Please try again.',
       account_deactivated: 'Your account has been deactivated. Please contact support.',
