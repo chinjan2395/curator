@@ -283,7 +283,11 @@ class SocialAuthController extends Controller
             return 'redirect_uri_mismatch';
         }
 
-        if (str_contains($haystack, 'invalid_grant') || str_contains($haystack, 'invalid_client')) {
+        if (str_contains($haystack, 'invalid_client') || str_contains($haystack, 'unauthorized_client')) {
+            return 'oauth_client_invalid';
+        }
+
+        if (str_contains($haystack, 'invalid_grant')) {
             return 'token_exchange_failed';
         }
 
@@ -452,7 +456,21 @@ class SocialAuthController extends Controller
             ]);
 
         if (! $tokenResp->ok()) {
-            return redirect($this->frontendUrl('/login?error=token_exchange_failed'));
+            $error = strtolower((string) ($tokenResp->json('error') ?? ''));
+            Log::warning('Twitter login token exchange failed', [
+                'status' => $tokenResp->status(),
+                'error' => $tokenResp->json('error'),
+                'error_description' => $tokenResp->json('error_description'),
+            ]);
+
+            $code = match (true) {
+                str_contains($error, 'invalid_client'), str_contains($error, 'unauthorized_client') => 'oauth_client_invalid',
+                str_contains($error, 'invalid_grant') => 'token_exchange_failed',
+                str_contains($error, 'redirect_uri') => 'redirect_uri_mismatch',
+                default => 'token_exchange_failed',
+            };
+
+            return $this->loginErrorRedirect($code);
         }
 
         $accessToken = $tokenResp->json('access_token');
