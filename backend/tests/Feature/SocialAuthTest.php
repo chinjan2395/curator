@@ -100,12 +100,20 @@ class SocialAuthTest extends TestCase
             ->assertRedirect('http://localhost:5173/login?error=access_denied');
     }
 
-    public function test_socialite_exception_redirects_with_mapped_error(): void
+    public function test_socialite_invalid_grant_redirects_as_token_exchange_failed(): void
     {
         $this->mockSocialiteFailure('google', new \RuntimeException('Client error: invalid_grant'));
 
         $this->get('/api/auth/social/google/callback?code=oauth-code')
             ->assertRedirect('http://localhost:5173/login?error=token_exchange_failed');
+    }
+
+    public function test_socialite_invalid_client_is_distinguished_from_grant_failure(): void
+    {
+        $this->mockSocialiteFailure('google', new \RuntimeException('Client error: invalid_client'));
+
+        $this->get('/api/auth/social/google/callback?code=oauth-code')
+            ->assertRedirect('http://localhost:5173/login?error=oauth_client_invalid');
     }
 
     public function test_missing_code_redirects_as_social_auth_failed(): void
