@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\AiGenerationUpdated;
 use App\Models\Campaign;
 use App\Services\AI\AiContentService;
+use App\Services\AI\Text\ContentGenerationOptions;
 use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,6 +26,8 @@ class GenerateCampaignContentJob implements ShouldQueue
     public function __construct(
         public int $campaignId,
         public int $userId,
+        public ?string $provider = null,
+        public ?string $model = null,
     ) {}
 
     public function handle(AiContentService $ai, NotificationService $notifications): void
@@ -33,6 +36,8 @@ class GenerateCampaignContentJob implements ShouldQueue
         if (! $campaign || (int) $campaign->user_id !== $this->userId) {
             return;
         }
+
+        $options = new ContentGenerationOptions($this->provider, $this->model);
 
         $campaign->loadMissing(['user', 'brandKit', 'template']);
         $platforms = $campaign->platforms ?? ['instagram', 'twitter'];
@@ -64,10 +69,10 @@ class GenerateCampaignContentJob implements ShouldQueue
                     "Generating for {$platform}…",
                 ));
 
-                $packages[] = $ai->generateForCampaignPlatform($campaign, $platform);
+                $packages[] = $ai->generateForCampaignPlatform($campaign, $platform, $options);
             }
 
-            $ai->finalizeCampaignGeneration($campaign);
+            $ai->finalizeCampaignGeneration($campaign, $options);
 
             event(new AiGenerationUpdated(
                 $this->userId,

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class Asset extends Model
 {
     protected $appends = ['url'];
+
     protected $fillable = [
         'user_id',
         'campaign_id',
@@ -23,6 +24,7 @@ class Asset extends Model
         'storage_disk',
         'thumbnail_path',
         'ai_tags',
+        'prompt',
         'width',
         'height',
         'duration',
@@ -98,5 +100,4 @@ class Asset extends Model
             return null;
         }
     }
-
 }

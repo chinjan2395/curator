@@ -18,7 +18,7 @@ trait CallsLlmApi
         $response = $request->post($url, $payload);
 
         if (! $response->ok()) {
-            throw new RuntimeException('LLM request failed: '.$response->body());
+            throw new RuntimeException('LLM request failed: '.$this->llmErrorMessage($response->json(), $response->body()));
         }
 
         $content = data_get($response->json(), 'choices.0.message.content')
@@ -29,5 +29,25 @@ trait CallsLlmApi
         }
 
         return trim($content);
+    }
+
+    /**
+     * Providers disagree on their error shape: OpenAI-compatible APIs nest a
+     * string under error.message, xAI returns a flat string under error. Fall
+     * back to the raw body only when neither shape matches.
+     */
+    private function llmErrorMessage(mixed $json, string $body): string
+    {
+        $nested = data_get($json, 'error.message');
+        if (is_string($nested) && $nested !== '') {
+            return $nested;
+        }
+
+        $flat = data_get($json, 'error');
+        if (is_string($flat) && $flat !== '') {
+            return $flat;
+        }
+
+        return $body;
     }
 }

@@ -16,6 +16,7 @@ import Credentials from '../views/Credentials.vue';
 import OAuthApps from '../views/OAuthApps.vue';
 import Publish from '../views/Publish.vue';
 import ProfileSettings from '../views/ProfileSettings.vue';
+import AiSettings from '../views/AiSettings.vue';
 import CampaignsList from '../views/CampaignsList.vue';
 import CampaignForm from '../views/CampaignForm.vue';
 import CampaignDetail from '../views/CampaignDetail.vue';
@@ -73,6 +74,7 @@ const routes = [
       { path: 'curator', name: 'curator', component: CuratorFeed, meta: { menuId: 'curator' } },
       { path: 'curator/embed-builder', name: 'embed-builder', component: Publish, meta: { menuId: 'curator' } },
       { path: 'settings/profile', name: 'profile-settings', component: ProfileSettings },
+      { path: 'settings/ai', name: 'ai-settings', component: AiSettings, meta: { menuId: 'ai-settings' } },
       { path: 'campaigns', name: 'campaigns', component: CampaignsList, meta: { menuId: 'campaigns' } },
       { path: 'campaigns/new', name: 'campaign-new', component: CampaignForm, meta: { menuId: 'campaigns' } },
       { path: 'campaigns/:id', name: 'campaign-detail', component: CampaignDetail, meta: { menuId: 'campaigns' } },

@@ -10,6 +10,10 @@ class OllamaAiProvider implements AiProviderInterface
     use BuildsAiSystemPrompt;
     use CallsLlmApi;
 
+    public function __construct(
+        private readonly ?string $model = null,
+    ) {}
+
     public function name(): string
     {
         return 'ollama';
@@ -18,7 +22,7 @@ class OllamaAiProvider implements AiProviderInterface
     public function generateText(string $prompt, array $context = []): string
     {
         $baseUrl = rtrim((string) config('services.ai.ollama.url', 'http://127.0.0.1:11434'), '/');
-        $model = (string) config('services.ai.ollama.model', 'llama3.2');
+        $model = $this->model ?: (string) config('services.ai.ollama.model', 'llama3.2');
 
         $system = $this->buildSystemPrompt($context);
 

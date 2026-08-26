@@ -6,12 +6,20 @@ use App\Http\Resources\ApiResponse;
 use App\Jobs\GenerateImageJob;
 use App\Jobs\GenerateVariantsJob;
 use App\Jobs\RefineContentPackageJob;
+use App\Models\Asset;
 use App\Models\ContentPackage;
 use App\Services\AI\AiContentService;
+use App\Services\AI\AiImageGenerationService;
+use App\Services\AI\Image\ImageKeyResolver;
+use App\Services\Content\AssetStorageService;
 use App\Services\LearningPromptService;
+use App\Support\AiImageProviders;
+use App\Support\AiTextProviders;
 use App\Support\ContentPackageMediaResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class ContentPackageController extends Controller
@@ -77,12 +85,16 @@ class ContentPackageController extends Controller
 
         $validated = $request->validate([
             'instruction' => ['required', 'string', 'max:2000'],
+            'provider' => ['nullable', 'string', Rule::in(AiTextProviders::selectableIds())],
+            'model' => ['nullable', 'string', Rule::in(AiTextProviders::allModelIds())],
         ]);
 
         RefineContentPackageJob::dispatch(
             $contentPackage->id,
             (int) $request->user()->id,
             $validated['instruction'],
+            $validated['provider'] ?? null,
+            $validated['model'] ?? null,
         );
 
         return ApiResponse::success(
@@ -124,6 +136,59 @@ class ContentPackageController extends Controller
         return ApiResponse::success($contentPackage->fresh(), 'Caption updated.');
     }
 
+    /**
+     * Duplicate a draft as a new version so it can be iterated on
+     * without losing the original.
+     * POST /api/content-packages/{contentPackage}/duplicate
+     */
+    public function duplicate(Request $request, ContentPackage $contentPackage): JsonResponse
+    {
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
+
+        $rootId = $contentPackage->parent_id ?? $contentPackage->id;
+
+        $maxVersion = ContentPackage::query()
+            ->where('user_id', $contentPackage->user_id)
+            ->where(function ($q) use ($rootId) {
+                $q->where('id', $rootId)->orWhere('parent_id', $rootId);
+            })
+            ->max('version');
+
+        $duplicate = ContentPackage::create([
+            'campaign_id' => $contentPackage->campaign_id,
+            'user_id' => $contentPackage->user_id,
+            'platform' => $contentPackage->platform,
+            'content_type' => $contentPackage->content_type,
+            'caption' => $contentPackage->caption,
+            'media_urls' => $contentPackage->media_urls,
+            'hashtags' => $contentPackage->hashtags,
+            'platform_specific_data' => $contentPackage->platform_specific_data,
+            'status' => 'draft',
+            'version' => (int) ($maxVersion ?? $contentPackage->version) + 1,
+            'parent_id' => $rootId,
+        ]);
+
+        return ApiResponse::success($duplicate, 'Draft duplicated.');
+    }
+
+    /**
+     * Delete a draft. Scheduled or already-published packages must be
+     * unscheduled first so a live post is never orphaned.
+     * DELETE /api/content-packages/{contentPackage}
+     */
+    public function destroy(Request $request, ContentPackage $contentPackage): JsonResponse
+    {
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
+
+        if (in_array($contentPackage->status, ['scheduled', 'published'], true)) {
+            return ApiResponse::error('Cancel the scheduled post before deleting this draft.', null, 422);
+        }
+
+        $contentPackage->delete();
+
+        return ApiResponse::success(null, 'Draft deleted.');
+    }
+
     public function versions(Request $request, ContentPackage $contentPackage): JsonResponse
     {
         abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
@@ -159,12 +224,16 @@ class ContentPackageController extends Controller
 
         $validated = $request->validate([
             'count' => ['sometimes', 'integer', 'min:1', 'max:3'],
+            'provider' => ['nullable', 'string', Rule::in(AiTextProviders::selectableIds())],
+            'model' => ['nullable', 'string', Rule::in(AiTextProviders::allModelIds())],
         ]);
 
         GenerateVariantsJob::dispatch(
             $contentPackage->id,
             (int) $request->user()->id,
             $validated['count'] ?? 3,
+            $validated['provider'] ?? null,
+            $validated['model'] ?? null,
         );
 
         return ApiResponse::success(
@@ -185,7 +254,7 @@ class ContentPackageController extends Controller
 
         $winner = $ai->markVariantWinner($contentPackage);
 
-        return ApiResponse::success($winner, "Variant marked as winner.");
+        return ApiResponse::success($winner, 'Variant marked as winner.');
     }
 
     /**
@@ -202,17 +271,55 @@ class ContentPackageController extends Controller
     }
 
     /**
-     * Generate an AI image for a content package, store as asset, attach to media_urls.
-     * POST /api/content-packages/{contentPackage}/generate-image
+     * Compose the image prompt for a content package without generating anything,
+     * so the frontend can preview and optionally edit it first.
+     * POST /api/content-packages/{contentPackage}/image-prompt-preview
      */
-    public function generateImage(
+    public function previewImagePrompt(
         Request $request,
         ContentPackage $contentPackage,
+        AiImageGenerationService $imageGeneration,
     ): JsonResponse {
         abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
             'instruction' => ['nullable', 'string', 'max:2000'],
+            'reference_asset_id' => ['nullable', 'integer'],
+        ]);
+
+        $prompt = $imageGeneration->previewPrompt(
+            $contentPackage,
+            $validated['instruction'] ?? null,
+            $validated['reference_asset_id'] ?? null,
+        );
+
+        return ApiResponse::success(['prompt' => $prompt]);
+    }
+
+    /**
+     * Generate an AI image for a content package, store as asset, attach to media_urls.
+     * POST /api/content-packages/{contentPackage}/generate-image
+     *
+     * A reference image may be supplied either as an upload (`reference`) or as an
+     * asset already in the user's library (`reference_asset_id`). Uploads are stored
+     * as assets first, so both routes reach the job as a plain asset id.
+     */
+    public function generateImage(
+        Request $request,
+        ContentPackage $contentPackage,
+        AssetStorageService $assetStorage,
+        ImageKeyResolver $keys,
+        AiImageGenerationService $imageGeneration,
+    ): JsonResponse {
+        abort_if(! $request->user()->isSuperAdmin() && $contentPackage->user_id !== $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'instruction' => ['nullable', 'string', 'max:2000'],
+            'provider' => ['nullable', 'string', Rule::in(AiImageProviders::selectableIds())],
+            'reference_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
+            'reference' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:8192'],
+            'prompt' => ['sometimes', 'nullable', 'string', 'max:4000'],
+            'model' => ['nullable', 'string', Rule::in(AiImageProviders::allModelIds())],
         ]);
 
         $existingCount = count($contentPackage->media_urls ?? []);
@@ -220,16 +327,80 @@ class ContentPackageController extends Controller
             return ApiResponse::error('This package already has the maximum of 4 media items.', null, 422);
         }
 
+        $upload = $request->file('reference');
+        if ($upload && ! empty($validated['reference_asset_id'])) {
+            return ApiResponse::error('Supply either a reference upload or a reference asset, not both.', null, 422);
+        }
+
+        $user = $request->user();
+
+        // Fail fast with a clear message rather than letting the job die on a 401
+        // from the provider.
+        $providerId = $imageGeneration->resolveProviderId($validated['provider'] ?? null, $user);
+        if (! $keys->isAvailable($providerId, $user)) {
+            return ApiResponse::error(
+                AiImageProviders::label($providerId).' has no API key. Add your own key in AI Settings, or pick another provider.',
+                null,
+                422,
+            );
+        }
+
+        $referenceAssetId = $validated['reference_asset_id'] ?? null;
+
+        if ($referenceAssetId !== null) {
+            $reference = Asset::query()->find($referenceAssetId);
+            abort_if(! $reference || $reference->user_id !== $user->id, 403);
+        }
+
+        if ($upload) {
+            $referenceAssetId = $this->storeReferenceUpload($upload, $contentPackage, $assetStorage);
+        }
+
         GenerateImageJob::dispatch(
             $contentPackage->id,
-            (int) $request->user()->id,
+            (int) $user->id,
             $validated['instruction'] ?? null,
+            $referenceAssetId,
+            $validated['provider'] ?? null,
+            $validated['prompt'] ?? null,
+            $validated['model'] ?? null,
         );
 
         return ApiResponse::success(
-            ['content_package_id' => $contentPackage->id, 'queued' => true],
+            [
+                'content_package_id' => $contentPackage->id,
+                'queued' => true,
+                'provider' => $providerId,
+                'reference_asset_id' => $referenceAssetId,
+            ],
             'Image generation started.',
             202,
         );
+    }
+
+    /**
+     * Keep an uploaded reference in the user's library so it can be reused and
+     * so the job only ever deals with asset ids.
+     */
+    private function storeReferenceUpload(
+        UploadedFile $upload,
+        ContentPackage $contentPackage,
+        AssetStorageService $assetStorage,
+    ): int {
+        $stored = $assetStorage->storeUploadedFile($upload, (int) $contentPackage->user_id);
+
+        $asset = Asset::create([
+            'user_id' => $contentPackage->user_id,
+            'campaign_id' => $contentPackage->campaign_id,
+            'type' => 'image',
+            'file_name' => $upload->getClientOriginalName() ?: 'reference.png',
+            'file_size' => $upload->getSize(),
+            'mime_type' => $upload->getMimeType(),
+            'storage_path' => $stored['path'],
+            'storage_disk' => $stored['disk'],
+            'ai_tags' => ['reference'],
+        ]);
+
+        return (int) $asset->id;
     }
 }

@@ -6,8 +6,10 @@ use App\Http\Resources\ApiResponse;
 use App\Jobs\GenerateCampaignContentJob;
 use App\Models\BrandKit;
 use App\Models\Campaign;
+use App\Support\AiTextProviders;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CampaignController extends Controller
 {
@@ -101,7 +103,17 @@ class CampaignController extends Controller
     {
         $this->authorizeCampaign($request, $campaign);
 
-        GenerateCampaignContentJob::dispatch($campaign->id, (int) $request->user()->id);
+        $validated = $request->validate([
+            'provider' => ['nullable', 'string', Rule::in(AiTextProviders::selectableIds())],
+            'model' => ['nullable', 'string', Rule::in(AiTextProviders::allModelIds())],
+        ]);
+
+        GenerateCampaignContentJob::dispatch(
+            $campaign->id,
+            (int) $request->user()->id,
+            $validated['provider'] ?? null,
+            $validated['model'] ?? null,
+        );
 
         return ApiResponse::success(
             ['campaign_id' => $campaign->id, 'queued' => true],
