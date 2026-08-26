@@ -398,6 +398,68 @@ class SocialConnectController extends Controller
         return redirect($this->frontendUrl().'/credentials?error=oauth_failed&message='.urlencode($message));
     }
 
+    /**
+     * Turn a caught OAuth/API exception into a safe, human-readable message for the
+     * browser redirect. Never forward the raw exception text: Guzzle/Http client
+     * exceptions embed the full request (including access tokens and
+     * appsecret_proof) in their message, which would otherwise leak a live
+     * credential into the URL, browser history, and access logs.
+     */
+    private function oauthFailureMessage(\Throwable $e): string
+    {
+        $details = $this->extractApiErrorDetails($e->getMessage());
+
+        if ($details) {
+            $code = $details['code'] ?? null;
+            if (($details['is_transient'] ?? false) || in_array($code, [4, 17, 32, 613], true)) {
+                return 'This provider is temporarily rate-limiting requests. Please wait a few minutes and try again.';
+            }
+
+            if ($code === 190) {
+                return 'The connection was rejected as invalid or expired. Please try connecting again.';
+            }
+
+            if (in_array($details['error'] ?? null, ['invalid_grant', 'invalid_client'], true)) {
+                return 'The provider rejected the connection request. Please try connecting again.';
+            }
+        }
+
+        return 'Connection failed. Please try again.';
+    }
+
+    /**
+     * Best-effort extraction of a JSON error payload embedded in an exception
+     * message (Guzzle/Http client exceptions render the response body inline),
+     * without ever surfacing the raw message itself.
+     *
+     * @return array{code?: int|string|null, is_transient?: bool, error?: string}|null
+     */
+    private function extractApiErrorDetails(string $exceptionMessage): ?array
+    {
+        if (! preg_match('/\{.*\}/s', $exceptionMessage, $matches)) {
+            return null;
+        }
+
+        $decoded = json_decode($matches[0], true);
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $error = $decoded['error'] ?? null;
+        if (is_array($error)) {
+            return [
+                'code' => $error['code'] ?? null,
+                'is_transient' => (bool) ($error['is_transient'] ?? false),
+            ];
+        }
+
+        if (is_string($error)) {
+            return ['error' => $error];
+        }
+
+        return null;
+    }
+
     private function decodeState(Request $request): ?array
     {
         $state = $request->query('state');
@@ -498,7 +560,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
@@ -552,7 +614,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
@@ -613,7 +675,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
@@ -706,7 +768,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
@@ -791,7 +853,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('TikTok OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
@@ -895,7 +957,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('Threads OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
@@ -990,7 +1052,7 @@ class SocialConnectController extends Controller
         } catch (\Throwable $e) {
             Log::error('LinkedIn OAuth callback error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return $this->redirectError($e->getMessage());
+            return $this->redirectError($this->oauthFailureMessage($e));
         }
     }
 
