@@ -18,15 +18,16 @@ class AiImageProvidersTest extends TestCase
         $this->assertNotContains(AiImageProviders::STUB, $ids);
     }
 
-    public function test_grok_is_byok_and_does_not_support_a_reference_image(): void
+    public function test_grok_is_byok_and_supports_a_reference_image(): void
     {
         $spec = AiImageProviders::find(AiImageProviders::GROK);
 
         $this->assertTrue($spec['byok']);
-        $this->assertFalse(AiImageProviders::supportsReference(AiImageProviders::GROK));
+        $this->assertTrue(AiImageProviders::supportsReference(AiImageProviders::GROK));
+        $this->assertSame('grok-imagine-image-2.0', $spec['default_model']);
 
         $modelIds = array_column(AiImageProviders::models(AiImageProviders::GROK), 'id');
-        $this->assertContains('grok-2-image-1212', $modelIds);
+        $this->assertContains('grok-imagine-image-2.0', $modelIds);
     }
 
     public function test_grok_contributes_no_fixed_sizes(): void

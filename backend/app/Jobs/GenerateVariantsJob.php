@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\AiGenerationUpdated;
 use App\Models\ContentPackage;
 use App\Services\AI\AiContentService;
+use App\Services\AI\Text\ContentGenerationOptions;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,6 +26,8 @@ class GenerateVariantsJob implements ShouldQueue
         public int $contentPackageId,
         public int $userId,
         public int $count = 3,
+        public ?string $provider = null,
+        public ?string $model = null,
     ) {}
 
     public function handle(AiContentService $ai): void
@@ -44,7 +47,7 @@ class GenerateVariantsJob implements ShouldQueue
         ));
 
         try {
-            $variants = $ai->generateVariants($package, $this->count);
+            $variants = $ai->generateVariants($package, $this->count, new ContentGenerationOptions($this->provider, $this->model));
 
             event(new AiGenerationUpdated(
                 $this->userId,

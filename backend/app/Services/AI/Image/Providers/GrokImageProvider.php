@@ -14,13 +14,17 @@ use RuntimeException;
  *
  * https://docs.x.ai/
  *
- * OpenAI-compatible schema, but xAI does not (yet) document a stable,
- * OpenAI-shaped edit/reference-image endpoint, so this provider only ever
- * calls /images/generations and never accepts a reference image.
+ * xAI exposes two endpoints: /images/generations for text-only prompts, and
+ * /images/edits for reference-conditioned generation. Edits take the same
+ * JSON body shape as generations, plus an inline base64 data URI for the
+ * reference image(s) — there is no multipart upload, unlike OpenAI's edits
+ * endpoint.
  */
 class GrokImageProvider implements AiImageProviderInterface
 {
     private const GENERATIONS_URL = 'https://api.x.ai/v1/images/generations';
+
+    private const EDITS_URL = 'https://api.x.ai/v1/images/edits';
 
     public function __construct(private readonly string $apiKey) {}
 
@@ -31,13 +35,17 @@ class GrokImageProvider implements AiImageProviderInterface
 
     public function supportsReference(): bool
     {
-        return false;
+        return true;
     }
 
     public function generateImage(ImageGenerationRequest $request): GeneratedImage
     {
         $model = $request->model
-            ?: (string) config('services.ai.image.grok.model', 'grok-2-image-1212');
+            ?: (string) config('services.ai.image.grok.model', 'grok-imagine-image-2.0');
+
+        if ($request->hasReference()) {
+            return $this->edit($request, $model);
+        }
 
         $response = Http::timeout(180)
             ->acceptJson()
@@ -49,6 +57,37 @@ class GrokImageProvider implements AiImageProviderInterface
                 'n' => 1,
                 'response_format' => 'b64_json',
             ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Grok image generation failed: '.$this->errorMessage($response->json(), $response->body()));
+        }
+
+        return $this->decode($response->json('data.0.b64_json'));
+    }
+
+    private function edit(ImageGenerationRequest $request, string $model): GeneratedImage
+    {
+        $payload = [
+            'model' => $model,
+            'prompt' => $request->prompt,
+            'n' => 1,
+            'response_format' => 'b64_json',
+        ];
+
+        if (count($request->references) > 1) {
+            $payload['images'] = array_map(
+                static fn ($reference) => ['url' => $reference->dataUri(), 'type' => 'image_url'],
+                $request->references,
+            );
+        } else {
+            $payload['image'] = ['url' => $request->firstReference()->dataUri(), 'type' => 'image_url'];
+        }
+
+        $response = Http::timeout(180)
+            ->acceptJson()
+            ->withToken($this->apiKey)
+            ->asJson()
+            ->post(self::EDITS_URL, $payload);
 
         if (! $response->successful()) {
             throw new RuntimeException('Grok image generation failed: '.$this->errorMessage($response->json(), $response->body()));
@@ -72,11 +111,24 @@ class GrokImageProvider implements AiImageProviderInterface
         return new GeneratedImage($content, 'image/jpeg');
     }
 
-    /** Prefer the provider's own error text over a raw body dump. */
+    /**
+     * Prefer the provider's own error text over a raw body dump. xAI's errors
+     * come back as a flat string under `error` (e.g. billing/permission
+     * failures) rather than nested under `error.message` like OpenAI's shape,
+     * so check both.
+     */
     private function errorMessage(mixed $json, string $body): string
     {
-        $message = data_get($json, 'error.message');
+        $nested = data_get($json, 'error.message');
+        if (is_string($nested) && $nested !== '') {
+            return $nested;
+        }
 
-        return is_string($message) && $message !== '' ? $message : $body;
+        $flat = data_get($json, 'error');
+        if (is_string($flat) && $flat !== '') {
+            return $flat;
+        }
+
+        return $body;
     }
 }

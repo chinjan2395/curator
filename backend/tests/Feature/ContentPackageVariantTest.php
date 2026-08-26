@@ -6,7 +6,6 @@ use App\Models\Campaign;
 use App\Models\ContentPackage;
 use App\Models\User;
 use App\Services\AI\AiContentService;
-use App\Services\AI\StubAiProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -127,10 +126,15 @@ class ContentPackageVariantTest extends TestCase
 
     public function test_generate_variants_service_unit(): void
     {
+        // Force the offline stub provider so this unit test stays deterministic
+        // and never depends on real driver credentials, mirroring the intent of
+        // the old `new AiContentService(new StubAiProvider)` construction.
+        config(['services.ai.driver' => 'stub']);
+
         $user = User::factory()->create();
         $package = $this->makePackage($user);
 
-        $service = new AiContentService(new StubAiProvider);
+        $service = app(AiContentService::class);
         $variants = $service->generateVariants($package, 3);
 
         $this->assertCount(4, $variants); // original + 3 generated

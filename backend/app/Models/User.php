@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,7 +12,9 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements MustVerifyEmail
 {
     public const ROLE_SUPERADMIN = 'superadmin';
+
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_USER = 'user';
 
     /** @use HasFactory<UserFactory> */
@@ -33,6 +35,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'target_audience',
         'brand_voice',
         'ai_prompt_overrides',
+        'ai_image_settings',
+        'ai_content_settings',
         'is_onboarded',
         'social_provider',
         'social_provider_id',
@@ -66,6 +70,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'is_onboarded' => 'boolean',
             'ai_prompt_overrides' => 'array',
+            'ai_image_settings' => 'array',
+            'ai_content_settings' => 'array',
         ];
     }
 
@@ -107,5 +113,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function socialCredentials()
     {
         return $this->hasMany(SocialCredential::class);
+    }
+
+    public function aiProviderCredentials()
+    {
+        return $this->hasMany(AiProviderCredential::class);
     }
 }

@@ -62,6 +62,14 @@ abstract class TestCase extends BaseTestCase
             'SESSION_DRIVER' => 'array',
             'MAIL_MAILER' => 'array',
             'BROADCAST_CONNECTION' => 'null',
+            // A developer .env with real Drive credentials otherwise makes
+            // AssetStorageService pick the googledrive disk and hit the live API
+            // mid-test. Tests that exercise Drive set the config explicitly instead.
+            'GOOGLE_DRIVE_CLIENT_ID' => '',
+            'GOOGLE_DRIVE_CLIENT_SECRET' => '',
+            'GOOGLE_DRIVE_REFRESH_TOKEN' => '',
+            'GOOGLE_DRIVE_FOLDER' => '',
+            'GOOGLE_DRIVE_SHARED_FOLDER_ID' => '',
         ];
 
         foreach ($variables as $key => $value) {

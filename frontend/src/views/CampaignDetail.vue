@@ -25,6 +25,7 @@
               >
                 {{ savingCampaign ? 'Saving…' : 'Save brief' }}
               </AppButton>
+              <AiProviderModelPicker kind="text" v-model="generatePickerValue" />
               <AppButton variant="primary" :disabled="generating || savingCampaign" @click="generate">
                 <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
                 {{ generating ? (generationProgress || 'Generating…') : 'Generate content' }}
@@ -37,27 +38,63 @@
 
         <AppAlert v-if="loadError" variant="danger">{{ loadError }}</AppAlert>
 
-        <nav class="campaign-mode-tabs" aria-label="Campaign sections">
-          <button
-            type="button"
-            class="campaign-mode-tab"
-            :class="activeTab === 'brief' ? 'campaign-mode-tab--active' : ''"
-            @click="activeTab = 'brief'"
-          >
-            <AppIcon name="edit" class="w-3.5 h-3.5" />
-            Brief
-          </button>
-          <button
-            type="button"
-            class="campaign-mode-tab"
-            :class="activeTab === 'drafts' ? 'campaign-mode-tab--active' : ''"
-            @click="activeTab = 'drafts'"
-          >
-            <AppIcon name="feeds" class="w-3.5 h-3.5" />
-            Drafts
-            <span v-if="packages.length" class="campaign-mode-tab__badge">{{ packages.length }}</span>
-          </button>
-        </nav>
+        <div class="cd-top-row">
+          <nav class="campaign-mode-tabs" aria-label="Campaign sections">
+            <button
+              type="button"
+              class="campaign-mode-tab"
+              :class="activeTab === 'brief' ? 'campaign-mode-tab--active' : ''"
+              @click="activeTab = 'brief'"
+            >
+              <AppIcon name="edit" class="w-3.5 h-3.5" />
+              Brief
+            </button>
+            <button
+              type="button"
+              class="campaign-mode-tab"
+              :class="activeTab === 'drafts' ? 'campaign-mode-tab--active' : ''"
+              @click="activeTab = 'drafts'"
+            >
+              <AppIcon name="feeds" class="w-3.5 h-3.5" />
+              Drafts
+              <span v-if="packages.length" class="campaign-mode-tab__badge">{{ packages.length }}</span>
+            </button>
+          </nav>
+
+          <!-- Campaign overview: compact strip, top-right (hidden for now, not removed) -->
+          <div v-if="false" class="cd-overview-strip">
+            <div class="cd-overview-strip__id">
+              <span class="cd-campaign-name">{{ campaign.name }}</span>
+              <div class="cd-platform-pills cd-platform-pills--compact">
+                <SocialPlatformLabel
+                  v-for="p in splitList(campaignForm.platformsText)"
+                  :key="p"
+                  :type="p"
+                  variant="pill"
+                  size="sm"
+                />
+              </div>
+            </div>
+            <div class="cd-overview-strip__stats">
+              <div class="cd-stat-chip">
+                <span class="cd-stat-chip__value cd-stat-chip__value--blue">{{ packages.length }}</span>
+                <span class="cd-stat-chip__label">Drafts</span>
+              </div>
+              <div class="cd-stat-chip">
+                <span class="cd-stat-chip__value cd-stat-chip__value--emerald">{{ approvedCount }}</span>
+                <span class="cd-stat-chip__label">Approved</span>
+              </div>
+              <div class="cd-stat-chip">
+                <span class="cd-stat-chip__value cd-stat-chip__value--red">{{ draftIssueCount }}</span>
+                <span class="cd-stat-chip__label">Issues</span>
+              </div>
+              <div class="cd-stat-chip">
+                <span class="cd-stat-chip__value cd-stat-chip__value--violet">{{ readinessPercent }}%</span>
+                <span class="cd-stat-chip__label">Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Brief -->
         <div v-show="activeTab === 'brief'" class="space-y-4">
@@ -275,25 +312,121 @@
               </button>
             </div>
 
-            <div class="cd-drafts-grid">
-              <AppCard
-                v-for="pkg in paginatedPackages"
-                :key="pkg.id"
-                padding="none"
-                class="campaign-draft-card"
-                :class="[
-                  expandedPackageId === pkg.id ? 'campaign-draft-card--expanded' : '',
-                  draftHasPublishIssue(pkg) ? 'campaign-draft-card--issue' : '',
-                  draftIsPublishReady(pkg) ? 'campaign-draft-card--ready' : '',
-                ]"
-              >
-                <div class="campaign-draft-row">
-                  <!-- Main clickable area -->
-                  <button type="button" class="campaign-draft-row__main" @click="toggleExpand(pkg.id)">
-                    <div class="campaign-draft-row__meta">
-                      <SocialPlatformLabel :type="pkg.platform" size="md" />
+            <div class="cd-master">
+              <!-- LEFT: draft rail -->
+              <div class="cd-rail">
+                <div class="cd-rail-toolbar">
+                  <div class="cd-rail-search">
+                    <AppIcon name="search" class="cd-rail-search__icon" />
+                    <AppInput
+                      v-model="draftSearch"
+                      placeholder="Search drafts…"
+                      wrapper-class="flex-1"
+                      input-class="!pl-7 !py-1.5 !text-xs"
+                    />
+                  </div>
+                  <AppDropdown>
+                    <template #trigger>
+                      <AppButton size="sm" variant="ghost" title="Filter by status">
+                        <AppIcon name="filter" class="w-3.5 h-3.5" />
+                      </AppButton>
+                    </template>
+                    <template #default="{ close }">
+                      <button
+                        v-for="opt in DRAFT_STATUS_FILTERS"
+                        :key="opt.id"
+                        class="cd-dropdown-item"
+                        :class="statusFilter === opt.id ? 'cd-dropdown-item--active' : ''"
+                        @click="statusFilter = opt.id; close()"
+                      >
+                        {{ opt.label }}
+                      </button>
+                    </template>
+                  </AppDropdown>
+                </div>
+
+                <div class="cd-rail-list">
+                  <AppEmptyState
+                    v-if="!paginatedPackages.length"
+                    title="No matching drafts"
+                    description="Try a different search term or filter."
+                    icon="feeds"
+                  />
+                  <div
+                    v-for="pkg in paginatedPackages"
+                    :key="pkg.id"
+                    role="button"
+                    tabindex="0"
+                    class="cd-rail-item"
+                    :class="[
+                      activeDraftId === pkg.id ? 'cd-rail-item--active' : '',
+                      draftHasPublishIssue(pkg) ? 'cd-rail-item--issue' : '',
+                      draftIsPublishReady(pkg) ? 'cd-rail-item--ready' : '',
+                    ]"
+                    @click="selectDraft(pkg.id)"
+                    @keydown.enter="selectDraft(pkg.id)"
+                    @keydown.space.prevent="selectDraft(pkg.id)"
+                  >
+                    <div class="cd-rail-item__meta">
+                      <SocialPlatformLabel :type="pkg.platform" size="sm" />
                       <span class="campaign-draft-version">v{{ pkg.version }}</span>
                       <AppBadge :variant="draftStatusVariant(pkg.status)">{{ formatStatusLabel(pkg.status) }}</AppBadge>
+                      <AppDropdown class="cd-rail-item__menu" align="right">
+                        <template #trigger>
+                          <AppButton size="sm" variant="ghost" title="Draft actions">
+                            <AppIcon name="more" class="w-3.5 h-3.5" />
+                          </AppButton>
+                        </template>
+                        <template #default="{ close }">
+                          <button
+                            class="cd-dropdown-item"
+                            @click="selectDraft(pkg.id); close()"
+                          >
+                            <AppIcon name="eye" class="w-3.5 h-3.5" />
+                            Open
+                          </button>
+                          <button
+                            class="cd-dropdown-item"
+                            @click="duplicateDraft(pkg); close()"
+                          >
+                            <AppIcon name="layers" class="w-3.5 h-3.5" />
+                            Duplicate
+                          </button>
+                          <button
+                            v-if="pkg.status !== 'approved'"
+                            class="cd-dropdown-item"
+                            @click="quickStatusChange(pkg, 'approved'); close()"
+                          >
+                            <AppIcon name="check" class="w-3.5 h-3.5" />
+                            Approve
+                          </button>
+                          <button
+                            v-if="pkg.status !== 'rejected'"
+                            class="cd-dropdown-item"
+                            @click="quickStatusChange(pkg, 'rejected'); close()"
+                          >
+                            <AppIcon name="close" class="w-3.5 h-3.5" />
+                            Reject
+                          </button>
+                          <button
+                            v-if="pkg.status !== 'draft'"
+                            class="cd-dropdown-item"
+                            @click="quickStatusChange(pkg, 'draft'); close()"
+                          >
+                            <AppIcon name="edit" class="w-3.5 h-3.5" />
+                            Move back to draft
+                          </button>
+                          <button
+                            class="cd-dropdown-item cd-dropdown-item--danger"
+                            @click="deleteDraft(pkg); close()"
+                          >
+                            <AppIcon name="delete" class="w-3.5 h-3.5" />
+                            Delete
+                          </button>
+                        </template>
+                      </AppDropdown>
+                    </div>
+                    <div v-if="draftHasPublishIssue(pkg) || draftIsPublishReady(pkg) || pkg.ai_score != null" class="cd-rail-item__meta">
                       <AppBadge
                         v-if="draftHasPublishIssue(pkg)"
                         variant="danger"
@@ -312,10 +445,6 @@
                       >
                         {{ formatAiScore(pkg.ai_score) }}
                       </AppBadge>
-                      <AppBadge v-if="pkg.is_winner" variant="success">
-                        <AppIcon name="star" class="w-2.5 h-2.5 mr-0.5" />Winner
-                      </AppBadge>
-                      <AppBadge v-else-if="pkg.variant_group_id" variant="info">A/B</AppBadge>
                     </div>
                     <p class="campaign-draft-preview">{{ pkg.caption }}</p>
                     <p v-if="draftIssueSummary(pkg)" class="campaign-draft-issue-line">
@@ -323,350 +452,368 @@
                       {{ draftIssueSummary(pkg) }}
                     </p>
                     <p v-if="pkg.hashtags?.length" class="campaign-draft-hashtags">{{ pkg.hashtags.join(' ') }}</p>
-                  </button>
+                    <div class="cd-rail-item__footer">
+                      <span class="cd-rail-item__time">
+                        <AppIcon name="clock" class="w-3 h-3" />
+                        Updated {{ formatRelativeTime(pkg.updated_at) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                  <!-- Right side actions -->
-                  <div class="campaign-draft-row__side" @click.stop>
+                <div v-if="draftsTotalPages > 1" class="cd-pagination">
+                  <button
+                    type="button"
+                    class="cd-page-btn"
+                    :disabled="draftsPage === 1"
+                    @click="draftsPage--"
+                  >
+                    <AppIcon name="chevron-left" class="w-3.5 h-3.5" />
+                  </button>
+                  <span class="cd-page-info">Page {{ draftsPage }} of {{ draftsTotalPages }}</span>
+                  <button
+                    type="button"
+                    class="cd-page-btn"
+                    :disabled="draftsPage === draftsTotalPages"
+                    @click="draftsPage++"
+                  >
+                    <AppIcon name="chevron-right" class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- RIGHT: draft detail -->
+              <AppEmptyState
+                v-if="!activeDraft"
+                class="cd-detail cd-detail--empty"
+                title="Select a draft"
+                description="Choose a draft from the list on the left to review, edit, and publish it."
+                icon="feeds"
+              />
+
+              <div v-else class="cd-detail">
+                <div class="cd-detail-header">
+                  <div class="cd-detail-header__meta">
+                    <SocialPlatformLabel :type="activeDraft.platform" size="md" />
+                    <span class="campaign-draft-version">v{{ activeDraft.version }}</span>
+                    <AppBadge :variant="draftStatusVariant(activeDraft.status)">{{ formatStatusLabel(activeDraft.status) }}</AppBadge>
+                    <AppBadge
+                      v-if="draftHasPublishIssue(activeDraft)"
+                      variant="danger"
+                      :title="draftPublishIssues(activeDraft).join(' ')"
+                    >
+                      <AppIcon name="alert" class="w-2.5 h-2.5 mr-0.5" />
+                      Publish issue
+                    </AppBadge>
+                    <AppBadge v-else-if="draftIsPublishReady(activeDraft)" variant="success">Ready to publish</AppBadge>
+                    <AppBadge
+                      v-if="activeDraft.ai_score != null"
+                      :variant="aiScoreBadgeVariant(activeDraft.ai_score)"
+                      :title="'AI quality score'"
+                    >
+                      {{ formatAiScore(activeDraft.ai_score) }}
+                    </AppBadge>
+                    <AppBadge v-if="activeDraft.is_winner" variant="success">
+                      <AppIcon name="star" class="w-2.5 h-2.5 mr-0.5" />Winner
+                    </AppBadge>
+                    <AppBadge v-else-if="activeDraft.variant_group_id" variant="info">A/B</AppBadge>
+                  </div>
+                  <div class="cd-detail-header__actions">
                     <AppSelect
-                      :model-value="pkg.status"
+                      :model-value="activeDraft.status"
                       select-class="!py-1.5 !text-xs min-w-[7.5rem]"
                       :show-placeholder="false"
-                      @update:model-value="(value) => onPackageStatusChange(pkg, value)"
+                      @update:model-value="(value) => onPackageStatusChange(activeDraft, value)"
                     >
                       <option value="draft">Draft</option>
                       <option value="in_review">In review</option>
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
                     </AppSelect>
-                    <div class="campaign-draft-actions">
-                      <AppButton size="sm" variant="ghost" :title="expandedPackageId === pkg.id ? 'Collapse' : 'Expand'" @click="toggleExpand(pkg.id)">
-                        <AppIcon name="eye" class="w-3.5 h-3.5" />
-                      </AppButton>
-                      <AppButton size="sm" variant="secondary" @click="openRefine(pkg)">
-                        <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
-                        Refine
-                      </AppButton>
-                      <AppDropdown>
-                        <template #trigger>
-                          <AppButton size="sm" variant="ghost">
-                            <AppIcon name="more" class="w-3.5 h-3.5" />
-                          </AppButton>
-                        </template>
-                        <template #default="{ close }">
-                          <button
-                            v-if="pkg.status === 'approved' && showScheduleAction"
-                            class="cd-dropdown-item"
-                            :disabled="draftHasPublishIssue(pkg)"
-                            :title="draftHasPublishIssue(pkg) ? draftIssueSummary(pkg) : 'Schedule native publish'"
-                            @click="schedulePackage(pkg); close()"
-                          >
-                            <AppIcon name="send" class="w-3.5 h-3.5" />
-                            Schedule
-                          </button>
-                          <button
-                            v-if="pkg.variant_group_id"
-                            class="cd-dropdown-item"
-                            @click="openVariantsModal(pkg); close()"
-                          >
-                            <AppIcon name="layers" class="w-3.5 h-3.5" />
-                            View variants
-                          </button>
-                          <button
-                            v-else
-                            class="cd-dropdown-item"
-                            @click="generateVariantsForPackage(pkg); close()"
-                          >
-                            <AppIcon name="sparkles" class="w-3.5 h-3.5" />
-                            A/B test
-                          </button>
-                        </template>
-                      </AppDropdown>
-                    </div>
                   </div>
                 </div>
 
-                <div v-if="expandedPackageId === pkg.id" class="campaign-draft-expanded">
-                  <ScheduleValidationPanel
-                    v-if="isNativePublishPlatform(pkg.platform)"
-                    :platform="pkg.platform"
-                    :content-package="pkg"
-                  />
-                  <PlatformPublishGuide
-                    v-else
-                    :platforms="[pkg.platform]"
-                    variant="cards"
-                    title="Publish requirements"
-                    subtitle="This platform uses embed/sync rather than native scheduling."
-                  />
-                  <p class="text-sm text-slate-800 whitespace-pre-wrap leading-6 mt-3">{{ pkg.caption }}</p>
-
-                  <!-- Insert content block -->
-                  <div v-if="contentBlocks.length" class="flex flex-wrap items-end gap-2 mt-2">
-                    <AppFormField label="Insert block" class="flex-1 min-w-[10rem]">
-                      <AppSelect
-                        :model-value="blockPickValue(pkg.id)"
-                        :show-placeholder="true"
-                        placeholder="Choose block…"
-                        select-class="!text-sm"
-                        @update:model-value="(v) => setBlockPick(pkg.id, v)"
-                      >
-                        <option v-for="b in contentBlocks" :key="b.id" :value="String(b.id)">
-                          {{ b.name }} ({{ b.type }})
-                        </option>
-                      </AppSelect>
-                    </AppFormField>
-                    <AppButton
-                      size="sm"
-                      variant="secondary"
-                      :disabled="!blockPickValue(pkg.id)"
-                      @click="appendBlock(pkg)"
-                    >
-                      Append
+                <div class="cd-detail-tabs-row">
+                  <AppTabs v-model="detailTab" :tabs="detailTabs" aria-label="Draft sections" class="cd-detail-tabs-row__tabs" />
+                  <div class="cd-detail-tabs-row__actions">
+                    <AppButton size="sm" variant="primary" @click="openRefine(activeDraft)">
+                      <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
+                      Refine
                     </AppButton>
-                  </div>
-
-                  <div v-if="(pkg.media_urls || []).length" class="campaign-media-list">
-                    <span class="text-xs font-medium text-slate-700">Media ({{ pkg.media_urls.length }}/4)</span>
-                    <div v-for="(url, i) in pkg.media_urls" :key="i" class="truncate font-mono text-2xs text-slate-600">{{ url }}</div>
-                  </div>
-
-                  <div class="campaign-media-block">
-                    <div class="campaign-media-toggle">
-                      <button
-                        type="button"
-                        class="campaign-media-toggle__btn"
-                        :class="mediaModeFor(pkg.id) === 'library' ? 'campaign-media-toggle__btn--active' : ''"
-                        @click="setMediaMode(pkg.id, 'library')"
-                      >
-                        Library
-                      </button>
-                      <button
-                        type="button"
-                        class="campaign-media-toggle__btn"
-                        :class="mediaModeFor(pkg.id) === 'url' ? 'campaign-media-toggle__btn--active' : ''"
-                        @click="setMediaMode(pkg.id, 'url')"
-                      >
-                        URL
-                      </button>
-                    </div>
-
-                    <div v-if="mediaModeFor(pkg.id) === 'library'" class="flex flex-wrap gap-2 items-end">
-                      <AppFormField label="Asset" class="flex-1 min-w-[12rem]">
-                        <AppSelect
-                          :model-value="assetPickValue(pkg.id)"
-                          select-class="!py-2 !text-sm"
-                          :show-placeholder="true"
-                          placeholder="Choose asset"
-                          @update:model-value="(value) => setAssetPick(pkg.id, value)"
+                    <AppDropdown>
+                      <template #trigger>
+                        <AppButton size="sm" variant="ghost">
+                          <AppIcon name="more" class="w-3.5 h-3.5" />
+                        </AppButton>
+                      </template>
+                      <template #default="{ close }">
+                        <button
+                          class="cd-dropdown-item"
+                          @click="openPreview(activeDraft); close()"
                         >
-                          <option
-                            v-for="a in assetsForPlatform(pkg.platform)"
-                            :key="a.id"
-                            :value="String(a.id)"
+                          <AppIcon name="image" class="w-3.5 h-3.5" />
+                          Preview all platforms
+                        </button>
+                        <button
+                          v-if="activeDraft.status === 'approved' && showScheduleAction"
+                          class="cd-dropdown-item"
+                          :disabled="draftHasPublishIssue(activeDraft)"
+                          :title="draftHasPublishIssue(activeDraft) ? draftIssueSummary(activeDraft) : 'Schedule native publish'"
+                          @click="schedulePackage(activeDraft); close()"
+                        >
+                          <AppIcon name="send" class="w-3.5 h-3.5" />
+                          Schedule
+                        </button>
+                        <button
+                          v-if="activeDraft.variant_group_id"
+                          class="cd-dropdown-item"
+                          @click="openVariantsModal(activeDraft); close()"
+                        >
+                          <AppIcon name="layers" class="w-3.5 h-3.5" />
+                          View variants
+                        </button>
+                        <button
+                          v-else
+                          class="cd-dropdown-item"
+                          @click="generateVariantsForPackage(activeDraft); close()"
+                        >
+                          <AppIcon name="sparkles" class="w-3.5 h-3.5" />
+                          A/B test
+                        </button>
+                      </template>
+                    </AppDropdown>
+                  </div>
+                </div>
+
+                <div class="cd-detail-body">
+                  <div class="cd-detail-main">
+                    <!-- Review -->
+                    <template v-if="detailTab === 'review'">
+                      <ScheduleValidationPanel
+                        v-if="isNativePublishPlatform(activeDraft.platform)"
+                        :platform="activeDraft.platform"
+                        :content-package="activeDraft"
+                      />
+                      <PlatformPublishGuide
+                        v-else
+                        :platforms="[activeDraft.platform]"
+                        variant="cards"
+                        title="Publish requirements"
+                        subtitle="This platform uses embed/sync rather than native scheduling."
+                      />
+
+                      <div class="cd-preview-section">
+                        <p class="cd-detail-subheading">Post preview</p>
+                        <div v-if="previewSupported" class="cd-preview-stage">
+                          <PostPreviewCard
+                            :platform="previewPlatform"
+                            :caption="activeDraft.caption"
+                            :hashtags="activeDraft.hashtags || []"
+                            :media-url="activeDraft.media_urls?.[0] || null"
+                          />
+                        </div>
+                        <p v-else class="text-2xs text-slate-500">
+                          A visual preview isn't available for {{ platformLabel(activeDraft.platform) }} yet.
+                        </p>
+                      </div>
+                    </template>
+
+                    <!-- Content -->
+                    <template v-else>
+                      <p class="text-sm text-slate-800 whitespace-pre-wrap leading-6">{{ activeDraft.caption }}</p>
+                      <p v-if="activeDraft.hashtags?.length" class="campaign-draft-hashtags mt-2">{{ activeDraft.hashtags.join(' ') }}</p>
+
+                      <div v-if="contentBlocks.length" class="flex flex-wrap items-end gap-2 mt-3">
+                        <AppFormField label="Insert block" class="flex-1 min-w-[10rem]">
+                          <AppSelect
+                            :model-value="blockPickValue(activeDraft.id)"
+                            :show-placeholder="true"
+                            placeholder="Choose block…"
+                            select-class="!text-sm"
+                            @update:model-value="(v) => setBlockPick(activeDraft.id, v)"
                           >
-                            {{ a.file_name }}{{ formatAssetTags(a) }}
-                          </option>
-                        </AppSelect>
-                      </AppFormField>
+                            <option v-for="b in contentBlocks" :key="b.id" :value="String(b.id)">
+                              {{ b.name }} ({{ b.type }})
+                            </option>
+                          </AppSelect>
+                        </AppFormField>
+                        <AppButton
+                          size="sm"
+                          variant="secondary"
+                          :disabled="!blockPickValue(activeDraft.id)"
+                          @click="appendBlock(activeDraft)"
+                        >
+                          Append
+                        </AppButton>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div class="cd-detail-side">
+                    <!-- Media -->
+                    <div class="cd-side-card">
+                      <div class="cd-side-card__head">
+                        <p class="cd-side-card__title">Media</p>
+                      </div>
+                      <div v-if="(activeDraft.media_urls || []).length" class="flex flex-wrap gap-2">
+                        <div v-for="(url, i) in activeDraft.media_urls" :key="i" class="campaign-media-thumb">
+                          <a :href="url" target="_blank" rel="noopener" :title="url">
+                            <img :src="url" :alt="`Media ${i + 1}`" class="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
+                          </a>
+                          <AppButton
+                            variant="ghost"
+                            size="sm"
+                            class="campaign-media-thumb__remove !p-0"
+                            title="Remove media"
+                            @click="removeMedia(activeDraft, url)"
+                          >
+                            <AppIcon name="close" class="h-3 w-3" />
+                          </AppButton>
+                        </div>
+                      </div>
+                      <div v-else class="cd-media-empty">
+                        <AppIcon name="image" class="w-5 h-5" />
+                        <p>No media attached. Add at least one image or video to publish on {{ platformLabel(activeDraft.platform) }}.</p>
+                      </div>
+                    </div>
+
+                    <!-- Asset -->
+                    <div class="cd-side-card">
+                      <p class="cd-side-card__title mb-2">Asset</p>
+                      <div class="campaign-media-toggle mb-2">
+                        <button
+                          type="button"
+                          class="campaign-media-toggle__btn"
+                          :class="mediaModeFor(activeDraft.id) === 'library' ? 'campaign-media-toggle__btn--active' : ''"
+                          @click="setMediaMode(activeDraft.id, 'library')"
+                        >
+                          Library
+                        </button>
+                        <button
+                          type="button"
+                          class="campaign-media-toggle__btn"
+                          :class="mediaModeFor(activeDraft.id) === 'url' ? 'campaign-media-toggle__btn--active' : ''"
+                          @click="setMediaMode(activeDraft.id, 'url')"
+                        >
+                          URL
+                        </button>
+                      </div>
+
+                      <div v-if="mediaModeFor(activeDraft.id) === 'library'" class="space-y-2">
+                        <AppFormField label="Choose asset">
+                          <AppSelect
+                            :model-value="assetPickValue(activeDraft.id)"
+                            select-class="!py-2 !text-sm"
+                            :show-placeholder="true"
+                            placeholder="Choose asset"
+                            @update:model-value="(value) => setAssetPick(activeDraft.id, value)"
+                          >
+                            <option
+                              v-for="a in assetsForPlatform(activeDraft.platform)"
+                              :key="a.id"
+                              :value="String(a.id)"
+                            >
+                              {{ a.file_name }}{{ formatAssetTags(a) }}
+                            </option>
+                          </AppSelect>
+                        </AppFormField>
+                        <div class="flex items-center gap-2">
+                          <img
+                            v-if="pickedAsset(activeDraft)?.url && pickedAsset(activeDraft)?.type === 'image'"
+                            :src="pickedAsset(activeDraft).url"
+                            :alt="pickedAsset(activeDraft).file_name"
+                            class="h-10 w-10 rounded-lg border border-slate-200 object-cover"
+                          />
+                          <AppButton
+                            size="sm"
+                            variant="secondary"
+                            :disabled="!assetPickValue(activeDraft.id)"
+                            @click="attachAsset(activeDraft)"
+                          >
+                            Attach
+                          </AppButton>
+                        </div>
+                        <p
+                          v-if="!assetsForPlatform(activeDraft.platform).length"
+                          class="text-2xs text-amber-700"
+                        >
+                          <template v-if="showContentLibraryLink">
+                            No matching assets for this platform.
+                            <router-link to="/content-library" class="underline font-medium">Upload in Content library</router-link>
+                            or use the URL tab.
+                          </template>
+                          <template v-else>
+                            No matching assets for this platform. Use the URL tab instead.
+                          </template>
+                        </p>
+                      </div>
+
+                      <div v-else class="space-y-2">
+                        <AppFormField label="Public URL">
+                          <AppInput
+                            :model-value="manualUrlValue(activeDraft.id)"
+                            placeholder="https://…"
+                            input-class="!text-sm"
+                            @update:model-value="(value) => setManualUrl(activeDraft.id, value)"
+                          />
+                        </AppFormField>
+                        <AppButton size="sm" :disabled="!manualUrlValue(activeDraft.id).trim()" @click="addManualUrl(activeDraft)">Add</AppButton>
+                      </div>
+                    </div>
+
+                    <!-- AI image -->
+                    <div class="cd-side-card">
+                      <div class="cd-side-card__head">
+                        <p class="cd-side-card__title">AI image</p>
+                        <AppBadge variant="info">New</AppBadge>
+                        <router-link
+                          v-if="isMenuEnabled('ai-settings')"
+                          to="/settings/ai"
+                          title="Manage AI settings"
+                          class="ml-auto text-slate-400 hover:text-slate-600"
+                        >
+                          <AppIcon name="settings" class="w-3.5 h-3.5" />
+                        </router-link>
+                      </div>
+                      <p class="text-2xs text-slate-500 mb-2">
+                        Generate from a description, optionally using a reference image.
+                      </p>
                       <AppButton
                         size="sm"
                         variant="secondary"
-                        :disabled="!assetPickValue(pkg.id)"
-                        @click="attachAsset(pkg)"
+                        :loading="generatingImageId === activeDraft.id"
+                        :disabled="generatingImageId === activeDraft.id || (activeDraft.media_urls || []).length >= 4"
+                        @click="openImageModal(activeDraft)"
                       >
-                        Attach
-                      </AppButton>
-                      <p
-                        v-if="!assetsForPlatform(pkg.platform).length"
-                        class="w-full text-2xs text-amber-700"
-                      >
-                        <template v-if="showContentLibraryLink">
-                          No matching assets for this platform.
-                          <router-link to="/content-library" class="underline font-medium">Upload in Content library</router-link>
-                          or use the URL tab.
-                        </template>
-                        <template v-else>
-                          No matching assets for this platform. Use the URL tab instead.
-                        </template>
-                      </p>
-                    </div>
-
-                    <div v-else class="flex flex-wrap gap-2 items-end">
-                      <AppFormField label="Public URL" class="flex-1 min-w-[12rem]">
-                        <AppInput
-                          :model-value="manualUrlValue(pkg.id)"
-                          placeholder="https://…"
-                          input-class="!text-sm"
-                          @update:model-value="(value) => setManualUrl(pkg.id, value)"
-                        />
-                      </AppFormField>
-                      <AppButton size="sm" :disabled="!manualUrlValue(pkg.id).trim()" @click="addManualUrl(pkg)">Add</AppButton>
-                    </div>
-
-                    <div class="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
-                      <p class="text-xs font-medium text-slate-700">AI image</p>
-                      <p class="text-2xs text-slate-500">
-                        Generate a branded image from the caption and campaign brief. Saved to your library and attached here.
-                      </p>
-                      <AppFormField label="Extra direction (optional)" class="w-full">
-                        <AppInput
-                          :model-value="imageInstructionValue(pkg.id)"
-                          placeholder="e.g. minimal flat lay, soft natural light"
-                          input-class="!text-sm"
-                          @update:model-value="(value) => setImageInstruction(pkg.id, value)"
-                        />
-                      </AppFormField>
-                      <AppButton
-                        size="sm"
-                        variant="secondary"
-                        :loading="generatingImageId === pkg.id"
-                        :disabled="generatingImageId === pkg.id || (pkg.media_urls || []).length >= 4"
-                        @click="generateImage(pkg)"
-                      >
+                        <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1" />
                         Generate image
                       </AppButton>
                     </div>
                   </div>
                 </div>
-              </AppCard>
-            </div>
 
-            <div v-if="draftsTotalPages > 1" class="cd-pagination">
-              <button
-                type="button"
-                class="cd-page-btn"
-                :disabled="draftsPage === 1"
-                @click="draftsPage--"
-              >
-                <AppIcon name="chevron-left" class="w-3.5 h-3.5" />
-              </button>
-              <span class="cd-page-info">Page {{ draftsPage }} of {{ draftsTotalPages }}</span>
-              <button
-                type="button"
-                class="cd-page-btn"
-                :disabled="draftsPage === draftsTotalPages"
-                @click="draftsPage++"
-              >
-                <AppIcon name="chevron-right" class="w-3.5 h-3.5" />
-              </button>
+                <div class="cd-detail-footer">
+                  <span class="cd-detail-footer__time">
+                    <AppIcon name="clock" class="w-3.5 h-3.5" />
+                    Last updated: {{ formatRelativeTime(activeDraft.updated_at) }}
+                  </span>
+                  <div class="cd-detail-footer__actions">
+                    <AppButton variant="secondary" @click="onPackageStatusChange(activeDraft, 'draft')">Save as draft</AppButton>
+                    <AppButton variant="secondary" @click="schedulePackage(activeDraft)">
+                      <AppIcon name="calendar" class="w-3.5 h-3.5 mr-1" />
+                      Schedule
+                    </AppButton>
+                    <AppButton variant="primary" @click="schedulePackage(activeDraft)">
+                      <AppIcon name="send" class="w-3.5 h-3.5 mr-1" />
+                      Publish now
+                    </AppButton>
+                  </div>
+                </div>
+              </div>
             </div>
           </template>
         </div>
       </div>
-
-      <!-- RIGHT: sidebar -->
-      <aside class="cd-sidebar">
-        <!-- Campaign overview -->
-        <div class="cd-sidebar-section">
-          <p class="cd-sidebar-heading">Campaign overview</p>
-          <p class="cd-campaign-name">{{ campaign.name }}</p>
-          <div class="cd-platform-pills">
-            <SocialPlatformLabel
-              v-for="p in splitList(campaignForm.platformsText)"
-              :key="p"
-              :type="p"
-              variant="pill"
-              size="sm"
-            />
-          </div>
-          <div class="cd-stats-grid">
-            <div class="cd-stat-tile">
-              <span class="cd-stat-tile__value cd-stat-tile__value--blue">{{ packages.length }}</span>
-              <span class="cd-stat-tile__label">Drafts</span>
-            </div>
-            <div class="cd-stat-tile">
-              <span class="cd-stat-tile__value cd-stat-tile__value--emerald">{{ approvedCount }}</span>
-              <span class="cd-stat-tile__label">Approved</span>
-            </div>
-            <div class="cd-stat-tile">
-              <span class="cd-stat-tile__value cd-stat-tile__value--red">{{ draftIssueCount }}</span>
-              <span class="cd-stat-tile__label">Issues</span>
-            </div>
-            <div class="cd-stat-tile">
-              <span class="cd-stat-tile__value cd-stat-tile__value--violet">{{ readinessPercent }}%</span>
-              <span class="cd-stat-tile__label">Avg. readiness</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Platform filter (only in drafts tab with packages) -->
-        <div v-if="activeTab === 'drafts' && packages.length" class="cd-sidebar-section">
-          <p class="cd-sidebar-heading">Platform filter</p>
-          <div class="cd-filter-list">
-            <button
-              v-for="opt in draftPlatformOptions"
-              :key="opt.id"
-              type="button"
-              class="cd-filter-item"
-              :class="platformFilter === opt.id ? 'cd-filter-item--active' : ''"
-              @click="platformFilter = opt.id"
-            >
-              <span class="cd-filter-all-icon" v-if="opt.id === 'all'">
-                <AppIcon name="feeds" class="w-3.5 h-3.5" />
-              </span>
-              <SocialPlatformLabel
-                v-else
-                :type="opt.id"
-                :show-label="true"
-                size="sm"
-              />
-              <span v-if="opt.id === 'all'" style="font-size:0.8125rem;font-weight:500;">All platforms</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Status filter (only in drafts tab with packages) -->
-        <div v-if="activeTab === 'drafts' && packages.length" class="cd-sidebar-section">
-          <p class="cd-sidebar-heading">Status filter</p>
-          <div class="cd-filter-list">
-            <button
-              type="button"
-              class="cd-filter-item"
-              :class="statusFilter === 'all' ? 'cd-filter-item--active' : ''"
-              @click="statusFilter = 'all'"
-            >
-              <span class="cd-filter-all-icon"><AppIcon name="feeds" class="w-3.5 h-3.5" /></span>
-              <span style="font-size:0.8125rem;font-weight:500;">All statuses</span>
-            </button>
-            <button
-              type="button"
-              class="cd-filter-item"
-              :class="statusFilter === 'ready' ? 'cd-filter-item--active' : ''"
-              @click="statusFilter = 'ready'"
-            >
-              <span class="cd-filter-dot cd-filter-dot--emerald" />
-              <span style="font-size:0.8125rem;font-weight:500;">Ready to publish</span>
-            </button>
-            <button
-              type="button"
-              class="cd-filter-item"
-              :class="statusFilter === 'approved' ? 'cd-filter-item--active' : ''"
-              @click="statusFilter = 'approved'"
-            >
-              <span class="cd-filter-dot cd-filter-dot--emerald" />
-              <span style="font-size:0.8125rem;font-weight:500;">Approved</span>
-            </button>
-            <button
-              type="button"
-              class="cd-filter-item"
-              :class="statusFilter === 'draft' ? 'cd-filter-item--active' : ''"
-              @click="statusFilter = 'draft'"
-            >
-              <span class="cd-filter-dot cd-filter-dot--slate" />
-              <span style="font-size:0.8125rem;font-weight:500;">Draft</span>
-            </button>
-            <button
-              type="button"
-              class="cd-filter-item"
-              :class="statusFilter === 'issue' ? 'cd-filter-item--active' : ''"
-              @click="statusFilter = 'issue'"
-            >
-              <span class="cd-filter-dot cd-filter-dot--red" />
-              <span style="font-size:0.8125rem;font-weight:500;">Needs attention</span>
-            </button>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <!-- Modals (outside grid) -->
@@ -729,6 +876,10 @@
           <AppInput v-model="instruction" type="textarea" :rows="4" placeholder="How should this caption change?" />
         </AppFormField>
 
+        <AppFormField label="AI service &amp; model" hint="Leave unset to use your saved default.">
+          <AiProviderModelPicker kind="text" v-model="refinePickerValue" />
+        </AppFormField>
+
         <div v-if="refinedCaption" class="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-4 text-sm">
           <div class="campaign-compare-card">
             <div class="text-xs font-semibold text-slate-500 mb-1">Before</div>
@@ -763,14 +914,30 @@
         </AppButton>
       </template>
     </AppModal>
+
+    <GenerateImageModal
+      :open="imageModalOpen"
+      :package-id="imageModalPackage?.id"
+      :assets="assets"
+      :submitting="submittingImage"
+      @close="imageModalOpen = false"
+      @generate="generateImage"
+    />
+
+    <PostPreviewModal
+      :open="previewModalOpen"
+      :content-package="previewPackage"
+      @close="previewModalOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { useCampaignsStore } from '../stores/campaigns';
+import { useAiSettingsStore } from '../stores/aiSettings';
 import { useToastStore } from '../stores/toast';
 import {
   AppAlert,
@@ -785,16 +952,22 @@ import {
   AppLoader,
   AppModal,
   AppSelect,
+  AppTabs,
 } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
 import CapabilityBanner from '../components/CapabilityBanner.vue';
 import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import ScheduleValidationPanel from '../components/ScheduleValidationPanel.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
+import GenerateImageModal from '../components/content/GenerateImageModal.vue';
+import PostPreviewModal from '../components/content/PostPreviewModal.vue';
+import PostPreviewCard from '../components/content/PostPreviewCard.vue';
+import AiProviderModelPicker from '../components/content/AiProviderModelPicker.vue';
 import { usePlatformPublishSpecs } from '../composables/usePlatformPublishSpecs';
 import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 import { useRealtimeWithFallback } from '../composables/useRealtimeWithFallback';
 import { CONTENT_TYPE_ICONS } from '../constants/platformPublishSpecs';
+import { normalizePlatformType, getPlatformLabel } from '../constants/socialPlatforms';
 import {
   draftHasPublishIssue,
   draftIssueSummary,
@@ -803,11 +976,15 @@ import {
 } from '../utils/scheduleContentValidation';
 
 const GENERATION_TIMEOUT_MS = 3 * 60 * 1000;
+// Image jobs can outlast a campaign generate: FLUX polls its provider for the result.
+const IMAGE_GENERATION_TIMEOUT_MS = 5 * 60 * 1000;
 
 const route = useRoute();
 const router = useRouter();
 const store = useCampaignsStore();
+const aiSettings = useAiSettingsStore();
 const toast = useToastStore();
+const { confirm } = inject('confirm');
 const { isMenuEnabled } = useNavigationVisibility();
 const showScheduleAction = computed(() => isMenuEnabled('schedule'));
 const showContentLibraryLink = computed(() => isMenuEnabled('content-library'));
@@ -818,6 +995,16 @@ let packagesBeforeGenerate = 0;
 const { getSpecsForPlatforms } = usePlatformPublishSpecs();
 const platformAcceptsEntries = computed(() => getSpecsForPlatforms(splitList(campaignForm.platformsText)));
 function typeShortLabel(type) { return CONTENT_TYPE_ICONS[type.id] || type.label.slice(0, 3).toUpperCase(); }
+
+const platformLabel = getPlatformLabel;
+
+const DRAFT_STATUS_FILTERS = [
+  { id: 'all', label: 'All statuses' },
+  { id: 'ready', label: 'Ready to publish' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'draft', label: 'Draft' },
+  { id: 'issue', label: 'Needs attention' },
+];
 
 const campaign = ref(null);
 const loading = ref(true);
@@ -831,10 +1018,18 @@ const autoPilotLoading = ref(false);
 const autoPilotRunning = ref(false);
 
 const activeTab = ref('brief');
-const expandedPackageId = ref(null);
+const activeDraftId = ref(null);
 const platformFilter = ref('all');
 const statusFilter = ref('all');
+const draftSearch = ref('');
+const detailTab = ref('review');
+const detailTabs = [
+  { key: 'review', label: 'Review' },
+  { key: 'content', label: 'Content' },
+];
 const refineModalOpen = ref(false);
+const generatePickerValue = ref({ provider: '', model: '' });
+const refinePickerValue = ref({ provider: '', model: '' });
 
 const draftsPage = ref(1);
 const DRAFTS_PER_PAGE = 10;
@@ -843,7 +1038,14 @@ const DRAFTS_PER_PAGE = 10;
 const abVariantsModalOpen = ref(false);
 const variantGroup = ref([]);
 const generatingImageId = ref(null);
-const imageInstruction = reactive({});
+let imageTimeoutId = null;
+let imagePollId = null;
+const imageModalOpen = ref(false);
+const imageModalPackage = ref(null);
+
+const previewModalOpen = ref(false);
+const previewPackage = ref(null);
+const submittingImage = ref(false);
 const pickingWinnerId = ref(null);
 
 const selected = ref(null);
@@ -920,6 +1122,15 @@ const filteredPackages = computed(() => {
   else if (statusFilter.value === 'draft') list = list.filter((p) => p.status === 'draft');
   else if (statusFilter.value === 'issue') list = list.filter((p) => draftHasPublishIssue(p));
 
+  const query = draftSearch.value.trim().toLowerCase();
+  if (query) {
+    list = list.filter((p) => {
+      const caption = String(p.caption || '').toLowerCase();
+      const hashtags = (p.hashtags || []).join(' ').toLowerCase();
+      return caption.includes(query) || hashtags.includes(query);
+    });
+  }
+
   return [...list].sort((a, b) => {
     const scoreA = a.ai_score ?? -1;
     const scoreB = b.ai_score ?? -1;
@@ -934,6 +1145,37 @@ const paginatedPackages = computed(() => {
   const start = (draftsPage.value - 1) * DRAFTS_PER_PAGE;
   return filteredPackages.value.slice(start, start + DRAFTS_PER_PAGE);
 });
+
+const activeDraft = computed(() => packages.value.find((p) => p.id === activeDraftId.value) || null);
+
+const PREVIEWABLE_PLATFORMS = ['facebook', 'instagram', 'twitter'];
+const previewPlatform = computed(() => normalizePlatformType(activeDraft.value?.platform));
+const previewSupported = computed(() => PREVIEWABLE_PLATFORMS.includes(previewPlatform.value));
+
+// Keep the detail panel pointed at a visible draft: land on the first result
+// when nothing is selected yet, and follow the list when filters/search drop
+// the currently active draft out of view.
+watch(paginatedPackages, (list) => {
+  if (list.some((p) => p.id === activeDraftId.value)) return;
+  activeDraftId.value = list[0]?.id ?? null;
+}, { immediate: true });
+
+watch(activeDraftId, () => { detailTab.value = 'review'; });
+
+function formatRelativeTime(iso) {
+  if (!iso) return '';
+  try {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.max(0, Math.floor(diffMs / 60000));
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  } catch {
+    return '';
+  }
+}
 
 const campaignPayload = computed(() => ({
   name: campaignForm.name.trim(),
@@ -970,11 +1212,13 @@ const canSaveCampaign = computed(
 );
 
 onMounted(async () => {
+  aiSettings.load().catch(() => {});
   await Promise.all([load(), loadAssets(), loadBrandKits(), loadContentTemplates(), loadContentBlocks()]);
 });
 
 onUnmounted(() => {
   clearGeneratingState();
+  clearImageGenerationFallback();
 });
 
 function clearGenerationTimeout() {
@@ -996,6 +1240,46 @@ function clearGeneratingState() {
   clearGenerationPoll();
   generating.value = false;
   generationProgress.value = '';
+}
+
+function clearImageGenerationFallback() {
+  if (imageTimeoutId) {
+    window.clearTimeout(imageTimeoutId);
+    imageTimeoutId = null;
+  }
+  if (imagePollId) {
+    window.clearInterval(imagePollId);
+    imagePollId = null;
+  }
+}
+
+/**
+ * Reverb is not always available in production, and FLUX in particular can run
+ * for a while, so poll for the attached image and give up loudly rather than
+ * leaving the button spinning forever.
+ */
+function armImageGenerationFallback(packageId, mediaCountBefore) {
+  clearImageGenerationFallback();
+
+  imagePollId = window.setInterval(async () => {
+    if (document.hidden || !generatingImageId.value) return;
+    await load({ showLoader: false, preserveSelectedId: packageId });
+    const current = packages.value.find((p) => Number(p.id) === Number(packageId));
+    if (current && (current.media_urls || []).length > mediaCountBefore) {
+      clearImageGenerationFallback();
+      generatingImageId.value = null;
+      loadAssets();
+      toast.success('Image generated');
+      activeDraftId.value = packageId;
+    }
+  }, 15_000);
+
+  imageTimeoutId = window.setTimeout(() => {
+    if (!generatingImageId.value) return;
+    clearImageGenerationFallback();
+    generatingImageId.value = null;
+    toast.info('Still generating in the background — refresh shortly to see the image.');
+  }, IMAGE_GENERATION_TIMEOUT_MS);
 }
 
 function armGenerationTimeout() {
@@ -1026,7 +1310,7 @@ async function pollGenerationProgress() {
     platformFilter.value = 'all';
     toast.success('Content generated');
     if (packages.value.length === 1) {
-      expandedPackageId.value = packages.value[0].id;
+      activeDraftId.value = packages.value[0].id;
     }
   }
 }
@@ -1065,7 +1349,7 @@ function handleAiGeneration(event) {
         activeTab.value = 'drafts';
         platformFilter.value = 'all';
         if (packages.value.length === 1) {
-          expandedPackageId.value = packages.value[0].id;
+          activeDraftId.value = packages.value[0].id;
         }
       });
     } else if (event.status === 'failed') {
@@ -1084,7 +1368,7 @@ function handleAiGeneration(event) {
       refinedCaption.value = event.data?.package?.caption || '';
       toast.success(event.message || 'Caption refined');
       load({ showLoader: false, preserveSelectedId: selected.value.id }).then(() => {
-        expandedPackageId.value = selected.value.id;
+        activeDraftId.value = selected.value.id;
       });
     } else if (event.status === 'failed') {
       toast.error(event.message || 'Refine failed');
@@ -1112,6 +1396,7 @@ function handleAiGeneration(event) {
 
   if (event.job_type === 'image' && Number(event.resource_id) === Number(generatingImageId.value)) {
     if (event.status === 'started') return;
+    clearImageGenerationFallback();
     generatingImageId.value = null;
     if (event.status === 'completed') {
       toast.success(event.message || 'Image generated');
@@ -1119,7 +1404,7 @@ function handleAiGeneration(event) {
         load({ showLoader: false, preserveSelectedId: event.resource_id }),
         loadAssets(),
       ]).then(() => {
-        expandedPackageId.value = event.resource_id;
+        activeDraftId.value = event.resource_id;
       });
     } else if (event.status === 'failed') {
       toast.error(event.message || 'Image generation failed');
@@ -1352,44 +1637,86 @@ function ensurePackageMediaState(packageId) {
   if (!(key in assetPick)) assetPick[key] = '';
   if (!(key in manualUrl)) manualUrl[key] = '';
   if (!(key in mediaMode)) mediaMode[key] = 'library';
-  if (!(key in imageInstruction)) imageInstruction[key] = '';
 }
 
-function imageInstructionValue(packageId) {
-  return imageInstruction[packageKey(packageId)] ?? '';
+function openImageModal(pkg) {
+  imageModalPackage.value = pkg;
+  imageModalOpen.value = true;
 }
 
-function setImageInstruction(packageId, value) {
-  imageInstruction[packageKey(packageId)] = value;
+function openPreview(pkg) {
+  previewPackage.value = pkg;
+  previewModalOpen.value = true;
 }
 
-async function generateImage(pkg) {
-  ensurePackageMediaState(pkg.id);
-  generatingImageId.value = pkg.id;
+async function generateImage(options) {
+  const pkg = imageModalPackage.value;
+  if (!pkg) return;
+
+  submittingImage.value = true;
   try {
-    const instruction = imageInstructionValue(pkg.id).trim();
-    await axios.post(`/api/content-packages/${pkg.id}/generate-image`, {
-      instruction: instruction || undefined,
-    });
+    const mediaCountBefore = (pkg.media_urls || []).length;
+    await store.generateImage(pkg.id, options);
+    // The job is queued; the finished image arrives over the aiGeneration
+    // channel, or via the poll fallback when Reverb is unavailable.
+    generatingImageId.value = pkg.id;
+    armImageGenerationFallback(pkg.id, mediaCountBefore);
+    imageModalOpen.value = false;
     toast.info('Image generation started…');
-    setImageInstruction(pkg.id, '');
   } catch {
-    generatingImageId.value = null;
+    // The axios interceptor has already surfaced the error.
+  } finally {
+    submittingImage.value = false;
   }
 }
 
-function toggleExpand(packageId) {
-  if (expandedPackageId.value === packageId) {
-    expandedPackageId.value = null;
-    return;
-  }
-  expandedPackageId.value = packageId;
+function selectDraft(packageId) {
+  activeDraftId.value = packageId;
   ensurePackageMediaState(packageId);
 }
 
 function onPackageStatusChange(pkg, status) {
   pkg.status = status;
   updateStatus(pkg);
+}
+
+async function quickStatusChange(pkg, status) {
+  try {
+    await axios.patch(`/api/content-packages/${pkg.id}/status`, { status });
+    toast.success('Status updated');
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+  } catch {
+    // The axios interceptor has already surfaced the error.
+  }
+}
+
+async function duplicateDraft(pkg) {
+  try {
+    const { data } = await axios.post(`/api/content-packages/${pkg.id}/duplicate`);
+    toast.success('Draft duplicated');
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+    activeDraftId.value = data.data?.id ?? data.id ?? activeDraftId.value;
+  } catch {
+    // The axios interceptor has already surfaced the error.
+  }
+}
+
+async function deleteDraft(pkg) {
+  const ok = await confirm({
+    title: 'Delete draft?',
+    message: `Delete this ${platformLabel(pkg.platform)} draft (v${pkg.version})? This can't be undone.`,
+    confirmLabel: 'Delete',
+  });
+  if (!ok) return;
+
+  try {
+    await axios.delete(`/api/content-packages/${pkg.id}`);
+    toast.success('Draft deleted');
+    if (activeDraftId.value === pkg.id) activeDraftId.value = null;
+    await load({ showLoader: false, preserveSelectedId: selectedPackageId.value });
+  } catch {
+    // The axios interceptor has already surfaced the error.
+  }
 }
 
 function mediaModeFor(packageId) {
@@ -1405,6 +1732,7 @@ function openRefine(pkg) {
   selected.value = pkg;
   instruction.value = '';
   refinedCaption.value = '';
+  refinePickerValue.value = { provider: '', model: '' };
   loadVersions(pkg);
   refineModalOpen.value = true;
 }
@@ -1449,6 +1777,12 @@ function aiScoreBadgeVariant(score) {
   return 'default';
 }
 
+function pickedAsset(pkg) {
+  const assetId = assetPickValue(pkg.id);
+  if (!assetId) return null;
+  return assetsForPlatform(pkg.platform).find((a) => String(a.id) === String(assetId)) || null;
+}
+
 function assetsForPlatform(platform) {
   const list = assets.value;
   if (!list.length) return [];
@@ -1486,7 +1820,10 @@ async function generate() {
   armGenerationTimeout();
   startGenerationPoll();
   try {
-    await store.generate(route.params.id);
+    await store.generate(route.params.id, {
+      provider: generatePickerValue.value.provider || undefined,
+      model: generatePickerValue.value.model || undefined,
+    });
     toast.info('Generation runs in the background — this can take up to a minute. Drafts will appear here and you will get a notification when it is ready.');
   } catch {
     clearGeneratingState();
@@ -1506,8 +1843,10 @@ async function refine() {
   if (!selected.value || !instruction.value.trim()) return;
   refining.value = true;
   try {
-    await axios.post(`/api/content-packages/${selected.value.id}/refine`, {
+    await store.refine(selected.value.id, {
       instruction: instruction.value.trim(),
+      provider: refinePickerValue.value.provider || undefined,
+      model: refinePickerValue.value.model || undefined,
     });
   } catch {
     refining.value = false;
@@ -1533,7 +1872,7 @@ async function attachAsset(pkg) {
     toast.success('Asset attached');
     setAssetPick(pkg.id, '');
     await load({ showLoader: false, preserveSelectedId: pkg.id });
-    expandedPackageId.value = pkg.id;
+    activeDraftId.value = pkg.id;
   } catch {
     await load({ showLoader: false, preserveSelectedId: pkg.id });
   }
@@ -1549,7 +1888,22 @@ async function addManualUrl(pkg) {
     toast.success('Media URL added');
     setManualUrl(pkg.id, '');
     await load({ showLoader: false, preserveSelectedId: pkg.id });
-    expandedPackageId.value = pkg.id;
+    activeDraftId.value = pkg.id;
+  } catch {
+    await load({ showLoader: false, preserveSelectedId: pkg.id });
+  }
+}
+
+async function removeMedia(pkg, url) {
+  const remaining = (pkg.media_urls || []).filter((u) => u !== url);
+  try {
+    await axios.patch(`/api/content-packages/${pkg.id}/media`, {
+      media_urls: remaining,
+      replace: true,
+    });
+    toast.success('Media removed');
+    await load({ showLoader: false, preserveSelectedId: pkg.id });
+    activeDraftId.value = pkg.id;
   } catch {
     await load({ showLoader: false, preserveSelectedId: pkg.id });
   }
@@ -1589,7 +1943,7 @@ async function openVariantsModal(pkg) {
 async function generateVariantsForPackage(pkg) {
   variantGroup.value = [];
   try {
-    await axios.post(`/api/content-packages/${pkg.id}/variants`);
+    await store.generateVariants(pkg.id);
     toast.info('Generating variants — you\'ll be notified when ready.');
   } catch {
     // nothing to close — modal was never opened
@@ -1614,74 +1968,62 @@ async function pickVariantWinner(pkg) {
 </script>
 
 <style scoped>
-/* ── Two-column layout ──────────────────────────────── */
-.cd-layout {
-  display: grid;
-  grid-template-columns: 1fr 15rem;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .cd-layout { grid-template-columns: 1fr; }
-  .cd-sidebar { order: -1; }
-}
+/* ── Page layout ─────────────────────────────────────── */
+.cd-layout { display: flex; flex-direction: column; }
 
 .cd-main { min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
 
-.cd-sidebar { display: flex; flex-direction: column; gap: 1rem; }
-
-.cd-sidebar-section {
-  border: 1px solid #e6ebf2;
-  border-radius: 0.875rem;
-  background: #fff;
-  padding: 1rem;
-}
-
-.cd-sidebar-heading {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
-}
-
-.cd-stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-}
-
-.cd-stat-tile {
+/* ── Top row: mode tabs + compact campaign overview strip ── */
+.cd-top-row {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.625rem;
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-.cd-stat-tile__value { font-size: 1.375rem; font-weight: 700; line-height: 1; margin-bottom: 0.2rem; }
-.cd-stat-tile__value--blue   { color: #3b82f6; }
-.cd-stat-tile__value--emerald { color: #10b981; }
-.cd-stat-tile__value--red    { color: #ef4444; }
-.cd-stat-tile__value--violet { color: #8b5cf6; }
+@media (max-width: 900px) {
+  .cd-top-row { flex-direction: column; }
+}
 
-.cd-stat-tile__label { font-size: 0.7rem; font-weight: 500; color: #94a3b8; }
+.cd-overview-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 0.75rem;
+  background: #fff;
+  margin-left: auto;
+}
+
+.cd-overview-strip__id { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+
+.cd-overview-strip__stats { display: flex; align-items: center; gap: 0.625rem; }
+
+.cd-stat-chip { display: flex; align-items: baseline; gap: 0.3rem; }
+
+.cd-stat-chip__value { font-size: 0.875rem; font-weight: 700; line-height: 1; }
+.cd-stat-chip__value--blue    { color: #3b82f6; }
+.cd-stat-chip__value--emerald { color: #10b981; }
+.cd-stat-chip__value--red     { color: #ef4444; }
+.cd-stat-chip__value--violet  { color: #8b5cf6; }
+
+.cd-stat-chip__label { font-size: 0.68rem; font-weight: 500; color: #94a3b8; }
 
 .cd-campaign-name {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #1e293b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 0.5rem;
+  max-width: 12rem;
 }
 
-.cd-platform-pills { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-bottom: 0.75rem; }
+.cd-platform-pills { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.cd-platform-pills--compact { gap: 0.3rem; }
 
 .cd-quick-actions { display: flex; flex-direction: column; gap: 0.5rem; }
 
@@ -1786,27 +2128,6 @@ async function pickVariantWinner(pkg) {
   color: #1d4ed8;
 }
 
-.campaign-draft-card {
-  border: 1px solid #e6ebf2;
-  background: #fff;
-  overflow: hidden;
-  border-left: 3px solid transparent;
-}
-
-.campaign-draft-card--issue {
-  border-left-color: #ef4444;
-  background: linear-gradient(90deg, rgba(254, 242, 242, 0.45) 0%, #fff 12%);
-}
-
-.campaign-draft-card--ready {
-  border-left-color: #10b981;
-}
-
-.campaign-draft-issue-stat {
-  color: #dc2626;
-  font-weight: 600;
-}
-
 .campaign-draft-issue-line {
   display: flex;
   align-items: flex-start;
@@ -1815,41 +2136,6 @@ async function pickVariantWinner(pkg) {
   line-height: 1.4;
   color: #b91c1c;
   font-weight: 500;
-}
-
-.campaign-draft-card--expanded {
-  border-color: rgba(30, 58, 138, 0.22);
-  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.06);
-}
-
-.campaign-draft-row {
-  display: grid;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-}
-
-@media (min-width: 768px) {
-  .campaign-draft-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-  }
-}
-
-.campaign-draft-row__main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
-  text-align: left;
-  width: 100%;
-  cursor: pointer;
-}
-
-.campaign-draft-row__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
 }
 
 .campaign-draft-version {
@@ -1877,42 +2163,6 @@ async function pickVariantWinner(pkg) {
   text-overflow: ellipsis;
 }
 
-/* ── Draft cards grid (2-col on wide screens) ─────────── */
-.cd-drafts-grid {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 1200px) {
-  .cd-drafts-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .campaign-draft-card .campaign-draft-preview {
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-  }
-
-  .campaign-draft-card .campaign-draft-row {
-    padding: 0.625rem 0.875rem;
-  }
-}
-
-.campaign-draft-row__side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.campaign-draft-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
 .cd-dropdown-item {
   display: flex;
   align-items: center;
@@ -1933,27 +2183,253 @@ async function pickVariantWinner(pkg) {
 
 .cd-dropdown-item:hover { background: #f8fafc; }
 .cd-dropdown-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.cd-dropdown-item--active { color: #6366f1; background: #f5f3ff; }
+.cd-dropdown-item--danger { color: #ef4444; }
+.cd-dropdown-item--danger:hover { background: #fef2f2; }
 
-.campaign-draft-expanded {
+/* ── Master-detail drafts layout ─────────────────────── */
+.cd-master {
   display: grid;
-  gap: 0.75rem;
-  padding: 0 0.85rem 0.85rem;
-  border-top: 1px solid #eef2f6;
-  background: rgba(248, 250, 252, 0.45);
+  grid-template-columns: 22rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
 }
 
-.campaign-media-list {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px dashed #cbd5e1;
-  border-radius: 0.75rem;
+@media (max-width: 1100px) {
+  .cd-master { grid-template-columns: 1fr; }
+}
+
+.cd-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
   background: #fff;
+  padding: 0.75rem;
+  max-height: 52rem;
 }
 
-.campaign-media-block {
+.cd-rail-toolbar { display: flex; align-items: center; gap: 0.5rem; }
+
+.cd-rail-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.cd-rail-search__icon {
+  position: absolute;
+  left: 0.6rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cd-rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+
+.cd-rail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #e6ebf2;
+  border-left: 3px solid transparent;
+  border-radius: 0.625rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.cd-rail-item:hover { background: #f8fafc; }
+
+.cd-rail-item--issue { border-left-color: #ef4444; }
+.cd-rail-item--ready { border-left-color: #10b981; }
+
+.cd-rail-item--active {
+  border-color: rgba(99, 102, 241, 0.35);
+  border-left-color: #6366f1;
+  background: #f5f3ff;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+.cd-rail-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.cd-rail-item__menu {
+  margin-left: auto;
+}
+
+.cd-rail-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.15rem;
+}
+
+.cd-rail-item__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.cd-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 0.875rem;
+  background: #fff;
+  padding: 1rem;
+  min-width: 0;
+}
+
+.cd-detail--empty { padding: 3rem 1rem; }
+
+.cd-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cd-detail-header__meta, .cd-detail-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cd-detail-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cd-detail-tabs-row__tabs { flex: 1 1 auto; min-width: 0; border-bottom: none !important; }
+
+.cd-detail-tabs-row__actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; padding-bottom: 0.4rem; }
+
+.cd-detail-body {
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr) 16rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .cd-detail-body { grid-template-columns: 1fr; }
+}
+
+.cd-detail-main { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.cd-detail-side { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+
+.cd-detail-subheading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.cd-detail-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #eef2f6;
+}
+
+.cd-detail-footer__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.cd-detail-footer__actions { display: flex; align-items: center; gap: 0.5rem; }
+
+.cd-preview-stage {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem;
+  background: #f1f5f9;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.cd-side-card {
+  border: 1px solid #e6ebf2;
+  border-radius: 0.75rem;
+  background: #fbfcfe;
+  padding: 0.75rem;
+}
+
+.cd-side-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.cd-side-card__title { font-size: 0.8125rem; font-weight: 600; color: #334155; }
+
+.cd-media-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  padding: 1rem 0.5rem;
+  color: #94a3b8;
+}
+
+.cd-media-empty p { font-size: 0.72rem; line-height: 1.4; }
+
+.campaign-media-thumb {
+  position: relative;
+}
+
+.campaign-media-thumb__remove {
+  position: absolute !important;
+  top: -0.4rem;
+  right: -0.4rem;
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  min-height: 0 !important;
+  border-radius: 9999px !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #fff !important;
+}
+
+.campaign-media-thumb:hover .campaign-media-thumb__remove {
+  display: flex !important;
 }
 
 .campaign-media-toggle {
@@ -2082,50 +2558,6 @@ async function pickVariantWinner(pkg) {
   background: #ede9fe;
   color: #6366f1;
 }
-
-/* ── Sidebar filter list ─────────────────────────────── */
-.cd-filter-list { display: flex; flex-direction: column; gap: 0.125rem; }
-
-.cd-filter-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.5rem 0.625rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.12s, color 0.12s;
-}
-
-.cd-filter-item:hover { background: #f8fafc; }
-
-.cd-filter-item--active { background: #ede9fe; }
-.cd-filter-item--active span { color: #6366f1; }
-
-.cd-filter-all-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #64748b;
-  flex-shrink: 0;
-}
-
-.cd-filter-dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.cd-filter-dot--emerald { background: #10b981; }
-.cd-filter-dot--slate   { background: #94a3b8; }
-.cd-filter-dot--red     { background: #ef4444; }
 
 /* ── Platform accepts ────────────────────────────────── */
 .cd-accepts { display: flex; flex-direction: column; gap: 0.5rem; }

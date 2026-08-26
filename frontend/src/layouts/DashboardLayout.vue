@@ -597,6 +597,7 @@ const MAIN_NAV_SECTIONS = [
       { id: 'schedule', to: '/calendar', label: 'Schedule', icon: 'calendar', match: 'schedule' },
       { id: 'content-library', to: '/content-library', label: 'Content Library', icon: 'library', match: 'content' },
       { id: 'brand-kits', to: '/brand-kits', label: 'Brand Kits', icon: 'sparkles', match: 'brand-kits' },
+      { id: 'ai-settings', to: '/settings/ai', label: 'AI Settings', icon: 'settings', match: 'ai-settings' },
     ],
   },
   {
@@ -638,6 +639,8 @@ function isMainNavActive(item) {
       return path.startsWith('/content-library') || path === '/content';
     case 'brand-kits':
       return path.startsWith('/brand-kits');
+    case 'ai-settings':
+      return path.startsWith('/settings/ai');
     case 'analytics':
       return path.startsWith('/analytics');
     case 'inbox':

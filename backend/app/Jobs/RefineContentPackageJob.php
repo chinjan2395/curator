@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\AiGenerationUpdated;
 use App\Models\ContentPackage;
 use App\Services\AI\AiContentService;
+use App\Services\AI\Text\ContentGenerationOptions;
 use App\Services\LearningPromptService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,6 +27,8 @@ class RefineContentPackageJob implements ShouldQueue
         public int $contentPackageId,
         public int $userId,
         public string $instruction,
+        public ?string $provider = null,
+        public ?string $model = null,
     ) {}
 
     public function handle(AiContentService $ai, LearningPromptService $learning): void
@@ -45,7 +48,7 @@ class RefineContentPackageJob implements ShouldQueue
         ));
 
         try {
-            $refined = $ai->refine($package, $this->instruction);
+            $refined = $ai->refine($package, $this->instruction, new ContentGenerationOptions($this->provider, $this->model));
 
             $learning->recordAndRefresh($package->user, 'refined', $package->platform, [
                 'content_package_id' => $package->id,

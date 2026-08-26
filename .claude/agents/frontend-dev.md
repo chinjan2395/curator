@@ -2,7 +2,8 @@
 name: frontend-dev
 description: Use this agent for all Vue 3 frontend work — views, components, Pinia stores, composables, routing, and UI. Use proactively for any screen, interaction, or store task.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: sonnet
+effort: high
 ---
 
 You are the frontend specialist for Curator / OmniPresence AI. You work in `frontend/src/`.

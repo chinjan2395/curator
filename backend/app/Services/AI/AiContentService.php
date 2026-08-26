@@ -6,6 +6,9 @@ use App\Models\Campaign;
 use App\Models\ContentPackage;
 use App\Models\LearningSignal;
 use App\Models\User;
+use App\Services\AI\Text\ContentGenerationOptions;
+use App\Services\AI\Text\TextKeyResolver;
+use App\Support\AiTextProviders;
 use Illuminate\Support\Str;
 
 class AiContentService
@@ -21,31 +24,34 @@ class AiContentService
     ];
 
     public function __construct(
-        private readonly AiProviderInterface $provider,
+        private readonly AiTextProviderFactory $providers,
+        private readonly TextKeyResolver $keys,
     ) {}
 
-    public function generateForCampaign(Campaign $campaign): array
+    public function generateForCampaign(Campaign $campaign, ?ContentGenerationOptions $options = null): array
     {
         $campaign->loadMissing(['user', 'brandKit', 'template']);
         $platforms = $campaign->platforms ?? ['instagram', 'twitter'];
         $packages = [];
 
         foreach ($platforms as $platform) {
-            $packages[] = $this->generateForCampaignPlatform($campaign, $platform);
+            $packages[] = $this->generateForCampaignPlatform($campaign, $platform, $options);
         }
 
-        $this->finalizeCampaignGeneration($campaign);
+        $this->finalizeCampaignGeneration($campaign, $options);
 
         return $packages;
     }
 
-    public function generateForCampaignPlatform(Campaign $campaign, string $platform): ContentPackage
+    public function generateForCampaignPlatform(Campaign $campaign, string $platform, ?ContentGenerationOptions $options = null): ContentPackage
     {
         $campaign->loadMissing(['user', 'brandKit', 'template']);
+        $provider = $this->resolveProvider($campaign->user, $options);
+
         $context = $this->buildContext($campaign->user, $campaign);
         $platformContext = array_merge($context, ['platform' => $platform]);
         $basePrompt = $this->buildGenerationPrompt($campaign, $platform);
-        $caption = $this->provider->generateText($basePrompt, $platformContext);
+        $caption = $provider->generateText($basePrompt, $platformContext);
 
         return ContentPackage::create([
             'campaign_id' => $campaign->id,
@@ -53,15 +59,17 @@ class AiContentService
             'platform' => $platform,
             'content_type' => $campaign->template?->content_type ?? 'post',
             'caption' => $caption,
-            'hashtags' => $this->suggestHashtags($campaign, $platform, $context),
+            'hashtags' => $this->suggestHashtags($provider, $campaign, $platform, $context),
             'status' => 'draft',
-            'ai_score' => $this->scoreCaption($caption, $platformContext),
+            'ai_score' => $this->scoreCaption($provider, $caption, $platformContext),
         ]);
     }
 
-    public function finalizeCampaignGeneration(Campaign $campaign): void
+    public function finalizeCampaignGeneration(Campaign $campaign, ?ContentGenerationOptions $options = null): void
     {
-        $campaign->update(['status' => 'generated', 'ai_strategy' => ['provider' => $this->provider->name()]]);
+        $provider = $this->resolveProvider($campaign->user, $options);
+
+        $campaign->update(['status' => 'generated', 'ai_strategy' => ['provider' => $provider->name()]]);
 
         LearningSignal::create([
             'user_id' => $campaign->user_id,
@@ -81,13 +89,16 @@ class AiContentService
      *
      * @return list<ContentPackage>
      */
-    public function generateVariants(ContentPackage $original, int $count = 3): array
+    public function generateVariants(ContentPackage $original, int $count = 3, ?ContentGenerationOptions $options = null): array
     {
         $count = min($count, count(self::VARIANT_STYLES));
 
         $original->loadMissing('campaign.user', 'campaign.brandKit');
+        $user = $original->campaign?->user;
+        $provider = $this->resolveProvider($user, $options);
+
         $context = $this->buildContext(
-            $original->campaign?->user,
+            $user,
             $original->campaign,
             ['platform' => $original->platform],
         );
@@ -108,7 +119,7 @@ class AiContentService
             $prompt = "{$styleInstruction}\n\n{$basePrompt}";
 
             try {
-                $caption = $this->provider->generateText($prompt, $context);
+                $caption = $provider->generateText($prompt, $context);
             } catch (\RuntimeException) {
                 // Fall back to a stub variant so the group is still usable
                 $caption = "[{$label}] ".$original->caption;
@@ -123,7 +134,7 @@ class AiContentService
                 'hashtags' => $original->hashtags,
                 'media_urls' => $original->media_urls,
                 'status' => 'draft',
-                'ai_score' => $this->scoreCaption($caption, $context),
+                'ai_score' => $this->scoreCaption($provider, $caption, $context),
                 'variant_group_id' => $groupId,
                 'variant_index' => $index,
             ]);
@@ -180,16 +191,19 @@ class AiContentService
         return $winner->fresh();
     }
 
-    public function refine(ContentPackage $package, string $instruction): ContentPackage
+    public function refine(ContentPackage $package, string $instruction, ?ContentGenerationOptions $options = null): ContentPackage
     {
         $package->loadMissing('campaign.user', 'campaign.brandKit');
+        $user = $package->campaign?->user;
+        $provider = $this->resolveProvider($user, $options);
+
         $context = $this->buildContext(
-            $package->campaign?->user,
+            $user,
             $package->campaign,
             ['platform' => $package->platform],
         );
 
-        $caption = $this->provider->generateText(
+        $caption = $provider->generateText(
             "Refine this caption with instruction: {$instruction}. Original: {$package->caption}",
             $context,
         );
@@ -204,8 +218,54 @@ class AiContentService
             'status' => 'draft',
             'version' => $package->version + 1,
             'parent_id' => $package->id,
-            'ai_score' => $this->scoreCaption($caption, $context),
+            'ai_score' => $this->scoreCaption($provider, $caption, $context),
         ]);
+    }
+
+    /**
+     * Explicit override wins, then the user's saved default, then the platform default.
+     */
+    private function resolveProviderId(?string $requested, ?User $user): string
+    {
+        foreach ([$requested, $this->userDefault($user, 'default_provider'), config('services.ai.driver')] as $candidate) {
+            if (is_string($candidate) && AiTextProviders::exists($candidate)) {
+                return strtolower(trim($candidate));
+            }
+        }
+
+        return AiTextProviders::STUB;
+    }
+
+    private function resolveModel(?string $requested, string $providerId, ?User $user): ?string
+    {
+        $models = AiTextProviders::modelIds($providerId);
+
+        foreach ([$requested, $this->userDefault($user, 'default_model')] as $candidate) {
+            // Ignore a saved model the chosen provider does not offer.
+            if (is_string($candidate) && in_array($candidate, $models, true)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function userDefault(?User $user, string $key): ?string
+    {
+        $settings = $user?->ai_content_settings;
+
+        return is_array($settings) && is_string($settings[$key] ?? null) ? $settings[$key] : null;
+    }
+
+    private function resolveProvider(?User $user, ?ContentGenerationOptions $options): AiProviderInterface
+    {
+        $options ??= new ContentGenerationOptions;
+
+        $providerId = $this->resolveProviderId($options->provider, $user);
+        $key = $this->keys->resolve($providerId, $user);
+        $model = $this->resolveModel($options->model, $providerId, $user);
+
+        return $this->providers->make($key, $model);
     }
 
     private function buildGenerationPrompt(Campaign $campaign, string $platform): string
@@ -261,15 +321,15 @@ class AiContentService
     }
 
     /** @param  array<string, mixed>  $context */
-    private function scoreCaption(string $caption, array $context): float
+    private function scoreCaption(AiProviderInterface $provider, string $caption, array $context): float
     {
-        if ($this->provider->name() === 'stub') {
+        if ($provider->name() === 'stub') {
             return round(min(1.0, max(0.1, strlen($caption) / 200)), 2);
         }
 
         try {
             $platform = (string) ($context['platform'] ?? 'social');
-            $response = $this->provider->generateText(
+            $response = $provider->generateText(
                 "Rate this {$platform} caption from 0.0 to 1.0 based on relevance, tone, platform fit, and CTA clarity.\n\nCaption:\n{$caption}\n\nReturn only a decimal number between 0 and 1.",
                 $context,
             );
@@ -285,16 +345,16 @@ class AiContentService
     }
 
     /** @return list<string> */
-    private function suggestHashtags(Campaign $campaign, string $platform, array $context): array
+    private function suggestHashtags(AiProviderInterface $provider, Campaign $campaign, string $platform, array $context): array
     {
-        if ($this->provider->name() === 'stub') {
+        if ($provider->name() === 'stub') {
             $base = array_filter(preg_split('/\s+/', strtolower((string) $campaign->name)) ?: []);
 
             return array_slice(array_map(static fn ($w) => '#'.$w, $base), 0, 5);
         }
 
         try {
-            $text = $this->provider->generateText(
+            $text = $provider->generateText(
                 "Suggest 5 hashtags for {$platform} about: {$campaign->product_info}. Return only hashtags separated by spaces.",
                 array_merge($context, ['platform' => $platform]),
             );

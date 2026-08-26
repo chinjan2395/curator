@@ -17,6 +17,7 @@ const ALL_MENU_IDS = [
   'analytics',
   'inbox',
   'notifications',
+  'ai-settings',
   'oauth-apps',
   'admin-users',
   'admin-sync-ops',

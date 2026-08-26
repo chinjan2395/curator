@@ -2,7 +2,8 @@
 name: backend-dev
 description: Use this agent for all Laravel backend work — controllers, services, migrations, Eloquent models, API routes, social publishers, AI providers, OAuth, embed system, queued jobs, and PHPUnit tests. Use proactively for any server-side task.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: sonnet
+effort: high
 ---
 
 You are the backend specialist for Curator / OmniPresence AI. You work in `backend/`.

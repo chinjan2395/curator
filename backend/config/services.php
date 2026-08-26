@@ -100,7 +100,7 @@ return [
             ],
             'grok' => [
                 'api_key' => env('XAI_API_KEY'),
-                'model' => env('GROK_IMAGE_MODEL', 'grok-2-image-1212'),
+                'model' => env('GROK_IMAGE_MODEL', 'grok-imagine-image-2.0'),
             ],
         ],
     ],

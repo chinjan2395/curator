@@ -66,6 +66,18 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         label: p.available ? p.label : `${p.label} — no API key`,
         disabled: !p.available,
       })),
+    /**
+     * Same as `providerOptions`, but also disables providers that cannot use a
+     * reference image — for pickers shown while a reference is attached.
+     */
+    providerOptionsForReference: (state) =>
+      state.providers.map((p) => {
+        if (!p.available) return { value: p.id, label: `${p.label} — no API key`, disabled: true };
+        if (p.supports_reference === false) {
+          return { value: p.id, label: `${p.label} — no reference support`, disabled: true };
+        }
+        return { value: p.id, label: p.label, disabled: false };
+      }),
     sizeOptionsFor: (state) => (providerId) => {
       const provider = state.providers.find((p) => p.id === providerId);
       return (provider?.sizes || []).map((size) => ({ value: size, label: size }));

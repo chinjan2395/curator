@@ -99,6 +99,23 @@ class GrokAiProviderTest extends TestCase
         (new GrokAiProvider)->generateText('Write a caption');
     }
 
+    public function test_it_surfaces_x_ais_flat_error_shape(): void
+    {
+        config(['services.ai.grok.api_key' => 'test-key']);
+
+        Http::fake([
+            'api.x.ai/*' => Http::response([
+                'code' => 'permission-denied',
+                'error' => 'Your newly created team doesn\'t have any credits or licenses yet.',
+            ], 403),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Your newly created team doesn't have any credits or licenses yet.");
+
+        (new GrokAiProvider)->generateText('Write a caption');
+    }
+
     public function test_name_returns_grok(): void
     {
         $this->assertSame('grok', (new GrokAiProvider)->name());

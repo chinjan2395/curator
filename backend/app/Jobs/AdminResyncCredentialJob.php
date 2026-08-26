@@ -58,17 +58,19 @@ class AdminResyncCredentialJob implements ShouldQueue
                     $synced++;
                 }
 
+                $done = $index + 1;
+
                 event(new AdminSyncUpdated(
                     $this->adminUserId,
                     'resync_credential',
                     'progress',
                     [
                         'credential_id' => $credential->id,
-                        'done' => $index + 1,
+                        'done' => $done,
                         'total' => $total,
                         'synced' => $synced,
                     ],
-                    "Synced {$index + 1} of {$total} feeds…",
+                    "Synced {$done} of {$total} feeds…",
                 ));
             }
 

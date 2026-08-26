@@ -11,24 +11,26 @@ use App\Repositories\PostRepository;
 use App\Repositories\SocialCredentialRepository;
 use App\Repositories\WorkspaceRepository;
 use App\Services\AI\AiContentService;
+use App\Services\AI\AiImageGenerationService;
 use App\Services\AI\AiInsightsService;
 use App\Services\AI\AiProviderInterface;
+use App\Services\AI\AiTextProviderFactory;
+use App\Services\AI\GroqAiProvider;
+use App\Services\AI\Image\AiImageProviderFactory;
+use App\Services\AI\Image\ImageKeyResolver;
+use App\Services\AI\OllamaAiProvider;
+use App\Services\AI\StubAiProvider;
+use App\Services\AI\Text\TextKeyResolver;
 use App\Services\Content\AssetStorageService;
 use App\Services\Content\AssetTaggingService;
-use App\Services\AI\GroqAiProvider;
-use App\Services\AI\OllamaAiProvider;
-use App\Services\AI\AiImageProviderInterface;
-use App\Services\AI\AiImageGenerationService;
-use App\Services\AI\OpenAiImageProvider;
-use App\Services\AI\StubAiImageProvider;
 use App\Services\Storage\GoogleDriveTokenService;
 use App\Support\ContentPackageMediaResolver;
 use App\Support\DestructiveDatabaseGuard;
 use App\Support\GoogleDriveConfig;
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Auth\Notifications\VerifyEmail;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -56,18 +58,23 @@ class AppServiceProvider extends ServiceProvider
                 default => new StubAiProvider,
             };
         });
-        $this->app->bind(AiImageProviderInterface::class, function () {
-            return match (config('services.ai.image.driver', 'stub')) {
-                'openai' => new OpenAiImageProvider,
-                default => new StubAiImageProvider,
-            };
-        });
+        // Image providers are built per generation, because the API key depends on
+        // which user is generating (BYOK) rather than on the environment.
+        $this->app->singleton(AiImageProviderFactory::class);
+        $this->app->singleton(ImageKeyResolver::class);
+        // Text providers are likewise built per generation (BYOK).
+        $this->app->singleton(AiTextProviderFactory::class);
+        $this->app->singleton(TextKeyResolver::class);
         $this->app->singleton(AiContentService::class, function ($app) {
-            return new AiContentService($app->make(AiProviderInterface::class));
+            return new AiContentService(
+                $app->make(AiTextProviderFactory::class),
+                $app->make(TextKeyResolver::class),
+            );
         });
         $this->app->singleton(AiImageGenerationService::class, function ($app) {
             return new AiImageGenerationService(
-                $app->make(AiImageProviderInterface::class),
+                $app->make(AiImageProviderFactory::class),
+                $app->make(ImageKeyResolver::class),
                 $app->make(AssetTaggingService::class),
                 new ContentPackageMediaResolver,
                 $app->make(AssetStorageService::class),

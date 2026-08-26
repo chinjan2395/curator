@@ -1,315 +1,291 @@
 <template>
-  <div class="space-y-4 max-w-3xl">
+  <div class="ai-settings space-y-5">
     <AppPageHeader
-      title="AI settings"
+      title="AI Settings"
       subtitle="Choose which service generates your images and captions, and use your own API keys if you prefer."
-      icon="sparkles"
     />
 
-    <AppSegmentedControl
-      v-model="activeSection"
-      :options="sectionOptions"
-      aria-label="AI settings section"
-    />
-
-    <template v-if="activeSection === 'image'">
-    <AppLoader v-if="store.loading && !store.loaded" />
-    <AppAlert v-else-if="store.error" variant="danger">{{ store.error }}</AppAlert>
-
-    <template v-else>
-      <AppAlert v-if="!store.hasAnyProvider" variant="warning" title="No image provider is configured">
-        Add your own API key for one of the services below, or ask an administrator to configure a
-        platform key. Until then image generation falls back to offline placeholders.
-      </AppAlert>
-
-      <AppCard class="p-4 space-y-3">
-        <AppTitle size="sm">Defaults</AppTitle>
-        <AppText size="sm" muted>
-          Used whenever you generate an image without picking a service for that particular run.
-        </AppText>
-
-        <AppFormField
-          id="ai-default-provider"
-          label="Default image service"
-          hint="Leave unset to use the platform default."
-        >
-          <AppSelect
-            id="ai-default-provider"
-            v-model="defaultProvider"
-            placeholder="Use the platform default"
-          >
-            <option value="">Use the platform default</option>
-            <option
-              v-for="option in store.providerOptions"
-              :key="option.value"
-              :value="option.value"
-              :disabled="option.disabled"
-            >
-              {{ option.label }}
-            </option>
-          </AppSelect>
-        </AppFormField>
-
-        <AppFormField id="ai-default-size" label="Default image size" :hint="sizeHint">
-          <AppSelect
-            id="ai-default-size"
-            v-model="defaultSize"
-            placeholder="Let the service decide"
-            @change="sizeNotice = ''"
-          >
-            <option value="">Let the service decide</option>
-            <option v-for="option in sizeOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </AppSelect>
-          <p v-if="sizeNotice" class="text-xs text-amber-700">{{ sizeNotice }}</p>
-        </AppFormField>
-
-        <AppFormField id="ai-default-model" label="Default image model" :hint="modelHint">
-          <AppSelect
-            id="ai-default-model"
-            v-model="defaultModel"
-            placeholder="Let the service decide"
-            @change="modelNotice = ''"
-          >
-            <option value="">Let the service decide</option>
-            <option
-              v-for="option in modelOptions"
-              :key="option.value"
-              :value="option.value"
-              :disabled="option.disabled"
-            >
-              {{ option.label }}
-            </option>
-          </AppSelect>
-          <p v-if="modelNotice" class="text-xs text-amber-700">{{ modelNotice }}</p>
-        </AppFormField>
-
-        <AppButton variant="primary" :loading="store.savingDefaults" @click="saveDefaults">
-          Save defaults
-        </AppButton>
-      </AppCard>
-
-      <AppCard v-for="provider in store.providers" :key="provider.id" class="p-4 space-y-3">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="flex items-center gap-2">
-              <AppTitle size="sm">{{ provider.label }}</AppTitle>
-              <AppBadge v-if="provider.id === store.defaultProvider" variant="info">Default</AppBadge>
+    <!-- Hero -->
+    <AppCard class="ai-settings-hero overflow-hidden border-slate-200/80 p-0" variant="panel">
+      <div class="relative isolate overflow-hidden px-5 py-5 md:px-6 md:py-6">
+        <div class="ai-settings-hero__glow ai-settings-hero__glow--one" />
+        <div class="ai-settings-hero__glow ai-settings-hero__glow--two" />
+        <div class="relative grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
+          <div class="space-y-4">
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/55 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-700 backdrop-blur">
+              <span class="h-2 w-2 rounded-full bg-violet-500 shadow-[0_0_0_4px_rgba(139,92,246,0.16)]" />
+              AI engine room
             </div>
-            <AppText size="sm" muted>{{ statusLabel(provider) }}</AppText>
-            <a
-              v-if="apiKeyUrl(provider)"
-              :href="apiKeyUrl(provider)"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-block mt-1 text-2xs text-slate-400 hover:text-slate-600 underline"
-            >
-              Get an API key
-            </a>
+            <div class="space-y-2">
+              <h2 class="max-w-2xl text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+                Power your content pipeline your way.
+              </h2>
+              <p class="max-w-2xl text-sm leading-6 text-slate-600 md:text-[15px]">
+                Mix and match image and caption providers, bring your own keys, and set the defaults every
+                generation reaches for first.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <AppBadge :variant="imageReadyCount > 0 ? 'success' : 'warning'">
+                {{ imageReadyCount }}/{{ imageTotalCount }} image services ready
+              </AppBadge>
+              <AppBadge :variant="contentReadyCount > 0 ? 'success' : 'warning'">
+                {{ contentReadyCount }}/{{ contentTotalCount }} content services ready
+              </AppBadge>
+              <AppBadge variant="purple">Default images: {{ defaultImageLabel }}</AppBadge>
+              <AppBadge variant="info">Default content: {{ defaultContentLabel }}</AppBadge>
+            </div>
           </div>
-          <AppBadge :variant="provider.available ? 'success' : 'warning'">
-            {{ provider.available ? 'Ready' : 'Not configured' }}
-          </AppBadge>
-        </div>
 
-        <div v-if="provider.byok.configured" class="flex items-center justify-between gap-3 text-sm">
-          <span class="text-slate-600">Your key ends in •••• {{ provider.byok.last_four }}</span>
-          <AppButton
-            size="sm"
-            variant="ghost"
-            tone="destructive"
-            :loading="store.isSavingProvider(provider.id)"
-            @click="removeKey(provider)"
-          >
-            Remove key
-          </AppButton>
-        </div>
-
-        <AppFormField
-          :id="keyFieldId(provider)"
-          :label="provider.byok.configured ? 'Replace your API key' : 'Your API key'"
-          hint="Stored encrypted. It is never shown again after saving."
-        >
-          <div class="relative">
-            <AppInput
-              :id="keyFieldId(provider)"
-              v-model="keyDrafts[provider.id]"
-              :type="keyVisible[provider.id] ? 'text' : 'password'"
-              autocomplete="off"
-              placeholder="Paste your API key"
-              input-class="!pr-9"
-              @keyup.enter="saveKey(provider)"
-            />
-            <AppButton
-              variant="ghost"
-              size="sm"
-              class="!absolute !inset-y-0 !right-0 !px-2.5 !py-0 !text-slate-400 hover:!text-slate-600"
-              :title="keyVisible[provider.id] ? 'Hide API key' : 'Show API key'"
-              @click="toggleKeyVisible(provider.id)"
-            >
-              <AppIcon name="view" class="w-4 h-4" />
-            </AppButton>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-2xl border border-white/50 bg-white/65 p-4 shadow-sm backdrop-blur">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Images</span>
+                <AppIcon name="image" class="h-4 w-4 text-slate-500" />
+              </div>
+              <div class="mt-3 text-3xl font-semibold text-slate-950">{{ imageReadyCount }}/{{ imageTotalCount }}</div>
+              <div class="mt-1 text-xs text-slate-500">Services ready to generate</div>
+            </div>
+            <div class="rounded-2xl border border-white/50 bg-white/65 p-4 shadow-sm backdrop-blur">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Captions</span>
+                <AppIcon name="edit" class="h-4 w-4 text-slate-500" />
+              </div>
+              <div class="mt-3 text-3xl font-semibold text-slate-950">{{ contentReadyCount }}/{{ contentTotalCount }}</div>
+              <div class="mt-1 text-xs text-slate-500">Services ready to write</div>
+            </div>
+            <div class="rounded-2xl border border-white/50 bg-white/65 p-4 shadow-sm backdrop-blur">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Your keys</span>
+                <AppIcon name="lock" class="h-4 w-4 text-slate-500" />
+              </div>
+              <div class="mt-3 text-3xl font-semibold text-slate-950">{{ byokCount }}</div>
+              <div class="mt-1 text-xs text-slate-500">Bring-your-own-key services</div>
+            </div>
+            <div class="rounded-2xl border border-white/50 bg-white/65 p-4 shadow-sm backdrop-blur">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Fallback</span>
+                <AppIcon name="shield" class="h-4 w-4 text-slate-500" />
+              </div>
+              <div class="mt-3 text-lg font-semibold text-slate-950">Platform key</div>
+              <div class="mt-1 text-xs text-slate-500">Used when a service has no key of its own</div>
+            </div>
           </div>
-        </AppFormField>
+        </div>
+      </div>
+    </AppCard>
 
-        <AppButton
-          size="sm"
-          variant="secondary"
-          :disabled="!hasDraft(provider.id)"
-          :loading="store.isSavingProvider(provider.id)"
-          @click="saveKey(provider)"
-        >
-          {{ provider.byok.configured ? 'Replace key' : 'Save key' }}
-        </AppButton>
-      </AppCard>
-    </template>
-    </template>
+    <div class="space-y-4">
+      <AppSegmentedControl
+        v-model="activeSection"
+        :options="sectionOptions"
+        aria-label="AI settings section"
+      />
 
-    <template v-else>
-      <AppLoader v-if="!store.contentLoaded" />
-      <AppAlert v-else-if="store.contentError" variant="danger">{{ store.contentError }}</AppAlert>
+      <template v-if="activeSection === 'image'">
+      <AppLoader v-if="store.loading && !store.loaded" />
+      <AppAlert v-else-if="store.error" variant="danger">{{ store.error }}</AppAlert>
 
       <template v-else>
-        <AppAlert v-if="!store.hasAnyContentProvider" variant="warning" title="No content provider is configured">
-          Add your own API key for Groq, or ask an administrator to configure a platform key. Until
-          then caption generation falls back to offline placeholders.
+        <AppAlert v-if="!store.hasAnyProvider" variant="warning" title="No image provider is configured">
+          Add your own API key for one of the services below, or ask an administrator to configure a
+          platform key. Until then image generation falls back to offline placeholders.
         </AppAlert>
 
-        <AppCard class="p-4 space-y-3">
-          <AppTitle size="sm">Defaults</AppTitle>
-          <AppText size="sm" muted>
-            Used whenever you generate or refine captions without picking a service for that
-            particular run.
-          </AppText>
-
-          <AppFormField
-            id="ai-content-default-provider"
-            label="Default content service"
-            hint="Leave unset to use the platform default."
-          >
-            <AppSelect
-              id="ai-content-default-provider"
-              v-model="contentDefaultProvider"
-              placeholder="Use the platform default"
-            >
-              <option value="">Use the platform default</option>
-              <option
-                v-for="option in store.contentProviderOptions"
-                :key="option.value"
-                :value="option.value"
-                :disabled="option.disabled"
-              >
-                {{ option.label }}
-              </option>
-            </AppSelect>
-          </AppFormField>
-
-          <AppFormField id="ai-content-default-model" label="Default content model" :hint="contentModelHint">
-            <AppSelect
-              id="ai-content-default-model"
-              v-model="contentDefaultModel"
-              placeholder="Let the service decide"
-              @change="contentModelNotice = ''"
-            >
-              <option value="">Let the service decide</option>
-              <option
-                v-for="option in contentModelOptions"
-                :key="option.value"
-                :value="option.value"
-                :disabled="option.disabled"
-              >
-                {{ option.label }}
-              </option>
-            </AppSelect>
-            <p v-if="contentModelNotice" class="text-xs text-amber-700">{{ contentModelNotice }}</p>
-          </AppFormField>
-
-          <AppButton variant="primary" :loading="store.savingContentDefaults" @click="saveContentDefaults">
-            Save defaults
-          </AppButton>
-        </AppCard>
-
-        <AppCard v-for="provider in store.contentProviders" :key="provider.id" class="p-4 space-y-3">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <AppTitle size="sm">{{ provider.label }}</AppTitle>
-                <AppBadge v-if="provider.id === store.contentDefaultProvider" variant="info">Default</AppBadge>
-              </div>
-              <AppText size="sm" muted>{{ contentStatusLabel(provider) }}</AppText>
-              <a
-                v-if="contentApiKeyUrl(provider)"
-                :href="contentApiKeyUrl(provider)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-block mt-1 text-2xs text-slate-400 hover:text-slate-600 underline"
-              >
-                Get an API key
-              </a>
+        <AppCard class="overflow-hidden p-0" variant="panel">
+          <div class="flex items-center gap-3 border-b border-slate-200/80 px-5 py-4">
+            <div class="ai-settings-icon-tile">
+              <AppIcon name="sparkles" class="w-4 h-4" />
             </div>
-            <AppBadge :variant="provider.available ? 'success' : 'warning'">
-              {{ provider.available ? 'Ready' : 'Not configured' }}
-            </AppBadge>
+            <div>
+              <AppTitle size="sm">Defaults</AppTitle>
+              <AppText size="sm" muted>
+                Used whenever you generate an image without picking a service for that particular run.
+              </AppText>
+            </div>
           </div>
 
-          <template v-if="store.supportsContentByok(provider.id)">
-            <div v-if="provider.byok.configured" class="flex items-center justify-between gap-3 text-sm">
-              <span class="text-slate-600">Your key ends in •••• {{ provider.byok.last_four }}</span>
-              <AppButton
-                size="sm"
-                variant="ghost"
-                tone="destructive"
-                :loading="store.isSavingContentProvider(provider.id)"
-                @click="removeContentKey(provider)"
-              >
-                Remove key
-              </AppButton>
-            </div>
-
+          <div class="grid gap-4 px-5 py-5 sm:grid-cols-3">
             <AppFormField
-              :id="contentKeyFieldId(provider)"
-              :label="provider.byok.configured ? 'Replace your API key' : 'Your API key'"
-              hint="Stored encrypted. It is never shown again after saving."
+              id="ai-default-provider"
+              label="Default image service"
+              hint="Leave unset to use the platform default."
             >
-              <div class="relative">
-                <AppInput
-                  :id="contentKeyFieldId(provider)"
-                  v-model="contentKeyDrafts[provider.id]"
-                  :type="contentKeyVisible[provider.id] ? 'text' : 'password'"
-                  autocomplete="off"
-                  placeholder="Paste your API key"
-                  input-class="!pr-9"
-                  @keyup.enter="saveContentKey(provider)"
-                />
-                <AppButton
-                  variant="ghost"
-                  size="sm"
-                  class="!absolute !inset-y-0 !right-0 !px-2.5 !py-0 !text-slate-400 hover:!text-slate-600"
-                  :title="contentKeyVisible[provider.id] ? 'Hide API key' : 'Show API key'"
-                  @click="toggleContentKeyVisible(provider.id)"
+              <AppSelect
+                id="ai-default-provider"
+                v-model="defaultProvider"
+                placeholder="Use the platform default"
+              >
+                <option value="">Use the platform default</option>
+                <option
+                  v-for="option in store.providerOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  :disabled="option.disabled"
                 >
-                  <AppIcon name="view" class="w-4 h-4" />
-                </AppButton>
-              </div>
+                  {{ option.label }}
+                </option>
+              </AppSelect>
             </AppFormField>
 
-            <AppButton
-              size="sm"
-              variant="secondary"
-              :disabled="!hasContentDraft(provider.id)"
-              :loading="store.isSavingContentProvider(provider.id)"
-              @click="saveContentKey(provider)"
-            >
-              {{ provider.byok.configured ? 'Replace key' : 'Save key' }}
+            <AppFormField id="ai-default-size" label="Default image size" :hint="sizeHint">
+              <AppSelect
+                id="ai-default-size"
+                v-model="defaultSize"
+                placeholder="Let the service decide"
+                @change="sizeNotice = ''"
+              >
+                <option value="">Let the service decide</option>
+                <option v-for="option in sizeOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </AppSelect>
+              <p v-if="sizeNotice" class="text-xs text-amber-700">{{ sizeNotice }}</p>
+            </AppFormField>
+
+            <AppFormField id="ai-default-model" label="Default image model" :hint="modelHint">
+              <AppSelect
+                id="ai-default-model"
+                v-model="defaultModel"
+                placeholder="Let the service decide"
+                @change="modelNotice = ''"
+              >
+                <option value="">Let the service decide</option>
+                <option
+                  v-for="option in modelOptions"
+                  :key="option.value"
+                  :value="option.value"
+                  :disabled="option.disabled"
+                >
+                  {{ option.label }}
+                </option>
+              </AppSelect>
+              <p v-if="modelNotice" class="text-xs text-amber-700">{{ modelNotice }}</p>
+            </AppFormField>
+          </div>
+
+          <div class="flex justify-end border-t border-slate-200/80 px-5 py-3">
+            <AppButton variant="primary" :loading="store.savingDefaults" @click="saveDefaults">
+              Save defaults
             </AppButton>
-          </template>
-          <AppText v-else size="sm" muted>
-            Uses your local Ollama server — no API key needed.
-          </AppText>
+          </div>
         </AppCard>
+
+        <div class="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+          <AiProviderCard
+            v-for="provider in store.providers"
+            :key="provider.id"
+            :provider="provider"
+            :is-default="provider.id === store.defaultProvider"
+            :api-key-url="apiKeyUrl(provider)"
+            :status-text="statusLabel(provider)"
+            :field-id="keyFieldId(provider)"
+            v-model:key-value="keyDrafts[provider.id]"
+            v-model:key-visible="keyVisible[provider.id]"
+            :saving="store.isSavingProvider(provider.id)"
+            @save-key="saveKey(provider)"
+            @remove-key="removeKey(provider)"
+          />
+        </div>
       </template>
-    </template>
+      </template>
+
+      <template v-else>
+        <AppLoader v-if="!store.contentLoaded" />
+        <AppAlert v-else-if="store.contentError" variant="danger">{{ store.contentError }}</AppAlert>
+
+        <template v-else>
+          <AppAlert v-if="!store.hasAnyContentProvider" variant="warning" title="No content provider is configured">
+            Add your own API key for Groq, or ask an administrator to configure a platform key. Until
+            then caption generation falls back to offline placeholders.
+          </AppAlert>
+
+          <AppCard class="overflow-hidden p-0" variant="panel">
+            <div class="flex items-center gap-3 border-b border-slate-200/80 px-5 py-4">
+              <div class="ai-settings-icon-tile">
+                <AppIcon name="edit" class="w-4 h-4" />
+              </div>
+              <div>
+                <AppTitle size="sm">Defaults</AppTitle>
+                <AppText size="sm" muted>
+                  Used whenever you generate or refine captions without picking a service for that
+                  particular run.
+                </AppText>
+              </div>
+            </div>
+
+            <div class="grid gap-4 px-5 py-5 sm:grid-cols-2">
+              <AppFormField
+                id="ai-content-default-provider"
+                label="Default content service"
+                hint="Leave unset to use the platform default."
+              >
+                <AppSelect
+                  id="ai-content-default-provider"
+                  v-model="contentDefaultProvider"
+                  placeholder="Use the platform default"
+                >
+                  <option value="">Use the platform default</option>
+                  <option
+                    v-for="option in store.contentProviderOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    :disabled="option.disabled"
+                  >
+                    {{ option.label }}
+                  </option>
+                </AppSelect>
+              </AppFormField>
+
+              <AppFormField id="ai-content-default-model" label="Default content model" :hint="contentModelHint">
+                <AppSelect
+                  id="ai-content-default-model"
+                  v-model="contentDefaultModel"
+                  placeholder="Let the service decide"
+                  @change="contentModelNotice = ''"
+                >
+                  <option value="">Let the service decide</option>
+                  <option
+                    v-for="option in contentModelOptions"
+                    :key="option.value"
+                    :value="option.value"
+                    :disabled="option.disabled"
+                  >
+                    {{ option.label }}
+                  </option>
+                </AppSelect>
+                <p v-if="contentModelNotice" class="text-xs text-amber-700">{{ contentModelNotice }}</p>
+              </AppFormField>
+            </div>
+
+            <div class="flex justify-end border-t border-slate-200/80 px-5 py-3">
+              <AppButton variant="primary" :loading="store.savingContentDefaults" @click="saveContentDefaults">
+                Save defaults
+              </AppButton>
+            </div>
+          </AppCard>
+
+          <div class="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+            <AiProviderCard
+              v-for="provider in store.contentProviders"
+              :key="provider.id"
+              :provider="provider"
+              :is-default="provider.id === store.contentDefaultProvider"
+              :api-key-url="contentApiKeyUrl(provider)"
+              :status-text="contentStatusLabel(provider)"
+              :field-id="contentKeyFieldId(provider)"
+              :show-key-form="store.supportsContentByok(provider.id)"
+              no-key-message="Uses your local Ollama server — no API key needed."
+              v-model:key-value="contentKeyDrafts[provider.id]"
+              v-model:key-visible="contentKeyVisible[provider.id]"
+              :saving="store.isSavingContentProvider(provider.id)"
+              @save-key="saveContentKey(provider)"
+              @remove-key="removeContentKey(provider)"
+            />
+          </div>
+        </template>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -323,7 +299,6 @@ import {
   AppCard,
   AppFormField,
   AppIcon,
-  AppInput,
   AppLoader,
   AppSegmentedControl,
   AppSelect,
@@ -331,6 +306,7 @@ import {
   AppTitle,
 } from '../components/ui';
 import { AppPageHeader } from '../components/layout';
+import AiProviderCard from '../components/ai/AiProviderCard.vue';
 
 // External "get an API key" links per provider. The stub has no BYOK, so it is
 // intentionally omitted here rather than added to the backend provider registry.
@@ -350,8 +326,8 @@ const store = useAiSettingsStore();
 const confirm = inject('confirm');
 
 const sectionOptions = [
-  { value: 'image', label: 'Images' },
-  { value: 'content', label: 'Content' },
+  { value: 'image', label: 'Images', icon: 'image' },
+  { value: 'content', label: 'Content', icon: 'edit' },
 ];
 const activeSection = ref('image');
 
@@ -369,9 +345,17 @@ function apiKeyUrl(provider) {
   return API_KEY_URLS[provider.id] || null;
 }
 
-function toggleKeyVisible(providerId) {
-  keyVisible[providerId] = !keyVisible[providerId];
-}
+
+const imageTotalCount = computed(() => store.providers.length);
+const imageReadyCount = computed(() => store.providers.filter((p) => p.available).length);
+const contentTotalCount = computed(() => store.contentProviders.length);
+const contentReadyCount = computed(() => store.contentProviders.filter((p) => p.available).length);
+const byokCount = computed(() =>
+  store.providers.filter((p) => p.byok.configured).length +
+  store.contentProviders.filter((p) => p.byok.configured).length,
+);
+const defaultImageLabel = computed(() => store.providerById(store.defaultProvider)?.label || 'Platform default');
+const defaultContentLabel = computed(() => store.contentProviderById(store.contentDefaultProvider)?.label || 'Platform default');
 
 // With no default service chosen we cannot know which provider will run the job,
 // so offer every size rather than leaving the field empty and unexplained. The
@@ -405,10 +389,6 @@ function keyFieldId(provider) {
   return `ai-key-${provider.id}`;
 }
 
-function hasDraft(providerId) {
-  return Boolean((keyDrafts[providerId] || '').trim());
-}
-
 function statusLabel(provider) {
   if (provider.byok.configured) return 'Using your own API key.';
   if (provider.platform_configured) return 'Using the platform API key.';
@@ -435,10 +415,6 @@ function contentApiKeyUrl(provider) {
   return CONTENT_API_KEY_URLS[provider.id] || null;
 }
 
-function toggleContentKeyVisible(providerId) {
-  contentKeyVisible[providerId] = !contentKeyVisible[providerId];
-}
-
 const contentModelOptions = computed(() =>
   contentDefaultProvider.value
     ? store.contentModelOptionsFor(contentDefaultProvider.value, contentDefaultModel.value)
@@ -454,10 +430,6 @@ const contentModelHint = computed(() => {
 
 function contentKeyFieldId(provider) {
   return `ai-content-key-${provider.id}`;
-}
-
-function hasContentDraft(providerId) {
-  return Boolean((contentKeyDrafts[providerId] || '').trim());
 }
 
 function contentStatusLabel(provider) {
@@ -577,3 +549,44 @@ onMounted(async () => {
   syncContentFromStore();
 });
 </script>
+
+<style scoped>
+.ai-settings {
+  position: relative;
+}
+
+.ai-settings-hero {
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 34%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.92));
+}
+
+.ai-settings-hero__glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(42px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.ai-settings-hero__glow--one {
+  top: -1.5rem;
+  right: 10%;
+  width: 11rem;
+  height: 11rem;
+  background: rgba(129, 140, 248, 0.18);
+}
+
+.ai-settings-hero__glow--two {
+  bottom: -2rem;
+  left: 6%;
+  width: 13rem;
+  height: 13rem;
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.ai-settings-icon-tile {
+  @apply flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 text-violet-600;
+}
+</style>

@@ -82,15 +82,15 @@ class AiImageProviders
             self::GROK => [
                 'id' => self::GROK,
                 'label' => 'xAI Grok Image',
-                'supports_reference' => false,
+                'supports_reference' => true,
                 'byok' => true,
                 // xAI does not expose fixed pixel size strings for image generations;
                 // the union-of-all-sizes validation tolerates a provider contributing none.
                 'sizes' => [],
                 'models' => [
-                    ['id' => 'grok-2-image-1212', 'label' => 'Grok 2 Image'],
+                    ['id' => 'grok-imagine-image-2.0', 'label' => 'Grok Imagine Image 2.0'],
                 ],
-                'default_model' => 'grok-2-image-1212',
+                'default_model' => 'grok-imagine-image-2.0',
                 'config_path' => 'services.ai.image.grok',
             ],
             self::STUB => [

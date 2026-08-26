@@ -66,6 +66,12 @@ class NavigationMenuRegistry
                 'section' => 'insights',
                 'route_prefixes' => ['/notifications'],
             ],
+            'ai-settings' => [
+                'id' => 'ai-settings',
+                'label' => 'AI Settings',
+                'section' => 'content',
+                'route_prefixes' => ['/settings/ai'],
+            ],
             'oauth-apps' => [
                 'id' => 'oauth-apps',
                 'label' => 'OAuth Apps',
