@@ -30,7 +30,7 @@ class LinkedInPublisher implements PublisherInterface
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            throw new RuntimeException('LinkedIn token has expired. Reconnect the account in Credentials.');
+            throw new RuntimeException("LinkedIn credential \"{$credential->displayName()}\" has expired. Reconnect it in Credentials.");
         }
 
         $package = $scheduledPost->contentPackage;
@@ -49,7 +49,7 @@ class LinkedInPublisher implements PublisherInterface
             $personId = (string) ($info['sub'] ?? '');
         }
         if ($personId === '') {
-            throw new RuntimeException('Could not resolve LinkedIn member id. Reconnect LinkedIn in Credentials.');
+            throw new RuntimeException("Could not resolve LinkedIn member id for \"{$credential->displayName()}\". Reconnect LinkedIn in Credentials.");
         }
 
         $authorUrn = $this->client->personUrn($personId);

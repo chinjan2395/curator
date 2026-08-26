@@ -17,7 +17,7 @@ class TwitterSyncer
     {
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'Twitter / X credential has expired or could not be refreshed. Reconnect Twitter in Credentials.'], 422);
+            return response()->json(['message' => "Twitter / X credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $resolved = $this->resolveMe($token);
@@ -39,7 +39,7 @@ class TwitterSyncer
     {
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'Twitter / X credential has expired or could not be refreshed. Reconnect Twitter in Credentials.'], 422);
+            return response()->json(['message' => "Twitter / X credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $resolved = $this->resolveMe($token);
@@ -70,7 +70,7 @@ class TwitterSyncer
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'Twitter / X credential has expired or could not be refreshed. Reconnect Twitter in Credentials.'], 422);
+            return response()->json(['message' => "Twitter / X credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $resolved = $this->resolveMe($token);

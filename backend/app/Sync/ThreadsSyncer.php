@@ -18,7 +18,7 @@ class ThreadsSyncer
     {
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'Threads credential has expired or could not be refreshed. Reconnect Threads in Credentials.'], 422);
+            return response()->json(['message' => "Threads credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $resolved = $this->resolveMe($token);
@@ -40,7 +40,7 @@ class ThreadsSyncer
     {
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'Threads credential has expired or could not be refreshed. Reconnect Threads in Credentials.'], 422);
+            return response()->json(['message' => "Threads credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $resolved = $this->resolveMe($token);
@@ -75,7 +75,7 @@ class ThreadsSyncer
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'Threads credential has expired or could not be refreshed. Reconnect Threads in Credentials.'], 422);
+            return response()->json(['message' => "Threads credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $meResolved = $this->resolveMe($token);

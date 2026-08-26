@@ -15,7 +15,7 @@ class FacebookGraphClient
     {
         $userToken = $credential->access_token;
         if (! $userToken) {
-            throw new RuntimeException('Facebook access token missing. Reconnect Facebook in Credentials.');
+            throw new RuntimeException("Facebook access token missing for \"{$credential->displayName()}\". Reconnect it in Credentials.");
         }
 
         $pageId = $pageId ?: $this->resolvePageId($credential, $userToken);
@@ -31,22 +31,22 @@ class FacebookGraphClient
                 $msg = $accountsError['message'] ?? 'Unknown error';
                 $code = $accountsError['code'] ?? $accountsStatus;
                 throw new RuntimeException(
-                    "Facebook API error while fetching pages (code {$code}): {$msg}. "
-                    .'Your token may have expired — reconnect Facebook in Credentials.'
+                    "Facebook API error while fetching pages for \"{$credential->displayName()}\" (code {$code}): {$msg}. "
+                    .'This token may have expired — reconnect it in Credentials.'
                 );
             }
 
             if ($accountsCount === 0) {
                 throw new RuntimeException(
-                    'No Facebook Pages are linked to this account. '
+                    "No Facebook Pages are linked to \"{$credential->displayName()}\". "
                     .'During the Facebook login, you must select at least one Page when prompted. '
                     .'Reconnect Facebook in Credentials and approve the Page access step.'
                 );
             }
 
             throw new RuntimeException(
-                "Found {$accountsCount} Facebook Page(s) but could not get a Page access token for page {$pageId}. "
-                .'Your token is missing the pages_manage_posts permission. '
+                "Found {$accountsCount} Facebook Page(s) on \"{$credential->displayName()}\" but could not get a Page access token for page {$pageId}. "
+                .'That token is missing the pages_manage_posts permission. '
                 .'Reconnect Facebook in Credentials — during login, accept all Page permissions.'
             );
         }
@@ -74,7 +74,7 @@ class FacebookGraphClient
 
         $userToken = $credential->access_token;
         if (! $userToken) {
-            throw new RuntimeException('Instagram access token missing. Reconnect Instagram.');
+            throw new RuntimeException("Instagram access token missing for \"{$credential->displayName()}\". Reconnect it in Credentials.");
         }
 
         $resp = \Illuminate\Support\Facades\Http::get('https://graph.facebook.com/'.self::FACEBOOK_GRAPH_VERSION.'/me/accounts', [

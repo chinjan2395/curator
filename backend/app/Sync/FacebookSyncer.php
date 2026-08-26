@@ -26,12 +26,12 @@ class FacebookSyncer
     {
         $expiresAt = $credential->expires_at;
         if ($expiresAt && $expiresAt->isPast()) {
-            return response()->json(['message' => 'Facebook credential has expired. Reconnect Facebook in Credentials.'], 422);
+            return response()->json(['message' => "Facebook credential \"{$credential->displayName()}\" has expired. Reconnect it in Credentials."], 422);
         }
 
         $userToken = $credential->getValidAccessToken();
         if (! $userToken) {
-            return response()->json(['message' => 'Facebook credential token missing. Reconnect Facebook.'], 422);
+            return response()->json(['message' => "Facebook credential \"{$credential->displayName()}\" token missing. Reconnect it in Credentials."], 422);
         }
 
         $pages = $this->listAccessibleFacebookPages($credential, $userToken);

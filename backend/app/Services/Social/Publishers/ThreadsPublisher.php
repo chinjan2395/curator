@@ -29,7 +29,7 @@ class ThreadsPublisher implements PublisherInterface
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            throw new RuntimeException('Threads token has expired. Reconnect the account in Credentials.');
+            throw new RuntimeException("Threads credential \"{$credential->displayName()}\" has expired. Reconnect it in Credentials.");
         }
 
         $package = $scheduledPost->contentPackage;
