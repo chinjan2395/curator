@@ -36,7 +36,7 @@ class TikTokPublisher implements PublisherInterface
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            throw new RuntimeException('TikTok token has expired. Reconnect the account in Credentials.');
+            throw new RuntimeException("TikTok credential \"{$credential->displayName()}\" has expired. Reconnect it in Credentials.");
         }
 
         $package = $scheduledPost->contentPackage;

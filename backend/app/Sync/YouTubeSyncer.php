@@ -16,7 +16,7 @@ class YouTubeSyncer
         $token = $credential->getValidAccessToken();
         if (! $token) {
             return response()->json([
-                'message' => 'YouTube credential has expired or could not be refreshed. Reconnect YouTube in Credentials.',
+                'message' => "YouTube credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials.",
             ], 422);
         }
 
@@ -33,7 +33,7 @@ class YouTubeSyncer
         $token = $credential->getValidAccessToken();
         if (! $token) {
             return response()->json([
-                'message' => 'YouTube credential has expired or could not be refreshed. Reconnect YouTube in Credentials.',
+                'message' => "YouTube credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials.",
             ], 422);
         }
 
@@ -64,7 +64,7 @@ class YouTubeSyncer
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'YouTube credential has expired or could not be refreshed. Reconnect YouTube in Credentials.'], 422);
+            return response()->json(['message' => "YouTube credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $resolved = $this->resolveChannelAndPlaylist($token, trim((string) $feed->youtube_channel_id));

@@ -59,7 +59,7 @@ class FeedSyncService
 
         if ($credential && $token === null) {
             $credential->update(['status' => 'disconnected']);
-            $this->writeLog($feed, $userId, 'disconnected', 0, 'Token expired or revoked.', $startedAt, $triggeredBy);
+            $this->writeLog($feed, $userId, 'disconnected', 0, "Token expired or revoked for \"{$credential->displayName()}\".", $startedAt, $triggeredBy);
             return null;
         }
 

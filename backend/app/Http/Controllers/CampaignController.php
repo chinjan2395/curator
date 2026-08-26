@@ -16,7 +16,7 @@ class CampaignController extends Controller
     public function index(Request $request): JsonResponse
     {
         $campaigns = Campaign::where('user_id', $request->user()->id)
-            ->with(['brandKit:id,name,colors,logo_url', 'template:id,name'])
+            ->with(['brandKit:id,name,logo_url,logo_asset_id,parent_id,overrides', 'template:id,name'])
             ->withCount('contentPackages')
             ->orderByDesc('updated_at')
             ->get();
@@ -49,7 +49,7 @@ class CampaignController extends Controller
             'status' => 'draft',
         ]);
 
-        return ApiResponse::success($campaign->load(['brandKit:id,name,colors,logo_url', 'template:id,name']), 'Campaign created.', 201);
+        return ApiResponse::success($campaign->load(['brandKit:id,name,logo_url,logo_asset_id,parent_id,overrides', 'template:id,name']), 'Campaign created.', 201);
     }
 
     public function show(Request $request, Campaign $campaign): JsonResponse
@@ -57,7 +57,7 @@ class CampaignController extends Controller
         $this->authorizeCampaign($request, $campaign);
 
         return ApiResponse::success(
-            $campaign->load(['contentPackages', 'brandKit:id,name,colors,logo_url', 'template:id,name'])
+            $campaign->load(['contentPackages', 'brandKit:id,name,logo_url,logo_asset_id,parent_id,overrides', 'template:id,name'])
         );
     }
 
@@ -86,7 +86,7 @@ class CampaignController extends Controller
         $campaign->update($validated);
 
         return ApiResponse::success(
-            $campaign->fresh()->load(['brandKit:id,name,colors,logo_url', 'template:id,name']),
+            $campaign->fresh()->load(['brandKit:id,name,logo_url,logo_asset_id,parent_id,overrides', 'template:id,name']),
             'Campaign updated.'
         );
     }

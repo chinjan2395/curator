@@ -26,7 +26,7 @@ class InstagramSyncer
     {
         $userToken = $credential->access_token;
         if (! $userToken) {
-            return response()->json(['message' => 'Instagram credential token missing. Reconnect Instagram.'], 422);
+            return response()->json(['message' => "Instagram credential \"{$credential->displayName()}\" token missing. Reconnect it in Credentials."], 422);
         }
 
         $accountsOut = [];

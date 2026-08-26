@@ -17,7 +17,7 @@ class AutoPilotController extends Controller
         $campaign->update(['auto_pilot_enabled' => true]);
 
         return ApiResponse::success(
-            $campaign->fresh()->load(['brandKit:id,name,colors,logo_url', 'template:id,name']),
+            $campaign->fresh()->load(['brandKit:id,name,logo_url,logo_asset_id,parent_id,overrides', 'template:id,name']),
             'Auto-pilot enabled.',
         );
     }
@@ -29,7 +29,7 @@ class AutoPilotController extends Controller
         $campaign->update(['auto_pilot_enabled' => false]);
 
         return ApiResponse::success(
-            $campaign->fresh()->load(['brandKit:id,name,colors,logo_url', 'template:id,name']),
+            $campaign->fresh()->load(['brandKit:id,name,logo_url,logo_asset_id,parent_id,overrides', 'template:id,name']),
             'Auto-pilot disabled.',
         );
     }

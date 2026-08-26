@@ -95,6 +95,15 @@ class SocialCredential extends Model
         return $this->attributes['refresh_token'] ?? null;
     }
 
+    /**
+     * Human-readable identifier for this specific connected account, for use in
+     * error messages where a user may have multiple accounts on the same provider.
+     */
+    public function displayName(): string
+    {
+        return $this->account_label ?: ($this->account_id ?: ucfirst($this->provider));
+    }
+
     public function refreshTokenHealth(): void
     {
         if ($this->status === 'disconnected') {

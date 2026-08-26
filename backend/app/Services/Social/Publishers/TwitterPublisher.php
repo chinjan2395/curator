@@ -31,7 +31,7 @@ class TwitterPublisher implements PublisherInterface
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            throw new RuntimeException('X / Twitter token has expired. Reconnect the account in Credentials.');
+            throw new RuntimeException("X / Twitter credential \"{$credential->displayName()}\" has expired. Reconnect it in Credentials.");
         }
 
         $package = $scheduledPost->contentPackage;

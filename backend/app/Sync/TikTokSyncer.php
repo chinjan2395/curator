@@ -18,7 +18,7 @@ class TikTokSyncer
     {
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'TikTok credential has expired or could not be refreshed. Reconnect TikTok in Credentials.'], 422);
+            return response()->json(['message' => "TikTok credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $user = $this->resolveMe($token);
@@ -33,7 +33,7 @@ class TikTokSyncer
     {
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'TikTok credential has expired or could not be refreshed. Reconnect TikTok in Credentials.'], 422);
+            return response()->json(['message' => "TikTok credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $user = $this->resolveMe($token);
@@ -71,7 +71,7 @@ class TikTokSyncer
 
         $token = $credential->getValidAccessToken();
         if (! $token) {
-            return response()->json(['message' => 'TikTok credential has expired or could not be refreshed. Reconnect TikTok in Credentials.'], 422);
+            return response()->json(['message' => "TikTok credential \"{$credential->displayName()}\" has expired or could not be refreshed. Reconnect it in Credentials."], 422);
         }
 
         $user = $this->resolveMe($token);
