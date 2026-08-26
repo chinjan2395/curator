@@ -70,18 +70,37 @@ return [
         'driver' => env('AI_DRIVER', 'stub'),
         'groq' => [
             'api_key' => env('GROQ_API_KEY'),
-            'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+            // Groq retired llama-3.3-70b-versatile on 2026-08-16 (free/developer tier).
+            // https://console.groq.com/docs/deprecations
+            'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
         ],
         'ollama' => [
             'url' => env('OLLAMA_URL', 'http://127.0.0.1:11434'),
             'model' => env('OLLAMA_MODEL', 'llama3.2'),
         ],
+        'grok' => [
+            'api_key' => env('XAI_API_KEY'),
+            'model' => env('GROK_MODEL', 'grok-4-0709'),
+        ],
         'image' => [
+            // Fallback provider when a user has not chosen a default in AI Settings.
             'driver' => env('AI_IMAGE_DRIVER', 'stub'),
             'openai' => [
                 'api_key' => env('OPENAI_API_KEY'),
-                'model' => env('OPENAI_IMAGE_MODEL', 'dall-e-3'),
+                'model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
                 'size' => env('OPENAI_IMAGE_SIZE', '1024x1024'),
+            ],
+            'flux' => [
+                'api_key' => env('BFL_API_KEY'),
+                'model' => env('FLUX_IMAGE_MODEL', 'flux-kontext-pro'),
+            ],
+            'gemini' => [
+                'api_key' => env('GEMINI_API_KEY'),
+                'model' => env('GEMINI_IMAGE_MODEL', 'gemini-2.5-flash-image'),
+            ],
+            'grok' => [
+                'api_key' => env('XAI_API_KEY'),
+                'model' => env('GROK_IMAGE_MODEL', 'grok-2-image-1212'),
             ],
         ],
     ],
