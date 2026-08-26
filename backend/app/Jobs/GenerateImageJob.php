@@ -35,7 +35,9 @@ class GenerateImageJob implements ShouldQueue
         public ?string $provider = null,
         public ?string $prompt = null,
         public ?string $model = null,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(AiImageGenerationService $imageGeneration): void
     {

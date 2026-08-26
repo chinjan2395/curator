@@ -28,7 +28,9 @@ class GenerateCampaignContentJob implements ShouldQueue
         public int $userId,
         public ?string $provider = null,
         public ?string $model = null,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(AiContentService $ai, NotificationService $notifications): void
     {

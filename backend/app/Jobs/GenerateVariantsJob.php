@@ -28,7 +28,9 @@ class GenerateVariantsJob implements ShouldQueue
         public int $count = 3,
         public ?string $provider = null,
         public ?string $model = null,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(AiContentService $ai): void
     {

@@ -29,7 +29,9 @@ class RefineContentPackageJob implements ShouldQueue
         public string $instruction,
         public ?string $provider = null,
         public ?string $model = null,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(AiContentService $ai, LearningPromptService $learning): void
     {
