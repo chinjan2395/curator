@@ -89,6 +89,8 @@
 
       <!-- Sidebar footer -->
       <div class="px-2 pb-3 pt-2 border-t border-white/10 shrink-0">
+        <SetupReadinessMeter :collapsed="sidebarCollapsed" />
+
         <!-- Admin section -->
         <div v-if="auth.user?.role === 'admin' || auth.user?.role === 'superadmin'" class="sidebar-admin-section mb-2">
           <div v-if="!sidebarCollapsed" class="sidebar-section-label">Administration</div>
@@ -337,7 +339,8 @@
             on behalf of {{ viewingWorkspaceOnBehalf.owner_name || viewingWorkspaceOnBehalf.owner_email || 'another user' }}.
           </span>
         </div>
-        <router-view />
+        <CapabilityLock v-if="lockedBy" :requirement="lockedBy" />
+        <router-view v-else />
       </main>
     </div>
 
@@ -449,6 +452,9 @@ import { useNotificationsStore } from '../stores/notifications';
 import { useRealtimeStore } from '../stores/realtime';
 
 import { useNavigationSettingsStore } from '../stores/navigationSettings';
+import { useSetupStore } from '../stores/setup';
+import CapabilityLock from '../components/setup/CapabilityLock.vue';
+import SetupReadinessMeter from '../components/setup/SetupReadinessMeter.vue';
 import { useNavigationVisibility } from '../composables/useNavigationVisibility';
 
 function isSidebarItemHidden(id) {
@@ -457,6 +463,10 @@ function isSidebarItemHidden(id) {
 }
 
 const { isMenuEnabled } = useNavigationVisibility();
+
+const setup = useSetupStore();
+// The first unmet prerequisite this route declared, or null when it can run.
+const lockedBy = computed(() => setup.unmetFor(route.meta.requires || [])[0] || null);
 const showNotifications = computed(() => isMenuEnabled('notifications'));
 
 const auth = useAuthStore();
@@ -658,6 +668,7 @@ onMounted(async () => {
     workspaces.fetchAll(),
     auth.fetchSyncSummary(),
     navigation.fetch(),
+    setup.fetch(),
   ]);
   if (isMenuEnabled('notifications')) {
     notifications.fetchAll();
