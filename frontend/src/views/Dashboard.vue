@@ -7,7 +7,6 @@
       :breadcrumb="['Curator', 'Dashboard']"
     />
 
-    <GettingStartedChecklist />
 
     <AppLoader v-if="analyticsLoading" label="Loading analytics…" />
 
@@ -340,7 +339,6 @@ import { getPlatformLabel } from '../constants/socialPlatforms'
 import { AppCard, AppEmptyState, AppIcon, AppLoader } from '../components/ui/index.js'
 import { AppSection, AppPageHeader } from '../components/layout/index.js'
 import { useDashboardAnalytics } from '../composables/useDashboardAnalytics.js'
-import GettingStartedChecklist from '../components/GettingStartedChecklist.vue'
 
 defineOptions({
   name: 'DashboardView',
