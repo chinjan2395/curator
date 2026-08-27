@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
+import { useSetupStore } from './setup';
 import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
 
 const CREDENTIALS_TTL_MS = 15 * 60 * 1000;
@@ -112,6 +113,8 @@ export const useCredentialsStore = defineStore('credentials', {
           this.list = rows;
           persistToSession(CACHE_KEY, rows);
         }
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return rows;
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to verify connections';
@@ -141,6 +144,8 @@ export const useCredentialsStore = defineStore('credentials', {
       try {
         const { data } = await axios.post('/api/social/disconnect', { id });
         useToastStore().success('Disconnected');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         await this.fetchAll({ force: true });
         return data;
       } catch (err) {

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
+import { useSetupStore } from './setup';
 
 /**
  * Per-user AI image settings: default provider/size and the user's own
@@ -206,6 +207,8 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         });
         this.apply(data.data || data || {});
         useToastStore().success('AI settings saved');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return this.providers;
       } catch (err) {
         useToastStore().error(err.response?.data?.message || 'Failed to save AI settings');
@@ -220,6 +223,8 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         const { data } = await axios.put(`/api/ai/providers/image/${provider}/key`, { api_key: apiKey });
         this.apply(data.data || data || {});
         useToastStore().success(data.message || 'API key saved');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return this.providers;
       } catch (err) {
         useToastStore().error(err.response?.data?.message || 'Failed to save the API key');
@@ -234,6 +239,8 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         const { data } = await axios.delete(`/api/ai/providers/image/${provider}/key`);
         this.apply(data.data || data || {});
         useToastStore().success(data.message || 'API key removed');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return this.providers;
       } catch (err) {
         useToastStore().error(err.response?.data?.message || 'Failed to remove the API key');
@@ -251,6 +258,8 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         });
         this.applyContent(data.data || data || {});
         useToastStore().success('AI settings saved');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return this.contentProviders;
       } catch (err) {
         useToastStore().error(err.response?.data?.message || 'Failed to save AI settings');
@@ -265,6 +274,8 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         const { data } = await axios.put(`/api/ai/providers/text/${provider}/key`, { api_key: apiKey });
         this.applyContent(data.data || data || {});
         useToastStore().success(data.message || 'API key saved');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return this.contentProviders;
       } catch (err) {
         useToastStore().error(err.response?.data?.message || 'Failed to save the API key');
@@ -279,6 +290,8 @@ export const useAiSettingsStore = defineStore('aiSettings', {
         const { data } = await axios.delete(`/api/ai/providers/text/${provider}/key`);
         this.applyContent(data.data || data || {});
         useToastStore().success(data.message || 'API key removed');
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         return this.contentProviders;
       } catch (err) {
         useToastStore().error(err.response?.data?.message || 'Failed to remove the API key');

@@ -206,6 +206,7 @@ import { computed, inject, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCredentialsStore } from '../stores/credentials';
 import { useOAuthAppsStore } from '../stores/oauthApps';
+import { useSetupStore } from '../stores/setup';
 import { useToastStore } from '../stores/toast';
 import { useAuthStore } from '../stores/auth';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
@@ -220,6 +221,7 @@ const route = useRoute();
 const creds = useCredentialsStore();
 const { confirm } = inject('confirm');
 const oauthApps = useOAuthAppsStore();
+const setup = useSetupStore();
 const toast = useToastStore();
 const auth = useAuthStore();
 const isAdmin = computed(() => ['admin', 'superadmin'].includes(auth.user?.role));
@@ -304,6 +306,9 @@ onMounted(async () => {
       // Force-refresh: the freshly connected account won't appear if we return the
       // stale (pre-connect) cached list that is still within its TTL window.
       await creds.fetchAll({ force: true });
+      // The account we just connected may have cleared a feature lock — recompute
+      // readiness now rather than waiting for the cache to age out.
+      await setup.refresh();
       if (window.history.replaceState) {
         window.history.replaceState({}, '', '/credentials');
       }
