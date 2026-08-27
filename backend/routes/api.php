@@ -182,6 +182,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('auth/account', [AccountController::class, 'destroy']);
 
     Route::get('setup/status', [SetupStatusController::class, 'show']);
+    Route::post('setup/notify-admin', [SetupStatusController::class, 'notifyAdmin']);
     Route::get('capabilities', [CapabilitiesController::class, 'show']);
     Route::get('navigation-settings', [NavigationSettingsController::class, 'show']);
 
