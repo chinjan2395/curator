@@ -5,6 +5,7 @@ import ForgotPassword from '../views/ForgotPassword.vue';
 import ResetPassword from '../views/ResetPassword.vue';
 import SocialCallback from '../views/SocialCallback.vue';
 import Onboarding from '../views/Onboarding.vue';
+import Setup from '../views/Setup.vue';
 import DashboardLayout from '../layouts/DashboardLayout.vue';
 import Dashboard from '../views/Dashboard.vue';
 import WorkspacesList from '../views/WorkspacesList.vue';
@@ -43,6 +44,7 @@ import ActivityLogs from '../views/admin/ActivityLogs.vue';
 import AdminNavigation from '../views/admin/AdminNavigation.vue';
 import { useAuthStore } from '../stores/auth';
 import { useNavigationSettingsStore } from '../stores/navigationSettings';
+import { useSetupStore } from '../stores/setup';
 
 const routes = [
   { path: '/login', component: Login },
@@ -52,6 +54,7 @@ const routes = [
   { path: '/auth/social/callback', component: SocialCallback },
   { path: '/verify-email', component: VerifyEmail },
   { path: '/onboarding', component: Onboarding, meta: { requiresAuth: true } },
+  { path: '/setup', component: Setup, meta: { requiresAuth: true } },
   {
     path: '/',
     component: DashboardLayout,
@@ -124,6 +127,22 @@ router.beforeEach(async (to, from, next) => {
     next('/');
     return;
   }
+  // Setup gate. Infrastructure before brand voice: a user with no OAuth app
+  // cannot connect an account, so asking about their brand tone first is noise.
+  // Uses to.matched (not to.meta) so nested routes under DashboardLayout inherit it.
+  if (auth.token && auth.user && to.matched.some((record) => record.meta.requiresAuth)) {
+    const setup = useSetupStore();
+    await setup.ensureLoaded();
+    if (setup.blocking.length && to.path !== '/setup') {
+      next('/setup');
+      return;
+    }
+    if (!setup.blocking.length && to.path === '/setup') {
+      next('/');
+      return;
+    }
+  }
+
   if (auth.token && auth.user && !auth.user.is_onboarded && to.path !== '/onboarding' && to.meta.requiresAuth) {
     next('/onboarding');
     return;
