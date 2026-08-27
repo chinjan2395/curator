@@ -28,7 +28,6 @@ const icons = {
   credentials: ['M10 2.5a4.5 4.5 0 0 0-4.5 4.5v1H5A2 2 0 0 0 3 10v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-.5V7A4.5 4.5 0 0 0 10 2.5Zm3 5.5V7a3 3 0 1 0-6 0v1h6Z'],
   oauth: ['M10 2a2 2 0 0 1 2 2v1.07a5.002 5.002 0 0 1 2.93 2.93H16a2 2 0 1 1 0 4h-1.07a5.002 5.002 0 0 1-2.93 2.93V16a2 2 0 1 1-4 0v-1.07a5.002 5.002 0 0 1-2.93-2.93H4a2 2 0 1 1 0-4h1.07A5.002 5.002 0 0 1 8 5.07V4a2 2 0 0 1 2-2Zm0 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'],
   users: ['M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM14.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 0 0-1.588-3.755 4.502 4.502 0 0 1 5.874 2.636.818.818 0 0 1-.36.98A7.465 7.465 0 0 1 14.5 16Z'],
-  activity: ['M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z'],
   sync: ['M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z'],
   add: ['M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z'],
   edit: ['M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z'],
@@ -75,12 +74,28 @@ const icons = {
   heart: ['M9.653 3.5a2.75 2.75 0 0 1 4.694 1.94c0 1.07-.42 2.09-1.17 2.85l-4.177 4.177a.75.75 0 0 1-1.06 0L3.523 8.29A4.004 4.004 0 0 1 3.5 5.44a2.75 2.75 0 0 1 4.694-1.94L10 4.764l.653-.764Z'],
 }
 
+// Pulse/heartbeat style icons — rendered as an outlined stroke instead of a
+// filled shape, since a zigzag line has no sensible filled-region equivalent.
+const strokeIcons = {
+  activity: 'M2 10.5h3.1l1.9-5 3 9 1.9-5.5 1.7 1.5H18',
+}
+
 const normalizedName = computed(() => aliases[props.name] || props.name)
+const isStroke = computed(() => normalizedName.value in strokeIcons)
 const paths = computed(() => icons[normalizedName.value] || icons.circle)
 </script>
 
 <template>
-  <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-    <path v-for="(path, index) in paths" :key="`${normalizedName}-${index}`" :d="path" />
+  <svg viewBox="0 0 20 20" :fill="isStroke ? 'none' : 'currentColor'" aria-hidden="true">
+    <path
+      v-if="isStroke"
+      :d="strokeIcons[normalizedName]"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path v-else v-for="(path, index) in paths" :key="`${normalizedName}-${index}`" :d="path" />
   </svg>
 </template>

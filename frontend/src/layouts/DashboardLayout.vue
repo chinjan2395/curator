@@ -450,6 +450,7 @@ import { useActivityLogStore } from '../stores/activityLog';
 import { useToastStore } from '../stores/toast';
 import { useNotificationsStore } from '../stores/notifications';
 import { useRealtimeStore } from '../stores/realtime';
+import { useBrowserNotifications } from '../composables/useBrowserNotifications';
 
 import { useNavigationSettingsStore } from '../stores/navigationSettings';
 import { useSetupStore } from '../stores/setup';
@@ -477,6 +478,7 @@ const router = useRouter();
 const route = useRoute();
 const workspaces = useWorkspacesStore();
 const activityLog = useActivityLogStore();
+const browserNotifications = useBrowserNotifications();
 const showProfileDropdown = ref(false);
 const profileDropdownRef = ref(null);
 const sidebarCollapsed = ref(false);
@@ -506,7 +508,24 @@ function activityPanelIcon(action) {
   if (action?.startsWith('feed')) return 'feeds'
   if (action?.startsWith('post')) return 'check'
   if (action?.startsWith('credential')) return 'credentials'
+  if (action?.startsWith('google_drive')) return 'link'
+  if (action?.startsWith('ai_settings')) return 'sparkles'
+  if (action?.startsWith('oauth_app')) return 'oauth'
+  if (action?.startsWith('admin')) return 'users'
+  if (action?.startsWith('account')) return 'save'
   return 'circle'
+}
+
+function humanizeActivityAction(action) {
+  if (!action) return ''
+  const part = action.includes('.') ? action.split('.').slice(1).join(' ') : action
+  return part
+    .replace(/[_.]/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 
 function activityActionLabel(action) {
@@ -516,21 +535,44 @@ function activityActionLabel(action) {
     'workspace.created': 'Workspace created',
     'workspace.updated': 'Workspace updated',
     'workspace.deleted': 'Workspace deleted',
+    'workspace.published': 'Workspace published',
+    'workspace.settings_updated': 'Settings updated',
+    'workspace.brand_kit_applied': 'Brand kit applied',
     'feed.created': 'Feed created',
     'feed.updated': 'Feed updated',
     'feed.deleted': 'Feed deleted',
     'feed.synced': 'Feed synced',
+    'feed.auto_synced': 'Feed auto-synced',
     'feed.sync_all': 'Sync all',
+    'feed.sync_error': 'Sync error',
+    'feed.sync_disconnected': 'Sync disconnected',
     'feed.resync_credential': 'Re-synced',
+    'feed.settings_updated': 'Sync settings updated',
     'post.approved': 'Post approved',
     'post.rejected': 'Post rejected',
+    'post.updated': 'Post updated',
     'post.pinned': 'Post pinned',
     'post.unpinned': 'Post unpinned',
     'post.deleted': 'Post deleted',
     'credential.connected': 'Connected',
     'credential.disconnected': 'Disconnected',
+    'credential.synced': 'Credential synced',
+    'credential.deleted': 'Credential deleted',
+    'google_drive.connected': 'Google Drive connected',
+    'google_drive.disconnected': 'Google Drive disconnected',
+    'ai_settings.key_saved': 'AI key saved',
+    'ai_settings.key_removed': 'AI key removed',
+    'oauth_app.configured': 'OAuth app configured',
+    'oauth_app.removed': 'OAuth app removed',
+    'oauth_app.promoted': 'OAuth app promoted',
+    'admin.user_updated': 'User updated',
+    'admin.user_deleted': 'User deleted',
+    'admin.password_reset': 'Password reset',
+    'admin.user_deactivated': 'User deactivated',
+    'admin.user_activated': 'User activated',
+    'account.export': 'Account data exported',
   }
-  return labels[action] ?? action
+  return labels[action] ?? humanizeActivityAction(action)
 }
 
 function activityDotClass(action) {
@@ -539,6 +581,11 @@ function activityDotClass(action) {
   if (action?.startsWith('feed')) return 'bg-sky-100 text-sky-600'
   if (action?.startsWith('post')) return 'bg-amber-100 text-amber-600'
   if (action?.startsWith('credential')) return 'bg-emerald-100 text-emerald-600'
+  if (action?.startsWith('google_drive')) return 'bg-teal-100 text-teal-600'
+  if (action?.startsWith('ai_settings')) return 'bg-fuchsia-100 text-fuchsia-600'
+  if (action?.startsWith('oauth_app')) return 'bg-indigo-100 text-indigo-600'
+  if (action?.startsWith('admin')) return 'bg-rose-100 text-rose-600'
+  if (action?.startsWith('account')) return 'bg-slate-200 text-slate-600'
   return 'bg-slate-100 text-slate-500'
 }
 
@@ -548,6 +595,11 @@ function activityBadgeClass(action) {
   if (action?.startsWith('feed')) return 'bg-sky-50 text-sky-700'
   if (action?.startsWith('post')) return 'bg-amber-50 text-amber-700'
   if (action?.startsWith('credential')) return 'bg-emerald-50 text-emerald-700'
+  if (action?.startsWith('google_drive')) return 'bg-teal-50 text-teal-700'
+  if (action?.startsWith('ai_settings')) return 'bg-fuchsia-50 text-fuchsia-700'
+  if (action?.startsWith('oauth_app')) return 'bg-indigo-50 text-indigo-700'
+  if (action?.startsWith('admin')) return 'bg-rose-50 text-rose-700'
+  if (action?.startsWith('account')) return 'bg-slate-100 text-slate-700'
   return 'bg-slate-100 text-slate-600'
 }
 
@@ -662,7 +714,19 @@ function isMainNavActive(item) {
   }
 }
 
+const AI_GENERATION_JOB_LABELS = {
+  campaign_generate: 'Campaign content',
+  refine: 'Content refine',
+  variants: 'A/B variants',
+  image: 'Image generation',
+};
+
 onMounted(async () => {
+  // Browsers never re-prompt once permission is granted/denied, so it's safe
+  // to fire this on every mount. Fire-and-forget — don't block the rest of
+  // the layout's boot sequence on the user's response.
+  browserNotifications.requestPermission();
+
   const navigation = useNavigationSettingsStore();
   await Promise.all([
     workspaces.fetchAll(),
@@ -676,6 +740,12 @@ onMounted(async () => {
       notifications.pushNotification(notification, unreadCount);
       if (notification?.title) {
         toast.info(notification.title);
+        if (browserNotifications.shouldNotify()) {
+          browserNotifications.notify(notification.title, {
+            body: notification.message || undefined,
+            tag: 'curator-notification-' + notification.id,
+          });
+        }
       }
     }));
   }
@@ -683,6 +753,80 @@ onMounted(async () => {
     if (payload.triggered_by === 'scheduler' && payload.status === 'success' && payload.posts_synced > 0) {
       auth.syncSummary.scheduler_unread_count = Number(auth.syncSummary.scheduler_unread_count || 0) + payload.posts_synced;
       auth.syncSummary.scheduler_synced_post_count = Number(auth.syncSummary.scheduler_synced_post_count || 0) + payload.posts_synced;
+    }
+    if (browserNotifications.shouldNotify()) {
+      if (payload.status === 'success' && payload.posts_synced > 0) {
+        browserNotifications.notify('Feed sync complete', {
+          body: `${payload.posts_synced} new post${payload.posts_synced === 1 ? '' : 's'} synced`,
+          tag: 'curator-feed-sync',
+        });
+      } else if (payload.status === 'failed' || payload.status === 'error') {
+        browserNotifications.notify('Feed sync failed', { tag: 'curator-feed-sync' });
+      }
+    }
+  }));
+  unsubscribeHandlers.push(realtime.on('duplicateScan', (payload) => {
+    if (!browserNotifications.shouldNotify()) return;
+    const count = payload.group_count ?? 0;
+    browserNotifications.notify('Duplicate scan complete', {
+      body: count > 0 ? `${count} duplicate group${count === 1 ? '' : 's'} found` : 'No duplicates found',
+      tag: 'curator-duplicate-scan',
+    });
+  }));
+  unsubscribeHandlers.push(realtime.on('aiGeneration', (event) => {
+    if (!browserNotifications.shouldNotify()) return;
+    const label = AI_GENERATION_JOB_LABELS[event.job_type] || 'Generation';
+    if (event.status === 'completed') {
+      browserNotifications.notify(`${label} ready`, {
+        body: event.message || undefined,
+        tag: 'curator-ai-generation-' + (event.resource_id ?? event.job_type),
+      });
+    } else if (event.status === 'failed') {
+      browserNotifications.notify(`${label} failed`, {
+        body: event.message || undefined,
+        tag: 'curator-ai-generation-' + (event.resource_id ?? event.job_type),
+      });
+    }
+  }));
+  unsubscribeHandlers.push(realtime.on('analyticsInsights', (event) => {
+    if (!browserNotifications.shouldNotify()) return;
+    if (event.status === 'completed') {
+      browserNotifications.notify('Analytics insights ready', { tag: 'curator-analytics-insights' });
+    } else if (event.status === 'failed') {
+      browserNotifications.notify('Analytics insights failed', {
+        body: event.message || undefined,
+        tag: 'curator-analytics-insights',
+      });
+    }
+  }));
+  if (auth.user?.role === 'admin' || auth.user?.role === 'superadmin') {
+    unsubscribeHandlers.push(realtime.on('adminSync', (event) => {
+      if (!browserNotifications.shouldNotify()) return;
+      if (event.status === 'completed') {
+        browserNotifications.notify('Admin sync complete', {
+          body: event.message || undefined,
+          tag: 'curator-admin-sync',
+        });
+      } else if (event.status === 'failed') {
+        browserNotifications.notify('Admin sync failed', {
+          body: event.message || undefined,
+          tag: 'curator-admin-sync',
+        });
+      }
+    }));
+  }
+  unsubscribeHandlers.push(realtime.on('scheduledPost', ({ post }) => {
+    if (!post || !browserNotifications.shouldNotify()) return;
+    if (post.status === 'published') {
+      browserNotifications.notify('Post published', {
+        body: post.caption ? String(post.caption).slice(0, 120) : undefined,
+        tag: 'curator-scheduled-post-' + post.id,
+      });
+    } else if (post.status === 'failed') {
+      browserNotifications.notify('Post failed to publish', {
+        body: post.caption ? String(post.caption).slice(0, 120) : undefined,
+        tag: 'curator-scheduled-post-' + post.id,
+      });
     }
   }));
   localStorage.removeItem('curator_nav_mode');
