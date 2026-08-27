@@ -5,6 +5,7 @@ import ForgotPassword from '../views/ForgotPassword.vue';
 import ResetPassword from '../views/ResetPassword.vue';
 import SocialCallback from '../views/SocialCallback.vue';
 import Onboarding from '../views/Onboarding.vue';
+import Setup from '../views/Setup.vue';
 import DashboardLayout from '../layouts/DashboardLayout.vue';
 import Dashboard from '../views/Dashboard.vue';
 import WorkspacesList from '../views/WorkspacesList.vue';
@@ -43,6 +44,7 @@ import ActivityLogs from '../views/admin/ActivityLogs.vue';
 import AdminNavigation from '../views/admin/AdminNavigation.vue';
 import { useAuthStore } from '../stores/auth';
 import { useNavigationSettingsStore } from '../stores/navigationSettings';
+import { useSetupStore } from '../stores/setup';
 
 const routes = [
   { path: '/login', component: Login },
@@ -52,40 +54,41 @@ const routes = [
   { path: '/auth/social/callback', component: SocialCallback },
   { path: '/verify-email', component: VerifyEmail },
   { path: '/onboarding', component: Onboarding, meta: { requiresAuth: true } },
+  { path: '/setup', component: Setup, meta: { requiresAuth: true } },
   {
     path: '/',
     component: DashboardLayout,
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'dashboard', component: Dashboard },
-      { path: 'workspaces/:workspaceId/curate', name: 'curate', component: Curate },
-      { path: 'workspaces/:workspaceId/feeds/:feedId/curate', name: 'feed-curate', component: Curate },
+      { path: 'workspaces/:workspaceId/curate', name: 'curate', component: Curate, meta: { requires: ['social_credential'] } },
+      { path: 'workspaces/:workspaceId/feeds/:feedId/curate', name: 'feed-curate', component: Curate, meta: { requires: ['social_credential'] } },
       { path: 'workspaces', name: 'workspaces', component: WorkspacesList },
       { path: 'workspaces/new', name: 'workspace-new', component: WorkspaceForm },
       { path: 'workspaces/:id/edit', name: 'workspace-edit', component: WorkspaceForm },
-      { path: 'workspaces/:workspaceId/feeds', name: 'feeds', component: FeedsList },
-      { path: 'workspaces/:workspaceId/feeds/new', name: 'feed-new', component: FeedForm },
+      { path: 'workspaces/:workspaceId/feeds', name: 'feeds', component: FeedsList, meta: { requires: ['social_credential'] } },
+      { path: 'workspaces/:workspaceId/feeds/new', name: 'feed-new', component: FeedForm, meta: { requires: ['social_credential'] } },
       { path: 'workspaces/:workspaceId/feeds/:feedId/edit', name: 'feed-edit', component: FeedForm },
-      { path: 'workspaces/:workspaceId/publish', name: 'workspace-publish', component: Publish },
+      { path: 'workspaces/:workspaceId/publish', name: 'workspace-publish', component: Publish, meta: { requires: ['social_credential'] } },
       { path: 'credentials', name: 'credentials', component: Credentials, meta: { menuId: 'integrations' } },
       { path: 'integrations', redirect: '/credentials' },
       { path: 'oauth-apps', name: 'oauth-apps', component: OAuthApps, meta: { requiresAdmin: true, menuId: 'oauth-apps' } },
-      { path: 'publish', name: 'publish', component: Publish },
-      { path: 'curator', name: 'curator', component: CuratorFeed, meta: { menuId: 'curator' } },
-      { path: 'curator/embed-builder', name: 'embed-builder', component: Publish, meta: { menuId: 'curator' } },
+      { path: 'publish', name: 'publish', component: Publish, meta: { requires: ['social_credential'] } },
+      { path: 'curator', name: 'curator', component: CuratorFeed, meta: { requires: ['social_credential'], menuId: 'curator' } },
+      { path: 'curator/embed-builder', name: 'embed-builder', component: Publish, meta: { requires: ['social_credential'], menuId: 'curator' } },
       { path: 'settings/profile', name: 'profile-settings', component: ProfileSettings },
       { path: 'settings/ai', name: 'ai-settings', component: AiSettings, meta: { menuId: 'ai-settings' } },
       { path: 'campaigns', name: 'campaigns', component: CampaignsList, meta: { menuId: 'campaigns' } },
-      { path: 'campaigns/new', name: 'campaign-new', component: CampaignForm, meta: { menuId: 'campaigns' } },
+      { path: 'campaigns/new', name: 'campaign-new', component: CampaignForm, meta: { requires: ['ai_provider'], menuId: 'campaigns' } },
       { path: 'campaigns/:id', name: 'campaign-detail', component: CampaignDetail, meta: { menuId: 'campaigns' } },
       { path: 'content-library', name: 'content-library', component: ContentLibrary, meta: { menuId: 'content-library' } },
       { path: 'brand-kits', name: 'brand-kits', component: BrandKits, meta: { menuId: 'brand-kits' } },
       { path: 'brand-kits/:id/edit', name: 'brand-kit-editor', component: BrandKitEditor, meta: { menuId: 'brand-kits' } },
       { path: 'content', redirect: { name: 'content-library' } },
-      { path: 'calendar', name: 'calendar', component: Calendar, meta: { menuId: 'schedule' } },
-      { path: 'publisher', name: 'publisher', component: PublisherQueue, meta: { menuId: 'schedule' } },
-      { path: 'analytics', name: 'analytics', component: Analytics, meta: { menuId: 'analytics' } },
-      { path: 'analytics/platforms/:platform', name: 'analytics-platform', component: AnalyticsPlatform, meta: { menuId: 'analytics' } },
+      { path: 'calendar', name: 'calendar', component: Calendar, meta: { requires: ['social_credential'], menuId: 'schedule' } },
+      { path: 'publisher', name: 'publisher', component: PublisherQueue, meta: { requires: ['social_credential'], menuId: 'schedule' } },
+      { path: 'analytics', name: 'analytics', component: Analytics, meta: { requires: ['social_credential'], menuId: 'analytics' } },
+      { path: 'analytics/platforms/:platform', name: 'analytics-platform', component: AnalyticsPlatform, meta: { requires: ['social_credential'], menuId: 'analytics' } },
       { path: 'inbox', name: 'inbox', component: Inbox, meta: { menuId: 'inbox' } },
       { path: 'notifications', name: 'notifications', component: NotificationsCenter, meta: { menuId: 'notifications' } },
       { path: 'notifications/preferences', name: 'notification-preferences', component: NotificationPreferences, meta: { menuId: 'notifications' } },
@@ -124,6 +127,22 @@ router.beforeEach(async (to, from, next) => {
     next('/');
     return;
   }
+  // Setup gate. Infrastructure before brand voice: a user with no OAuth app
+  // cannot connect an account, so asking about their brand tone first is noise.
+  // Uses to.matched (not to.meta) so nested routes under DashboardLayout inherit it.
+  if (auth.token && auth.user && to.matched.some((record) => record.meta.requiresAuth)) {
+    const setup = useSetupStore();
+    await setup.ensureLoaded();
+    if (setup.blocking.length && to.path !== '/setup') {
+      next('/setup');
+      return;
+    }
+    if (!setup.blocking.length && to.path === '/setup') {
+      next('/');
+      return;
+    }
+  }
+
   if (auth.token && auth.user && !auth.user.is_onboarded && to.path !== '/onboarding' && to.meta.requiresAuth) {
     next('/onboarding');
     return;

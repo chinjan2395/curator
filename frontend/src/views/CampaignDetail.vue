@@ -26,7 +26,7 @@
                 {{ savingCampaign ? 'Saving…' : 'Save brief' }}
               </AppButton>
               <AiProviderModelPicker kind="text" v-model="generatePickerValue" />
-              <AppButton variant="primary" :disabled="generating || savingCampaign" @click="generate">
+              <AppButton variant="primary" :disabled="generating || savingCampaign || aiUnavailable" @click="generate">
                 <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
                 {{ generating ? (generationProgress || 'Generating…') : 'Generate content' }}
               </AppButton>
@@ -261,7 +261,7 @@
             description="Generate platform captions from your campaign brief."
             icon="megaphone"
           >
-            <AppButton variant="primary" :disabled="generating" @click="generate">
+            <AppButton variant="primary" :disabled="generating || aiUnavailable" @click="generate">
               <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
               Generate content
             </AppButton>
@@ -908,7 +908,7 @@
 
       <template #footer>
         <AppButton variant="secondary" @click="closeRefineModal">Close</AppButton>
-        <AppButton :disabled="refining || !instruction.trim()" @click="refine">
+        <AppButton :disabled="refining || !instruction.trim() || aiUnavailable" @click="refine">
           <AppIcon name="sparkles" class="w-3.5 h-3.5 mr-1.5" />
           {{ refining ? 'Refining…' : 'Refine with AI' }}
         </AppButton>
@@ -960,6 +960,7 @@ import PlatformPublishGuide from '../components/PlatformPublishGuide.vue';
 import ScheduleValidationPanel from '../components/ScheduleValidationPanel.vue';
 import SocialPlatformLabel from '../components/SocialPlatformLabel.vue';
 import GenerateImageModal from '../components/content/GenerateImageModal.vue';
+import { useSetupStore } from '../stores/setup';
 import PostPreviewModal from '../components/content/PostPreviewModal.vue';
 import PostPreviewCard from '../components/content/PostPreviewCard.vue';
 import AiProviderModelPicker from '../components/content/AiProviderModelPicker.vue';
@@ -1010,6 +1011,14 @@ const campaign = ref(null);
 const loading = ref(true);
 const loadError = ref(null);
 const campaignError = ref('');
+const setup = useSetupStore();
+// Never let a generate request fire into a 500 from an unconfigured provider.
+// CapabilityBanner (context="ai", above) carries the reason and the fix link.
+const aiUnavailable = computed(() => {
+  const requirement = setup.requirement('ai_provider');
+  return Boolean(requirement) && requirement.state !== 'satisfied';
+});
+
 const generating = ref(false);
 const generationProgress = ref('');
 const savingCampaign = ref(false);

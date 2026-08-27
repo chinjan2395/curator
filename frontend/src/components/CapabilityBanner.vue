@@ -16,6 +16,7 @@ import { computed, onMounted } from 'vue';
 import { AppAlert } from './ui';
 import { useCapabilities } from '../composables/useCapabilities';
 import { useNavigationVisibility } from '../composables/useNavigationVisibility';
+import { useSetupStore } from '../stores/setup';
 
 const props = defineProps({
   context: {
@@ -27,15 +28,26 @@ const props = defineProps({
 
 const { capabilities, fetchCapabilities } = useCapabilities();
 const { isMenuEnabled } = useNavigationVisibility();
+const setup = useSetupStore();
 
-onMounted(() => fetchCapabilities());
+onMounted(() => {
+  // The AI banner reads the setup contract (which honours BYOK keys); only the
+  // publish banner still needs the capabilities payload.
+  if (props.context === 'ai') {
+    setup.ensureLoaded();
+    return;
+  }
+  fetchCapabilities();
+});
+
+const aiProvider = computed(() => setup.requirement('ai_provider'));
 
 const visible = computed(() => {
+  if (props.context === 'ai') {
+    return Boolean(aiProvider.value) && aiProvider.value.state !== 'satisfied';
+  }
   const caps = capabilities.value;
   if (!caps) return false;
-  if (props.context === 'ai') {
-    return caps.ai?.driver === 'stub';
-  }
   if (props.context === 'publish') {
     const native = caps.publish?.native || {};
     return Object.values(native).some((p) => !p.enabled);
@@ -46,11 +58,12 @@ const visible = computed(() => {
 const variant = computed(() => (props.context === 'ai' ? 'warning' : 'info'));
 
 const message = computed(() => {
+  if (props.context === 'ai') {
+    return aiProvider.value?.detail
+      || 'No AI provider has a usable key, so captions and campaigns cannot generate.';
+  }
   const caps = capabilities.value;
   if (!caps) return '';
-  if (props.context === 'ai') {
-    return 'AI content is using stub mode (placeholder text). Set AI_DRIVER=groq or ollama and the matching API keys in the backend .env for real generation.';
-  }
   const native = caps.publish?.native || {};
   const disabled = Object.entries(native)
     .filter(([, v]) => !v.enabled)
@@ -60,9 +73,13 @@ const message = computed(() => {
 });
 
 const linkTo = computed(() => {
-  if (props.context === 'ai') return null;
+  // Point at the page that actually fixes it. BYOK keys live in AI Settings —
+  // telling users to edit the backend .env has not been true since BYOK shipped.
+  if (props.context === 'ai') {
+    return isMenuEnabled('ai-settings') ? '/settings/ai' : null;
+  }
   if (!isMenuEnabled('integrations')) return null;
   return '/credentials';
 });
-const linkLabel = computed(() => 'Open integrations');
+const linkLabel = computed(() => (props.context === 'ai' ? 'Open AI Settings' : 'Open integrations'));
 </script>

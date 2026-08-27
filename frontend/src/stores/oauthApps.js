@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import axios from 'axios';
 import { useToastStore } from './toast';
 import { useAuthStore } from './auth';
+import { useSetupStore } from './setup';
 import { hydrateFromSession, invalidate, isFresh, persistToSession, withDedupe } from '../utils/sessionCache';
 
 const OAUTH_TTL_MS = 30 * 60 * 1000;
@@ -105,6 +106,8 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
           client_secret,
           redirect_uri,
         });
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         await this.fetchAll({ force: true });
         useToastStore().success('OAuth app settings saved');
         return data;
@@ -119,6 +122,8 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
     async remove(provider, scope = 'user') {
       try {
         await axios.delete(`/api/oauth-app-configs/${provider}`, { params: { scope } });
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         await this.fetchAll({ force: true });
         useToastStore().success('OAuth app settings removed');
       } catch (err) {
@@ -132,6 +137,8 @@ export const useOAuthAppsStore = defineStore('oauthApps', {
       this.error = null;
       try {
         const { data } = await axios.post('/api/oauth-app-configs/promote-my-user-configs-to-shared', { overwrite });
+        // Readiness may have changed — let the gate, locks and meter recompute.
+        useSetupStore().invalidate();
         await this.fetchAll({ force: true });
         useToastStore().success(`Promoted configs (created: ${data.created}, updated: ${data.updated}, skipped: ${data.skipped})`);
         return data;
